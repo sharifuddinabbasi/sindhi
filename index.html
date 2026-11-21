@@ -723,7 +723,7 @@
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         // Google Drive Image Upload Web App URL
-        const DRIVE_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbyWvRdcecIEswh5TWNRPlvJG-SVmT9X-ySLWkVpue9r7NLk_jMz7h2-Rsxxkz5nAamezg/exec";
+        const DRIVE_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbwRcMRIThfbxZXCQVgjQzwTiryuw1GZMbHbMc7AO9leRXSWnMib421odMxupHPG0m6n/exec";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAK0P6rAjep2Zr-t3hnTJVgrVpndTWvhGc",
@@ -1486,6 +1486,10 @@
                     try {
                         const response = await fetch(DRIVE_UPLOAD_URL, {
                             method: "POST",
+                            redirect: "follow",
+                            headers: {
+                                "Content-Type": "text/plain;charset=utf-8"
+                            },
                             body: JSON.stringify({
                                 base64: compressedData,
                                 mimeType: "image/jpeg",
@@ -1493,7 +1497,8 @@
                             })
                         });
 
-                        const result = await response.json();
+                        const responseText = await response.text();
+                        const result = JSON.parse(responseText);
 
                         if (result.status === "success") {
                             await saveToFirestore(text, result.url, result.fileId);
@@ -1621,6 +1626,10 @@
                 if (postObj.imageFileId) {
                     fetch(DRIVE_UPLOAD_URL, {
                         method: "POST",
+                        redirect: "follow",
+                        headers: {
+                            "Content-Type": "text/plain;charset=utf-8"
+                        },
                         body: JSON.stringify({
                             action: "delete",
                             fileId: postObj.imageFileId
