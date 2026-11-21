@@ -1,0 +1,23 @@
+{
+  "name": "Sindhi Book - سنڌي بڪ",
+  "short_name": "Sindhi Book",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F4EFE6",
+  "theme_color": "#14284B",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
