@@ -151,6 +151,7 @@
             border: 1.5px solid #FFFFFF;
         }
 
+        /* Header Bottom Row: Left = User Dropdown, Right = Language Switcher */
         .header-bottom-row {
             padding: 4px 14px 10px;
             display: flex;
@@ -158,6 +159,7 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 8px;
+            direction: ltr;
         }
 
         .lang-switcher {
@@ -166,6 +168,7 @@
             border: 1px solid var(--ajrak-gold);
             border-radius: 20px;
             padding: 2px;
+            margin-left: auto;
         }
 
         .lang-btn {
@@ -184,22 +187,86 @@
             color: #FFFFFF;
         }
 
-        .user-nav {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
+        /* User Dropdown Menu (Left Side) */
+        .user-dropdown-wrapper {
+            position: relative;
+            display: inline-block;
         }
 
-        .logout-btn {
+        .user-menu-trigger {
             background-color: var(--ajrak-red);
             border: 1px solid var(--ajrak-gold);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 6px;
+            color: #FFFFFF;
+            padding: 5px 12px;
+            border-radius: 20px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: 0.2s;
+        }
+
+        .user-menu-trigger:hover {
+            background-color: var(--ajrak-dark-red);
+        }
+
+        .user-dropdown-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            background-color: #FFFFFF;
+            min-width: 175px;
+            border-radius: 10px;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+            border: 1.5px solid var(--ajrak-gold);
+            overflow: hidden;
+            z-index: 300;
+            animation: popIn 0.15s ease-out;
+        }
+
+        .dropdown-item {
+            width: 100%;
+            background: none;
+            border: none;
+            border-bottom: 1px solid #EAE2D3;
+            padding: 10px 14px;
+            text-align: start;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--ajrak-blue);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            transition: 0.15s;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--ajrak-cream);
+        }
+
+        .dropdown-item.logout-item {
+            color: var(--ajrak-red);
+        }
+
+        .dropdown-item.logout-item:hover {
+            background-color: #FFEBEE;
+        }
+
+        .dropdown-count-pill {
+            background-color: #28A745;
+            color: #FFFFFF;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 1px 7px;
+            border-radius: 10px;
         }
 
         /* پاپ اپ موڈل */
@@ -233,11 +300,19 @@
 
         .modal-header {
             background-color: var(--ajrak-cream);
-            padding: 12px 16px;
+            padding: 12px 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 8px;
             border-bottom: 1px solid #DCD4C6;
+        }
+
+        .modal-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         .modal-header h3 {
@@ -255,12 +330,189 @@
             font-weight: bold;
             cursor: pointer;
             font-size: 14px;
+            flex-shrink: 0;
         }
 
         .modal-body {
             padding: 14px;
-            max-height: 65vh;
+            max-height: 72vh;
             overflow-y: auto;
+        }
+
+        /* Settings Menu List */
+        .setting-menu-btn {
+            width: 100%;
+            background: var(--ajrak-cream);
+            border: 1px solid #DCD4C6;
+            border-radius: 10px;
+            padding: 13px 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 15px;
+            font-weight: bold;
+            color: var(--ajrak-blue);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .setting-menu-btn:hover {
+            background: #EAE2D3;
+            border-color: var(--ajrak-red);
+            transform: translateX(2px);
+        }
+
+        .history-item {
+            background: var(--ajrak-cream);
+            border-inline-start: 4px solid var(--ajrak-blue);
+            padding: 9px 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .history-item.clickable {
+            cursor: pointer;
+        }
+
+        .history-item.clickable:hover {
+            background: #EAE2D3;
+        }
+
+        /* Privacy Toggle Button (Public / Private) */
+        .privacy-toggle-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 11px;
+            border-radius: 18px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border: 1.5px solid;
+            transition: 0.2s;
+        }
+
+        .privacy-toggle-btn.public {
+            background-color: #E8F5E9;
+            color: #1B5E20;
+            border-color: #28A745;
+        }
+
+        .privacy-toggle-btn.private {
+            background-color: #FFEBEE;
+            color: var(--ajrak-red);
+            border-color: var(--ajrak-red);
+        }
+
+        /* Profile Card & Avatar Upload */
+        .profile-card-box {
+            background: var(--ajrak-cream);
+            border: 1px solid #DCD4C6;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .profile-avatar-wrapper {
+            position: relative;
+            width: 78px;
+            height: 78px;
+            margin: 0 auto 10px;
+            cursor: pointer;
+        }
+
+        .profile-big-avatar {
+            width: 78px;
+            height: 78px;
+            background: linear-gradient(135deg, var(--ajrak-red), var(--ajrak-blue));
+            color: var(--ajrak-cream);
+            border: 2.5px solid var(--ajrak-gold);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            text-transform: uppercase;
+            overflow: hidden;
+        }
+
+        .profile-big-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .avatar-cam-badge {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--ajrak-blue);
+            color: #FFFFFF;
+            border: 1.5px solid var(--ajrak-gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+        }
+
+        .profile-name-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+
+        .profile-edit-icon-btn {
+            background: #FFFFFF;
+            border: 1px solid #C8BEB0;
+            color: var(--ajrak-blue);
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .profile-edit-icon-btn svg {
+            width: 13px;
+            height: 13px;
+            fill: currentColor;
+        }
+
+        .profile-stats-grid {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid #DCD4C6;
+        }
+
+        .profile-stat-item {
+            flex: 1;
+        }
+
+        .profile-stat-item strong {
+            display: block;
+            font-size: 18px;
+            color: var(--ajrak-red);
+        }
+
+        .profile-stat-item span {
+            font-size: 12px;
+            color: var(--ajrak-blue);
+            font-weight: 600;
         }
 
         .popup-list-item {
@@ -295,6 +547,13 @@
             font-weight: bold;
             text-transform: uppercase;
             flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .mini-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .popup-user-name {
@@ -366,9 +625,9 @@
 
         .card-body { padding: 14px; }
 
-        #auth-section { max-width: 420px; margin: 30px auto; text-align: center; }
-        #auth-section h2 { color: var(--ajrak-red); margin-bottom: 6px; font-size: 26px; }
-        #auth-section p.subtitle { color: var(--ajrak-blue); margin-bottom: 18px; font-size: 14px; }
+        #auth-section, #reset-password-screen { max-width: 420px; margin: 30px auto; text-align: center; }
+        #auth-section h2, #reset-password-screen h2 { color: var(--ajrak-red); margin-bottom: 6px; font-size: 25px; }
+        #auth-section p.subtitle, #reset-password-screen p.subtitle { color: var(--ajrak-blue); margin-bottom: 18px; font-size: 14px; }
 
         .auth-tabs { display: flex; margin-bottom: 16px; border-bottom: 2px solid #EAE2D3; }
         .tab-btn { flex: 1; padding: 10px; background: none; border: none; font-size: 15px; font-weight: bold; color: #666; cursor: pointer; }
@@ -397,6 +656,11 @@
             font-size: 15px;
             font-weight: bold;
             cursor: pointer;
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
         }
 
         .status-msg { margin-top: 12px; padding: 10px; border-radius: 6px; font-size: 13px; line-height: 1.6; text-align: start; }
@@ -465,14 +729,37 @@
             font-size: 18px;
             text-transform: uppercase;
             flex-shrink: 0;
+            overflow: hidden;
+        }
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
         .author-name { font-weight: bold; font-size: 15px; color: var(--ajrak-blue); }
         .post-time { font-size: 12px; color: #6E6A63; }
 
-        .owner-controls { display: flex; gap: 8px; }
-        .control-btn { color: #666; background: none; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
-        .control-btn.edit:hover { color: var(--ajrak-blue); }
-        .control-btn.delete:hover { color: var(--ajrak-red); }
+        .owner-controls { display: flex; gap: 6px; align-items: center; }
+        .control-btn {
+            color: #555;
+            background: var(--ajrak-cream);
+            border: 1px solid #DCD4C6;
+            border-radius: 6px;
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .control-btn svg {
+            width: 15px;
+            height: 15px;
+            fill: currentColor;
+        }
+        .control-btn.edit:hover { color: var(--ajrak-blue); border-color: var(--ajrak-blue); }
+        .control-btn.delete:hover { color: var(--ajrak-red); border-color: var(--ajrak-red); background: #FFEBEE; }
 
         /* پوسٹ کی تحریر کا رنگ: نارمل براؤن */
         .post-content {
@@ -510,7 +797,7 @@
 
         .post-actions {
             display: flex;
-            justify-content: space-between;
+            justify-content: space-around;
             align-items: center;
             padding: 6px 0;
             border-bottom: 1px solid #EAE2D3;
@@ -519,31 +806,88 @@
         .action-btn {
             background: none;
             border: none;
-            color: #555;
-            font-weight: bold;
-            font-size: 14px;
-            padding: 6px 14px;
-            border-radius: 6px;
+            font-size: 20px;
+            padding: 6px 24px;
+            border-radius: 8px;
             cursor: pointer;
             transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .action-btn:hover { background-color: var(--ajrak-cream); }
-        .action-btn.active-like { color: var(--ajrak-red); background-color: rgba(139, 30, 36, 0.08); }
-        .action-btn.active-unlike { color: var(--ajrak-blue); background-color: rgba(20, 40, 75, 0.08); }
+        .action-btn:hover { background-color: var(--ajrak-cream); transform: scale(1.08); }
+        .action-btn.active-like { background-color: rgba(139, 30, 36, 0.12); border: 1px solid rgba(139, 30, 36, 0.3); }
+        .action-btn.active-unlike { background-color: rgba(20, 40, 75, 0.12); border: 1px solid rgba(20, 40, 75, 0.3); }
 
         .comments-section { margin-top: 10px; }
         .comment-item { background-color: var(--ajrak-cream); border-inline-start: 3px solid var(--ajrak-red); padding: 8px 12px; border-radius: 6px; margin-bottom: 8px; font-size: 13px; }
         .comment-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
         .comment-author { font-weight: bold; color: var(--ajrak-blue); }
-        .comment-controls { display: flex; gap: 8px; }
-        .comment-controls button { background: none; border: none; font-size: 11px; font-weight: bold; cursor: pointer; color: #666; }
+        .comment-controls { display: flex; gap: 6px; align-items: center; }
+        .comment-controls button {
+            background: #FFFFFF;
+            border: 1px solid #DCD4C6;
+            border-radius: 5px;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #555;
+            transition: 0.2s;
+        }
+        .comment-controls button svg {
+            width: 13px;
+            height: 13px;
+            fill: currentColor;
+        }
+        .comment-controls button.edit:hover { color: var(--ajrak-blue); border-color: var(--ajrak-blue); }
+        .comment-controls button.delete:hover { color: var(--ajrak-red); border-color: var(--ajrak-red); background: #FFEBEE; }
 
         /* ریپلائی/کمنٹ کی تحریر کا رنگ: نارمل بلیو */
         .comment-body-text {
             color: var(--normal-blue-text);
             font-weight: 500;
             line-height: 1.5;
+        }
+
+        /* Reply Like & Unlike Bar */
+        .comment-reactions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 6px;
+            padding-top: 4px;
+            border-top: 1px dashed #DCD4C6;
+        }
+
+        .comment-react-btn {
+            background: #FFFFFF;
+            border: 1px solid #DCD4C6;
+            border-radius: 14px;
+            padding: 2px 9px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: 0.2s;
+        }
+
+        .comment-react-btn:hover { background-color: #FAF8F5; }
+        .comment-react-btn.active-like {
+            background-color: rgba(139, 30, 36, 0.12);
+            border-color: var(--ajrak-red);
+            color: var(--ajrak-red);
+        }
+        .comment-react-btn.active-unlike {
+            background-color: rgba(20, 40, 75, 0.12);
+            border-color: var(--ajrak-blue);
+            color: var(--ajrak-blue);
         }
 
         .comment-edit-box { margin-top: 6px; }
@@ -576,24 +920,18 @@
             <h1><span>❖</span> <span id="header-title">Sindhi Book</span></h1>
             
             <div id="fb-icon-bar" class="fb-icon-bar hidden">
-                <!-- 1. My Friends List Icon -->
-                <button class="icon-circle-btn" onclick="openPopup('friends')" title="My Friends">
-                    <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                    <span id="friends-badge" class="badge-count hidden">0</span>
-                </button>
-
-                <!-- 2. Find Friends Icon -->
+                <!-- 1. Find Friends Icon -->
                 <button class="icon-circle-btn" onclick="openPopup('find')" title="Find Friends">
                     <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 </button>
 
-                <!-- 3. Friend Requests Icon -->
+                <!-- 2. Friend Requests Icon -->
                 <button class="icon-circle-btn" onclick="openPopup('requests')" title="Friend Requests">
                     <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                     <span id="req-badge" class="badge-count hidden">0</span>
                 </button>
 
-                <!-- 4. Notifications Icon -->
+                <!-- 3. Notifications Icon -->
                 <button class="icon-circle-btn" onclick="openPopup('notifications')" title="Notifications">
                     <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
                     <span id="notif-badge" class="badge-count hidden">0</span>
@@ -602,14 +940,33 @@
         </div>
 
         <div class="header-bottom-row">
+            <!-- Left Side: User Name + Dropdown Menu -->
+            <div id="user-nav" class="user-dropdown-wrapper hidden">
+                <button class="user-menu-trigger" onclick="toggleUserDropdown(event)">
+                    <span id="current-user-display"></span>
+                    <span>▼</span>
+                </button>
+                <div id="user-dropdown-menu" class="user-dropdown-menu hidden">
+                    <button class="dropdown-item" onclick="handleDropdownAction('profile')">
+                        <span id="menu-profile-label">👤 Profile</span>
+                    </button>
+                    <button class="dropdown-item" onclick="handleDropdownAction('friends')">
+                        <span id="menu-friends-label">👥 Friends</span>
+                        <span id="dropdown-friends-count" class="dropdown-count-pill">0</span>
+                    </button>
+                    <button class="dropdown-item" onclick="handleDropdownAction('setting')">
+                        <span id="menu-setting-label">⚙️ Setting</span>
+                    </button>
+                    <button class="dropdown-item logout-item" onclick="handleDropdownAction('logout')">
+                        <span id="menu-logout-label">🚪 Logout</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Side: English / Sindhi Switcher -->
             <div class="lang-switcher">
                 <button id="btn-lang-en" class="lang-btn active" onclick="setLanguage('en')">English</button>
                 <button id="btn-lang-sd" class="lang-btn" onclick="setLanguage('sd')">سنڌي</button>
-            </div>
-
-            <div id="user-nav" class="user-nav hidden">
-                <span id="current-user-display"></span>
-                <button id="btn-logout" class="logout-btn" onclick="logoutUser()">Logout</button>
             </div>
         </div>
         <div class="ajrak-border-strip"></div>
@@ -620,12 +977,27 @@
         <div class="modal-box">
             <div class="ajrak-border-strip"></div>
             <div class="modal-header">
-                <h3 id="modal-title">Title</h3>
+                <div class="modal-header-left">
+                    <h3 id="modal-title">Title</h3>
+                    <span id="modal-header-extra"></span>
+                </div>
                 <button class="modal-close" onclick="closePopup()">✕</button>
             </div>
             <div class="modal-body">
+                <div id="popup-profile" class="hidden">
+                    <div id="popup-profile-content"></div>
+                </div>
+
                 <div id="popup-friends" class="hidden">
                     <div id="popup-friends-list"></div>
+                </div>
+
+                <div id="popup-friend-view" class="hidden">
+                    <div id="popup-friend-view-content"></div>
+                </div>
+
+                <div id="popup-setting" class="hidden">
+                    <div id="popup-setting-content"></div>
                 </div>
 
                 <div id="popup-find" class="hidden">
@@ -641,6 +1013,20 @@
                     <div id="popup-notif-list"></div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Custom Email Reset Password Screen (Opens when user clicks reset link in email) -->
+    <div id="reset-password-screen" class="card hidden">
+        <div class="ajrak-border-strip"></div>
+        <div class="card-body">
+            <h2 id="reset-screen-title">🔑 Reset Password</h2>
+            <p id="reset-screen-email" class="subtitle" dir="ltr"></p>
+            <input type="password" id="email-reset-new-pass" placeholder="New Password (min 6 characters)" dir="ltr">
+            <input type="password" id="email-reset-repeat-pass" placeholder="Repeat Password" dir="ltr">
+            <button id="btn-confirm-email-reset" class="btn-primary" onclick="confirmEmailPasswordReset()">Save New Password</button>
+            <div id="email-reset-status" class="status-msg hidden"></div>
+            <button id="btn-back-to-login" class="btn-sm neutral" style="margin-top:12px;" onclick="exitResetScreen()">← Back to Login</button>
         </div>
     </div>
 
@@ -700,7 +1086,13 @@
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
             sendEmailVerification, 
+            sendPasswordResetEmail,
+            verifyPasswordResetCode,
+            confirmPasswordReset,
             updateProfile,
+            updatePassword,
+            EmailAuthProvider,
+            reauthenticateWithCredential,
             signOut, 
             onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -722,8 +1114,10 @@
             serverTimestamp 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Google Drive Image Upload Web App URL
-        const DRIVE_UPLOAD_URL = "https://script.google.com/macros/s/AKfycbwRcMRIThfbxZXCQVgjQzwTiryuw1GZMbHbMc7AO9leRXSWnMib421odMxupHPG0m6n/exec";
+        // Multi-Drive Image Upload Web App URLs (Auto-Failover List)
+        const DRIVE_URLS = [
+            "https://script.google.com/macros/s/AKfycbwRcMRIThfbxZXCQVgjQzwTiryuw1GZMbHbMc7AO9leRXSWnMib421odMxupHPG0m6n/exec"
+        ];
 
         const firebaseConfig = {
             apiKey: "AIzaSyAK0P6rAjep2Zr-t3hnTJVgrVpndTWvhGc",
@@ -738,6 +1132,16 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+
+        // Check URL parameters for Password Reset Link (?mode=resetPassword&oobCode=...)
+        const urlParams = new URLSearchParams(window.location.search);
+        const actionMode = urlParams.get('mode');
+        const actionOobCode = urlParams.get('oobCode');
+        let isResetPasswordFlow = (actionMode === 'resetPassword' && Boolean(actionOobCode));
+
+        // SVG Icons for Edit (Pencil) and Delete (Dustbin)
+        const ICON_EDIT_SVG = `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>`;
+        const ICON_DUSTBIN_SVG = `<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
 
         const translations = {
             en: {
@@ -754,11 +1158,58 @@
                 signupEmail: "Email Address",
                 signupPass: "Create Password (min 6 characters)",
                 btnSignup: "Sign Up & Send Verification Email",
-                logout: "Logout",
-                modalFriendsTitle: "👤 My Friends List",
+                menuProfile: "👤 Profile",
+                menuFriends: "👥 Friends",
+                menuSetting: "⚙️ Setting",
+                menuLogout: "🚪 Logout",
+                modalProfileTitle: "👤 My Profile",
+                modalFriendsTitle: "👥 My Friends List",
+                modalSettingTitle: "⚙️ Settings",
+                modalHistoryTitle: "📜 My History",
+                modalChangePassTitle: "🔑 Change Password",
+                modalResetPassTitle: "📧 Reset Password",
                 modalFindTitle: "🔍 Find Friends",
                 modalRequestsTitle: "👥 Friend Requests",
                 modalNotifTitle: "🔔 Notifications",
+                settingOptHistory: "📜 History",
+                settingOptChangePass: "🔑 Change Password",
+                settingOptResetPass: "📧 Reset Password",
+                backBtn: "← Back",
+                noHistoryMsg: "No activity history yet.",
+                histPosted: "You created a post",
+                histReplied: "You replied on a post",
+                histLikedPost: "You liked a post",
+                histUnlikedPost: "You unliked a post",
+                histLikedReply: "You liked a reply",
+                histUnlikedReply: "You unliked a reply",
+                resetMailDesc: "Click the button below to receive a password reset link on your registered email:",
+                sendResetMailBtn: "Send Reset Link to Email",
+                sendingResetMail: "Sending email...",
+                resetMailSentSuccess: "Password reset link has been sent to your email! Open your Inbox or Spam folder and click the link to set a New Password.",
+                resetScreenTitle: "🔑 Set New Password",
+                newPassPlaceholder: "New Password (min 6 characters)",
+                repeatPassPlaceholder: "Repeat Password",
+                saveNewPassBtn: "Save New Password",
+                invalidResetLink: "This password reset link has expired or is invalid. Please request a new one.",
+                resetPassDoneSuccess: "Your password has been reset successfully! You can now log in with your new password.",
+                profileFriendsCount: "Friends",
+                profilePostsCount: "My Posts",
+                publicLabel: "🌐 Public",
+                privateLabel: "🔒 Private",
+                profilePrivateHint: "Profile is Private (Hidden from Find Friends)",
+                profilePublicHint: "Profile is Public (Visible in Find Friends)",
+                friendsPrivateHint: "Your friends list is Private (Hidden from your friends)",
+                friendsPublicHint: "Your friends list is Public (Visible to your friends)",
+                friendListLockedMsg: "🔒 This user's friends list is Private.",
+                friendListEmptyOther: "No friends to show.",
+                uploadingAvatar: "Updating profile photo...",
+                currentPassPlaceholder: "Current Password",
+                confirmPassPlaceholder: "Repeat New Password",
+                changePassBtn: "Change Password",
+                passMismatchError: "New password and Repeat password do not match!",
+                passShortError: "New password must be at least 6 characters.",
+                passCurrentEmptyError: "Please enter your current password.",
+                passChangedSuccess: "Password changed successfully!",
                 searchFriendPlaceholder: "Search by name or email...",
                 typeToSearch: "Type a name or email above to find friends.",
                 addFriend: "+ Add Friend",
@@ -776,6 +1227,8 @@
                 notifUnlikeOwn: "unliked your post",
                 notifComment: "replied on a post you interacted with",
                 notifCommentOwn: "replied to your post",
+                notifReplyLike: "liked your reply",
+                notifReplyUnlike: "unliked your reply",
                 notifDeletePost: "deleted a post you interacted with",
                 notifDeleteComment: "deleted a reply on a post you interacted with",
                 notifDeleteCommentOwn: "deleted a reply on your post",
@@ -791,12 +1244,12 @@
                 uploadingPhoto: "Uploading photo...",
                 emptyFeed: "No posts to show. Click the 🔍 icon above to find and add friends!",
                 edited: "· (Edited)",
-                edit: "Edit ✎",
-                delete: "Delete ✕",
+                editTitle: "Edit",
+                deleteTitle: "Delete",
                 cancel: "Cancel",
                 saveChanges: "Save",
-                likeBtn: "❤️ Like",
-                unlikeBtn: "💔 Unlike",
+                likeTitle: "Like",
+                unlikeTitle: "Unlike",
                 likesCount: "Likes",
                 unlikesCount: "Unlikes",
                 commentsCount: "Comments",
@@ -825,11 +1278,58 @@
                 signupEmail: "اي ميل ايڊريس",
                 signupPass: "نئون پاسورڊ (گهٽ ۾ گهٽ 6 اکر)",
                 btnSignup: "اڪائونٽ ٺاهيو ۽ تصديقي اي ميل موڪليو",
-                logout: "لاگ آئوٽ",
-                modalFriendsTitle: "👤 منهنجن دوستن جي لسٽ",
+                menuProfile: "👤 پروفائيل (Profile)",
+                menuFriends: "👥 دوست (Friends)",
+                menuSetting: "⚙️ سيٽنگ (Setting)",
+                menuLogout: "🚪 لاگ آئوٽ (Logout)",
+                modalProfileTitle: "👤 منهنجي پروفائيل",
+                modalFriendsTitle: "👥 منهنجن دوستن جي لسٽ",
+                modalSettingTitle: "⚙️ سيٽنگ (Settings)",
+                modalHistoryTitle: "📜 منهنجي هسٽري (History)",
+                modalChangePassTitle: "🔑 پاسورڊ تبديل ڪريو",
+                modalResetPassTitle: "📧 پاسورڊ ري سيٽ ڪريو",
                 modalFindTitle: "🔍 دوست ڳوليو",
                 modalRequestsTitle: "👥 دوستيءَ جون درخواستون",
                 modalNotifTitle: "🔔 اطلاع (Notifications)",
+                settingOptHistory: "📜 هسٽري (History)",
+                settingOptChangePass: "🔑 پاسورڊ تبديل ڪريو (Change Password)",
+                settingOptResetPass: "📧 پاسورڊ ري سيٽ (Reset Password)",
+                backBtn: "← واپس",
+                noHistoryMsg: "اڃا تائين ڪا به سرگرمي (History) ناهي.",
+                histPosted: "توهان هڪ پوسٽ شيئر ڪئي",
+                histReplied: "توهان پوسٽ تي جواب ڏنو",
+                histLikedPost: "توهان پوسٽ کي پسند ڪيو",
+                histUnlikedPost: "توهان پوسٽ کي ناپسند ڪيو",
+                histLikedReply: "توهان هڪ جواب کي پسند ڪيو",
+                histUnlikedReply: "توهان هڪ جواب کي ناپسند ڪيو",
+                resetMailDesc: "پنهنجي اي ميل تي پاسورڊ ري سيٽ لنڪ حاصل ڪرڻ لاءِ هيٺين بٽڻ تي ڪلڪ ڪريو:",
+                sendResetMailBtn: "اي ميل تي ري سيٽ لنڪ موڪليو",
+                sendingResetMail: "اي ميل موڪلي پئي وڃي...",
+                resetMailSentSuccess: "توهان جي اي ميل تي پاسورڊ ري سيٽ لنڪ موڪليو ويو آهي! پنهنجو Inbox يا Spam چيڪ ڪري لنڪ تي ڪلڪ ڪريو.",
+                resetScreenTitle: "🔑 نئون پاسورڊ رکو",
+                newPassPlaceholder: "نئون پاسورڊ (New Password)",
+                repeatPassPlaceholder: "ٻيهر پاسورڊ لکو (Repeat Password)",
+                saveNewPassBtn: "نئون پاسورڊ محفوظ ڪريو",
+                invalidResetLink: "هي لنڪ ختم ٿي چڪي آهي يا غلط آهي. مهرباني ڪري نئين لنڪ موڪليو.",
+                resetPassDoneSuccess: "توهان جو پاسورڊ ڪاميابيءَ سان تبديل ٿي ويو آهي! هاڻي نئين پاسورڊ سان لاگ ان ڪريو.",
+                profileFriendsCount: "دوست",
+                profilePostsCount: "منهنجون پوسٽون",
+                publicLabel: "🌐 پبلڪ (Public)",
+                privateLabel: "🔒 پرائيويٽ (Private)",
+                profilePrivateHint: "پروفائيل پرائيويٽ آهي (دوست ڳولڻ ۾ نظر نه ايندي)",
+                profilePublicHint: "پروفائيل پبلڪ آهي (دوست ڳولڻ ۾ نظر ايندي)",
+                friendsPrivateHint: "توهان جي دوستن جي لسٽ پرائيويٽ آهي (دوستن کي نظر نه ايندي)",
+                friendsPublicHint: "توهان جي دوستن جي لسٽ پبلڪ آهي (دوستن کي نظر ايندي)",
+                friendListLockedMsg: "🔒 هن صارف جي دوستن جي لسٽ پرائيويٽ آهي.",
+                friendListEmptyOther: "ڏيکارڻ لاءِ ڪو به دوست ناهي.",
+                uploadingAvatar: "پروفائيل تصوير اپلوڊ ٿي رهي آهي...",
+                currentPassPlaceholder: "موجوده پاسورڊ (Current Password)",
+                confirmPassPlaceholder: "ٻيهر نئون پاسورڊ لکو (Repeat Password)",
+                changePassBtn: "پاسورڊ تبديل ڪريو",
+                passMismatchError: "نئون پاسورڊ ۽ Repeat پاسورڊ هڪجهڙا ناهن!",
+                passShortError: "نئون پاسورڊ گهٽ ۾ گهٽ 6 اکرن جو هجڻ گهرجي.",
+                passCurrentEmptyError: "مهرباني ڪري پنهنجو موجوده پاسورڊ لکو.",
+                passChangedSuccess: "پاسورڊ ڪاميابيءَ سان تبديل ٿي ويو!",
                 searchFriendPlaceholder: "نالو يا اي ميل لکي ڳوليو...",
                 typeToSearch: "دوست ڳولڻ لاءِ مٿي نالو يا اي ميل لکو.",
                 addFriend: "+ دوست بڻايو",
@@ -847,6 +1347,8 @@
                 notifUnlikeOwn: "توهان جي پوسٽ ناپسند ڪئي",
                 notifComment: "توهان جي پسند ڪيل پوسٽ تي جواب ڏنو",
                 notifCommentOwn: "توهان جي پوسٽ تي جواب ڏنو",
+                notifReplyLike: "توهان جي جواب کي پسند ڪيو",
+                notifReplyUnlike: "توهان جي جواب کي ناپسند ڪيو",
                 notifDeletePost: "اها پوسٽ ڊليٽ ڪري ڇڏي جنهن تي توهان رايو ڏنو هو",
                 notifDeleteComment: "توهان جي پسند ڪيل پوسٽ تان هڪ جواب ڊليٽ ڪيو",
                 notifDeleteCommentOwn: "توهان جي پوسٽ تان هڪ جواب ڊليٽ ڪيو",
@@ -862,12 +1364,12 @@
                 uploadingPhoto: "تصوير اپلوڊ ٿي رهي آهي...",
                 emptyFeed: "ڏسڻ لاءِ ڪا به پوسٽ ناهي. مٿي 🔍 آئیکن تي ڪلڪ ڪري دوست ڳوليو!",
                 edited: "· (تبديل ٿيل)",
-                edit: "تبديل ✎",
-                delete: "ڊليٽ ✕",
+                editTitle: "تبديل ڪريو",
+                deleteTitle: "ڊليٽ ڪريو",
                 cancel: "رد ڪريو",
                 saveChanges: "محفوظ",
-                likeBtn: "❤️ پسند",
-                unlikeBtn: "💔 ناپسند",
+                likeTitle: "پسند",
+                unlikeTitle: "ناپسند",
                 likesCount: "پسند",
                 unlikesCount: "ناپسند",
                 commentsCount: "تبصرا",
@@ -886,15 +1388,159 @@
 
         let currentLang = localStorage.getItem('sb_lang') || 'en';
         let currentUserObj = null;
+        let myProfilePrivacy = 'public';
+        let myFriendsPrivacy = 'public';
         let myFriendsList = [];
         let incomingRequests = [];
         let allUsersList = [];
         let myNotifications = [];
+        let myHistoryList = [];
         let latestDocs = [];
         let unsubscribePosts = null;
         let unsubscribeUsers = null;
         let unsubscribeMyProfile = null;
         let unsubscribeNotifs = null;
+        let unsubscribeHistory = null;
+
+        // Initialize Email Password Reset Screen if user clicked email link
+        async function initEmailPasswordResetFlow() {
+            const t = translations[currentLang];
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('feed-section').classList.add('hidden');
+            document.getElementById('reset-password-screen').classList.remove('hidden');
+            document.getElementById('reset-screen-title').innerText = t.resetScreenTitle;
+
+            try {
+                const email = await verifyPasswordResetCode(auth, actionOobCode);
+                document.getElementById('reset-screen-email').innerText = email;
+            } catch (err) {
+                const statusEl = document.getElementById('email-reset-status');
+                statusEl.innerText = t.invalidResetLink;
+                statusEl.className = "status-msg status-error";
+                statusEl.classList.remove('hidden');
+                document.getElementById('btn-confirm-email-reset').disabled = true;
+            }
+        }
+
+        window.confirmEmailPasswordReset = async function() {
+            const t = translations[currentLang];
+            const newPass = document.getElementById('email-reset-new-pass').value;
+            const repeatPass = document.getElementById('email-reset-repeat-pass').value;
+            const statusEl = document.getElementById('email-reset-status');
+            const btn = document.getElementById('btn-confirm-email-reset');
+
+            statusEl.classList.add('hidden');
+
+            if (newPass.length < 6) {
+                statusEl.innerText = t.passShortError;
+                statusEl.className = "status-msg status-error";
+                statusEl.classList.remove('hidden');
+                return;
+            }
+            if (newPass !== repeatPass) {
+                statusEl.innerText = t.passMismatchError;
+                statusEl.className = "status-msg status-error";
+                statusEl.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            try {
+                await confirmPasswordReset(auth, actionOobCode, newPass);
+                statusEl.innerText = t.resetPassDoneSuccess;
+                statusEl.className = "status-msg status-success";
+                statusEl.classList.remove('hidden');
+                document.getElementById('email-reset-new-pass').value = '';
+                document.getElementById('email-reset-repeat-pass').value = '';
+            } catch (err) {
+                statusEl.innerText = err.message;
+                statusEl.className = "status-msg status-error";
+                statusEl.classList.remove('hidden');
+                btn.disabled = false;
+            }
+        };
+
+        window.exitResetScreen = function() {
+            window.history.replaceState({}, document.title, window.location.pathname);
+            isResetPasswordFlow = false;
+            document.getElementById('reset-password-screen').classList.add('hidden');
+            if (currentUserObj) {
+                document.getElementById('feed-section').classList.remove('hidden');
+            } else {
+                document.getElementById('auth-section').classList.remove('hidden');
+            }
+        };
+
+        // Dropdown Controls
+        window.toggleUserDropdown = function(e) {
+            e.stopPropagation();
+            document.getElementById('user-dropdown-menu').classList.toggle('hidden');
+        };
+
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('user-dropdown-menu');
+            const wrapper = document.getElementById('user-nav');
+            if (menu && wrapper && !wrapper.contains(e.target)) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        window.handleDropdownAction = function(action) {
+            document.getElementById('user-dropdown-menu').classList.add('hidden');
+            if (action === 'logout') {
+                logoutUser();
+            } else {
+                openPopup(action);
+            }
+        };
+
+        function getAvatarHTML(photoUrl, name) {
+            if (photoUrl) {
+                return `<img src="${photoUrl}" alt="Avatar" loading="lazy">`;
+            }
+            return name ? name.charAt(0) : 'S';
+        }
+
+        async function uploadToAvailableDrive(compressedData, fileName) {
+            let lastError = "No Google Drive configured.";
+
+            for (let i = 0; i < DRIVE_URLS.length; i++) {
+                const driveUrl = DRIVE_URLS[i];
+                if (!driveUrl) continue;
+
+                try {
+                    const response = await fetch(driveUrl, {
+                        method: "POST",
+                        redirect: "follow",
+                        headers: {
+                            "Content-Type": "text/plain;charset=utf-8"
+                        },
+                        body: JSON.stringify({
+                            base64: compressedData,
+                            mimeType: "image/jpeg",
+                            fileName: fileName
+                        })
+                    });
+
+                    const responseText = await response.text();
+                    const result = JSON.parse(responseText);
+
+                    if (result.status === "success") {
+                        return {
+                            url: result.url,
+                            fileId: result.fileId,
+                            driveIndex: i
+                        };
+                    } else {
+                        lastError = result.message || "Drive upload error";
+                    }
+                } catch (err) {
+                    lastError = err.message;
+                }
+            }
+
+            throw new Error(lastError);
+        }
 
         window.goToPost = function(postId) {
             const t = translations[currentLang];
@@ -916,15 +1562,28 @@
         window.openPopup = async function(type) {
             const t = translations[currentLang];
             document.getElementById('popup-overlay').classList.remove('hidden');
+            document.getElementById('modal-header-extra').innerHTML = '';
+
+            document.getElementById('popup-profile').classList.add('hidden');
             document.getElementById('popup-friends').classList.add('hidden');
+            document.getElementById('popup-friend-view').classList.add('hidden');
+            document.getElementById('popup-setting').classList.add('hidden');
             document.getElementById('popup-find').classList.add('hidden');
             document.getElementById('popup-requests').classList.add('hidden');
             document.getElementById('popup-notifications').classList.add('hidden');
 
-            if (type === 'friends') {
+            if (type === 'profile') {
+                document.getElementById('modal-title').innerText = t.modalProfileTitle;
+                document.getElementById('popup-profile').classList.remove('hidden');
+                renderProfilePopup();
+            } else if (type === 'friends') {
                 document.getElementById('modal-title').innerText = t.modalFriendsTitle;
                 document.getElementById('popup-friends').classList.remove('hidden');
                 renderFriendsPopup();
+            } else if (type === 'setting') {
+                document.getElementById('modal-title').innerText = t.modalSettingTitle;
+                document.getElementById('popup-setting').classList.remove('hidden');
+                renderSettingMenu();
             } else if (type === 'find') {
                 document.getElementById('modal-title').innerText = t.modalFindTitle;
                 document.getElementById('popup-find').classList.remove('hidden');
@@ -992,14 +1651,30 @@
             document.getElementById('signup-password').placeholder = t.signupPass;
             document.getElementById('btn-signup-submit').innerText = t.btnSignup;
 
-            document.getElementById('btn-logout').innerText = t.logout;
+            document.getElementById('reset-screen-title').innerText = t.resetScreenTitle;
+            document.getElementById('email-reset-new-pass').placeholder = t.newPassPlaceholder;
+            document.getElementById('email-reset-repeat-pass').placeholder = t.repeatPassPlaceholder;
+            document.getElementById('btn-confirm-email-reset').innerText = t.saveNewPassBtn;
+
+            document.getElementById('menu-profile-label').innerText = t.menuProfile;
+            document.getElementById('menu-friends-label').innerText = t.menuFriends;
+            document.getElementById('menu-setting-label').innerText = t.menuSetting;
+            document.getElementById('menu-logout-label').innerText = t.menuLogout;
+
             document.getElementById('search-friend-input').placeholder = t.searchFriendPlaceholder;
             document.getElementById('post-text').placeholder = t.postPlaceholder;
             document.getElementById('post-submit-btn').innerText = t.btnPost;
             updatePhotoLabel();
 
             if (currentUserObj) {
-                renderFriendsPopup();
+                if (!document.getElementById('popup-profile').classList.contains('hidden')) {
+                    document.getElementById('modal-title').innerText = t.modalProfileTitle;
+                    renderProfilePopup();
+                }
+                if (!document.getElementById('popup-friends').classList.contains('hidden')) {
+                    document.getElementById('modal-title').innerText = t.modalFriendsTitle;
+                    renderFriendsPopup();
+                }
                 renderFindPopup();
                 renderRequestsPopup();
                 renderNotificationsPopup();
@@ -1048,6 +1723,11 @@
                     uid: userCredential.user.uid,
                     name: name,
                     email: email.toLowerCase(),
+                    photoUrl: null,
+                    photoFileId: null,
+                    photoDriveIndex: null,
+                    profilePrivacy: "public",
+                    friendsPrivacy: "public",
                     friends: [],
                     friendRequests: []
                 });
@@ -1088,14 +1768,20 @@
             if (unsubscribeUsers) unsubscribeUsers();
             if (unsubscribeMyProfile) unsubscribeMyProfile();
             if (unsubscribeNotifs) unsubscribeNotifs();
+            if (unsubscribeHistory) unsubscribeHistory();
             closePopup();
             await signOut(auth);
         };
 
         onAuthStateChanged(auth, async (user) => {
+            if (isResetPasswordFlow) {
+                await initEmailPasswordResetFlow();
+                return;
+            }
+
             if (user && user.emailVerified) {
                 const displayName = user.displayName || user.email.split('@')[0];
-                currentUserObj = { uid: user.uid, name: displayName };
+                currentUserObj = { uid: user.uid, name: displayName, email: user.email, photoUrl: null };
 
                 const userDocRef = doc(db, "users", user.uid);
                 const userSnap = await getDoc(userDocRef);
@@ -1104,12 +1790,18 @@
                         uid: user.uid,
                         name: displayName,
                         email: user.email.toLowerCase(),
+                        photoUrl: null,
+                        photoFileId: null,
+                        photoDriveIndex: null,
+                        profilePrivacy: "public",
+                        friendsPrivacy: "public",
                         friends: [],
                         friendRequests: []
                     });
                 }
 
                 document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('reset-password-screen').classList.add('hidden');
                 document.getElementById('feed-section').classList.remove('hidden');
                 document.getElementById('user-nav').classList.remove('hidden');
                 document.getElementById('fb-icon-bar').classList.remove('hidden');
@@ -1118,6 +1810,7 @@
                 listenToMyProfile();
                 listenToAllUsers();
                 listenToNotifications();
+                listenToHistory();
                 listenToPosts();
             } else {
                 currentUserObj = null;
@@ -1127,6 +1820,34 @@
                 document.getElementById('fb-icon-bar').classList.add('hidden');
             }
         });
+
+        // Log User History Action
+        async function logActivityHistory(type, postId = null, snippet = "") {
+            if (!currentUserObj) return;
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " · " + now.toLocaleDateString();
+            try {
+                await addDoc(collection(db, "history"), {
+                    uid: currentUserObj.uid,
+                    type: type,
+                    postId: postId,
+                    snippet: snippet,
+                    timeText: timeStr,
+                    createdAt: serverTimestamp()
+                });
+            } catch (e) {}
+        }
+
+        function listenToHistory() {
+            const q = query(collection(db, "history"), where("uid", "==", currentUserObj.uid));
+            unsubscribeHistory = onSnapshot(q, (snapshot) => {
+                myHistoryList = [];
+                snapshot.forEach((docSnap) => {
+                    myHistoryList.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                myHistoryList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            });
+        }
 
         async function createNotification(toUid, type, postId = null, postSnippet = "", replyText = "", isOwnPost = true) {
             if (!toUid || toUid === currentUserObj.uid) return;
@@ -1172,16 +1893,20 @@
             unsubscribeMyProfile = onSnapshot(doc(db, "users", currentUserObj.uid), (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
+                    if (data.name) {
+                        currentUserObj.name = data.name;
+                        document.getElementById('current-user-display').innerText = data.name;
+                    }
+                    currentUserObj.photoUrl = data.photoUrl || null;
+                    currentUserObj.photoFileId = data.photoFileId || null;
+                    currentUserObj.photoDriveIndex = data.photoDriveIndex ?? null;
+
+                    myProfilePrivacy = data.profilePrivacy || 'public';
+                    myFriendsPrivacy = data.friendsPrivacy || 'public';
                     myFriendsList = data.friends || [];
                     incomingRequests = data.friendRequests || [];
 
-                    const friendsBadge = document.getElementById('friends-badge');
-                    if (myFriendsList.length > 0) {
-                        friendsBadge.innerText = myFriendsList.length;
-                        friendsBadge.classList.remove('hidden');
-                    } else {
-                        friendsBadge.classList.add('hidden');
-                    }
+                    document.getElementById('dropdown-friends-count').innerText = myFriendsList.length;
 
                     const reqBadge = document.getElementById('req-badge');
                     if (incomingRequests.length > 0) {
@@ -1191,7 +1916,12 @@
                         reqBadge.classList.add('hidden');
                     }
 
-                    renderFriendsPopup();
+                    if (!document.getElementById('popup-profile').classList.contains('hidden')) {
+                        renderProfilePopup();
+                    }
+                    if (!document.getElementById('popup-friends').classList.contains('hidden')) {
+                        renderFriendsPopup();
+                    }
                     renderRequestsPopup();
                     renderFindPopup();
                     renderPostsList(latestDocs);
@@ -1207,9 +1937,12 @@
                         allUsersList.push(docSnap.data());
                     }
                 });
-                renderFriendsPopup();
+                if (!document.getElementById('popup-friends').classList.contains('hidden')) {
+                    renderFriendsPopup();
+                }
                 renderRequestsPopup();
                 renderFindPopup();
+                renderPostsList(latestDocs);
             });
         }
 
@@ -1235,25 +1968,202 @@
             });
         }
 
+        // ==================== PROFILE POPUP (Photo, Name & Public/Private) ====================
+        window.renderProfilePopup = function() {
+            const t = translations[currentLang];
+            const container = document.getElementById('popup-profile-content');
+            if (!currentUserObj) return;
+
+            const avatarInner = getAvatarHTML(currentUserObj.photoUrl, currentUserObj.name);
+            const myPostsCount = latestDocs.filter(p => p.authorId === currentUserObj.uid).length;
+            const isPublic = myProfilePrivacy === 'public';
+
+            container.innerHTML = `
+                <div class="profile-card-box">
+                    <div class="profile-avatar-wrapper" onclick="document.getElementById('profile-pic-input').click()" title="Change Photo">
+                        <div class="profile-big-avatar">${avatarInner}</div>
+                        <div class="avatar-cam-badge">📷</div>
+                    </div>
+                    <input type="file" id="profile-pic-input" accept="image/*" class="hidden" onchange="uploadProfilePhoto(this)">
+                    <div id="profile-upload-status" style="font-size:12px; color:var(--ajrak-blue); margin-bottom:6px; font-weight:bold;" class="hidden"></div>
+
+                    <div id="profile-name-view" class="profile-name-row">
+                        <h3 style="color: var(--ajrak-blue); font-size: 18px;">${currentUserObj.name}</h3>
+                        <button class="profile-edit-icon-btn" onclick="enableProfileNameEdit()" title="${t.editTitle}">
+                            ${ICON_EDIT_SVG}
+                        </button>
+                    </div>
+
+                    <div id="profile-name-edit-box" class="hidden" style="margin: 8px 0;">
+                        <input type="text" id="profile-name-input" value="${(currentUserObj.name || '').replace(/"/g, '&quot;')}" style="margin-bottom:6px; text-align:center;">
+                        <div style="display:flex; gap:6px; justify-content:center;">
+                            <button class="btn-cancel" onclick="cancelProfileNameEdit()">${t.cancel}</button>
+                            <button class="btn-save" onclick="saveProfileNameInline()">${t.saveChanges}</button>
+                        </div>
+                    </div>
+
+                    <p style="color: #666; font-size: 13px;" dir="ltr">${currentUserObj.email || ''}</p>
+
+                    <div class="profile-stats-grid">
+                        <div class="profile-stat-item">
+                            <strong>${myFriendsList.length}</strong>
+                            <span>${t.profileFriendsCount}</span>
+                        </div>
+
+                        <div class="profile-stat-item">
+                            <button class="privacy-toggle-btn ${isPublic ? 'public' : 'private'}" onclick="toggleProfilePrivacy()">
+                                ${isPublic ? t.publicLabel : t.privateLabel}
+                            </button>
+                        </div>
+
+                        <div class="profile-stat-item">
+                            <strong>${myPostsCount}</strong>
+                            <span>${t.profilePostsCount}</span>
+                        </div>
+                    </div>
+
+                    <p style="font-size:11px; color:#666; margin-top:10px;">
+                        ${isPublic ? t.profilePublicHint : t.profilePrivateHint}
+                    </p>
+                </div>
+            `;
+        };
+
+        window.enableProfileNameEdit = function() {
+            document.getElementById('profile-name-view').classList.add('hidden');
+            document.getElementById('profile-name-edit-box').classList.remove('hidden');
+        };
+
+        window.cancelProfileNameEdit = function() {
+            document.getElementById('profile-name-view').classList.remove('hidden');
+            document.getElementById('profile-name-edit-box').classList.add('hidden');
+        };
+
+        window.saveProfileNameInline = async function() {
+            const t = translations[currentLang];
+            const newName = document.getElementById('profile-name-input').value.trim();
+            if (!newName) {
+                alert(t.alertEmptyEdit);
+                return;
+            }
+            try {
+                if (auth.currentUser) {
+                    await updateProfile(auth.currentUser, { displayName: newName });
+                }
+                await updateDoc(doc(db, "users", currentUserObj.uid), { name: newName });
+                currentUserObj.name = newName;
+                document.getElementById('current-user-display').innerText = newName;
+                renderProfilePopup();
+            } catch (err) {
+                alert(err.message);
+            }
+        };
+
+        window.uploadProfilePhoto = function(input) {
+            const t = translations[currentLang];
+            const file = input.files[0];
+            if (!file) return;
+
+            const statusEl = document.getElementById('profile-upload-status');
+            if (statusEl) {
+                statusEl.innerText = t.uploadingAvatar;
+                statusEl.classList.remove('hidden');
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = async function() {
+                    const canvas = document.createElement('canvas');
+                    const maxSize = 320;
+                    const scale = maxSize / Math.max(img.width, img.height);
+                    canvas.width = img.width > maxSize ? img.width * scale : img.width;
+                    canvas.height = img.height > maxSize ? img.height * scale : img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const compressedAvatar = canvas.toDataURL('image/jpeg', 0.8);
+
+                    try {
+                        const uploadResult = await uploadToAvailableDrive(
+                            compressedAvatar,
+                            "avatar_" + currentUserObj.uid + "_" + Date.now() + ".jpg"
+                        );
+
+                        if (currentUserObj.photoFileId) {
+                            const oldIdx = typeof currentUserObj.photoDriveIndex === "number" ? currentUserObj.photoDriveIndex : 0;
+                            const oldUrl = DRIVE_URLS[oldIdx] || DRIVE_URLS[0];
+                            if (oldUrl) {
+                                fetch(oldUrl, {
+                                    method: "POST",
+                                    redirect: "follow",
+                                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                                    body: JSON.stringify({ action: "delete", fileId: currentUserObj.photoFileId })
+                                }).catch(() => {});
+                            }
+                        }
+
+                        await updateDoc(doc(db, "users", currentUserObj.uid), {
+                            photoUrl: uploadResult.url,
+                            photoFileId: uploadResult.fileId,
+                            photoDriveIndex: uploadResult.driveIndex
+                        });
+
+                        currentUserObj.photoUrl = uploadResult.url;
+                        currentUserObj.photoFileId = uploadResult.fileId;
+                        currentUserObj.photoDriveIndex = uploadResult.driveIndex;
+                        renderProfilePopup();
+                    } catch (err) {
+                        alert("Avatar Upload Failed: " + err.message);
+                    } finally {
+                        if (statusEl) statusEl.classList.add('hidden');
+                    }
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.toggleProfilePrivacy = async function() {
+            const nextState = myProfilePrivacy === 'public' ? 'private' : 'public';
+            myProfilePrivacy = nextState;
+            renderProfilePopup();
+            await updateDoc(doc(db, "users", currentUserObj.uid), { profilePrivacy: nextState });
+        };
+
+        // ==================== FRIENDS POPUP ====================
         window.renderFriendsPopup = function() {
             const t = translations[currentLang];
             const container = document.getElementById('popup-friends-list');
+            const headerExtra = document.getElementById('modal-header-extra');
             container.innerHTML = '';
+
+            const isPublic = myFriendsPrivacy === 'public';
+            headerExtra.innerHTML = `
+                <button class="privacy-toggle-btn ${isPublic ? 'public' : 'private'}" onclick="toggleFriendsPrivacy()">
+                    ${isPublic ? t.publicLabel : t.privateLabel}
+                </button>
+            `;
+
+            container.innerHTML += `
+                <p style="font-size:11px; color:#666; margin-bottom:10px; text-align:center;">
+                    ${isPublic ? t.friendsPublicHint : t.friendsPrivateHint}
+                </p>
+            `;
 
             const myFriendsData = allUsersList.filter(u => myFriendsList.includes(u.uid));
 
             if (myFriendsData.length === 0) {
-                container.innerHTML = `<p style="text-align:center; color:#666; font-size:13px; padding:12px;">${t.noFriends}</p>`;
+                container.innerHTML += `<p style="text-align:center; color:#666; font-size:13px; padding:12px;">${t.noFriends}</p>`;
                 return;
             }
 
             myFriendsData.forEach(u => {
-                const firstLetter = u.name ? u.name.charAt(0) : 'F';
+                const avatarInner = getAvatarHTML(u.photoUrl, u.name);
                 container.innerHTML += `
                     <div class="popup-list-item">
-                        <div class="popup-user-info">
-                            <div class="mini-avatar">${firstLetter}</div>
-                            <span class="popup-user-name">${u.name}</span>
+                        <div class="popup-user-info" style="cursor:pointer;" onclick="viewFriendFriendsList('${u.uid}')">
+                            <div class="mini-avatar">${avatarInner}</div>
+                            <span class="popup-user-name" style="text-decoration:underline;">${u.name}</span>
                         </div>
                         <div class="popup-actions">
                             <button class="btn-sm danger" onclick="unfriendUser('${u.uid}')">${t.unfriendBtn}</button>
@@ -1263,6 +2173,239 @@
             });
         };
 
+        window.toggleFriendsPrivacy = async function() {
+            const nextState = myFriendsPrivacy === 'public' ? 'private' : 'public';
+            myFriendsPrivacy = nextState;
+            renderFriendsPopup();
+            await updateDoc(doc(db, "users", currentUserObj.uid), { friendsPrivacy: nextState });
+        };
+
+        window.viewFriendFriendsList = function(targetUid) {
+            const t = translations[currentLang];
+            const targetUser = allUsersList.find(u => u.uid === targetUid);
+            if (!targetUser) return;
+
+            document.getElementById('modal-header-extra').innerHTML = '';
+            document.getElementById('modal-title').innerText = `👥 ${targetUser.name}`;
+            document.getElementById('popup-friends').classList.add('hidden');
+            document.getElementById('popup-friend-view').classList.remove('hidden');
+
+            const content = document.getElementById('popup-friend-view-content');
+            const isFriendListPublic = (targetUser.friendsPrivacy || 'public') === 'public';
+
+            if (!isFriendListPublic) {
+                content.innerHTML = `
+                    <div style="text-align:center; padding:18px 10px;">
+                        <p style="color:var(--ajrak-red); font-weight:bold; font-size:14px; margin-bottom:14px;">${t.friendListLockedMsg}</p>
+                        <button class="btn-sm neutral" onclick="openPopup('friends')">${t.backBtn}</button>
+                    </div>
+                `;
+                return;
+            }
+
+            const theirFriends = targetUser.friends || [];
+            let listHTML = `<div style="margin-bottom:10px;"><button class="btn-sm neutral" onclick="openPopup('friends')">${t.backBtn}</button></div>`;
+
+            if (theirFriends.length === 0) {
+                listHTML += `<p style="text-align:center; color:#666; font-size:13px; padding:12px;">${t.friendListEmptyOther}</p>`;
+            } else {
+                theirFriends.forEach(fUid => {
+                    if (fUid === currentUserObj.uid) {
+                        const myAv = getAvatarHTML(currentUserObj.photoUrl, currentUserObj.name);
+                        listHTML += `
+                            <div class="popup-list-item">
+                                <div class="popup-user-info">
+                                    <div class="mini-avatar">${myAv}</div>
+                                    <span class="popup-user-name">${currentUserObj.name} (You)</span>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        const fUser = allUsersList.find(u => u.uid === fUid);
+                        if (fUser) {
+                            const fAv = getAvatarHTML(fUser.photoUrl, fUser.name);
+                            listHTML += `
+                                <div class="popup-list-item">
+                                    <div class="popup-user-info">
+                                        <div class="mini-avatar">${fAv}</div>
+                                        <span class="popup-user-name">${fUser.name}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                });
+            }
+
+            content.innerHTML = listHTML;
+        };
+
+        // ==================== SETTINGS POPUP (History, Change Password, Reset Password) ====================
+        window.renderSettingMenu = function() {
+            const t = translations[currentLang];
+            document.getElementById('modal-title').innerText = t.modalSettingTitle;
+            const container = document.getElementById('popup-setting-content');
+
+            container.innerHTML = `
+                <button class="setting-menu-btn" onclick="openSettingSubView('history')">
+                    <span>${t.settingOptHistory}</span>
+                    <span>›</span>
+                </button>
+                <button class="setting-menu-btn" onclick="openSettingSubView('change_pass')">
+                    <span>${t.settingOptChangePass}</span>
+                    <span>›</span>
+                </button>
+                <button class="setting-menu-btn" onclick="openSettingSubView('reset_pass')">
+                    <span>${t.settingOptResetPass}</span>
+                    <span>›</span>
+                </button>
+            `;
+        };
+
+        window.openSettingSubView = function(view) {
+            const t = translations[currentLang];
+            const container = document.getElementById('popup-setting-content');
+
+            if (view === 'history') {
+                document.getElementById('modal-title').innerText = t.modalHistoryTitle;
+                let html = `<div style="margin-bottom:10px;"><button class="btn-sm neutral" onclick="renderSettingMenu()">${t.backBtn}</button></div>`;
+
+                if (myHistoryList.length === 0) {
+                    html += `<p style="text-align:center; color:#666; font-size:13px; padding:14px;">${t.noHistoryMsg}</p>`;
+                } else {
+                    myHistoryList.forEach(item => {
+                        let label = "";
+                        if (item.type === 'post') label = t.histPosted;
+                        else if (item.type === 'reply') label = t.histReplied;
+                        else if (item.type === 'like') label = t.histLikedPost;
+                        else if (item.type === 'unlike') label = t.histUnlikedPost;
+                        else if (item.type === 'reply_like') label = t.histLikedReply;
+                        else if (item.type === 'reply_unlike') label = t.histUnlikedReply;
+
+                        const hasPost = Boolean(item.postId);
+                        const clickAttr = hasPost ? `onclick="goToPost('${item.postId}')"` : '';
+                        const quoteHTML = item.snippet ? `<span class="notif-preview-quote">"${item.snippet}..."</span>` : '';
+
+                        html += `
+                            <div class="history-item ${hasPost ? 'clickable' : ''}" ${clickAttr}>
+                                <strong>${label}</strong>
+                                ${quoteHTML}
+                                <span class="notif-time">${item.timeText || ''}</span>
+                            </div>
+                        `;
+                    });
+                }
+                container.innerHTML = html;
+
+            } else if (view === 'change_pass') {
+                document.getElementById('modal-title').innerText = t.modalChangePassTitle;
+                container.innerHTML = `
+                    <div style="margin-bottom:10px;"><button class="btn-sm neutral" onclick="renderSettingMenu()">${t.backBtn}</button></div>
+                    <input type="password" id="setting-current-pass" placeholder="${t.currentPassPlaceholder}" dir="ltr">
+                    <input type="password" id="setting-new-pass" placeholder="${t.newPassPlaceholder}" dir="ltr">
+                    <input type="password" id="setting-confirm-pass" placeholder="${t.confirmPassPlaceholder}" dir="ltr">
+                    <button id="btn-change-pass" class="btn-primary" onclick="changeUserPassword()">${t.changePassBtn}</button>
+                    <div id="setting-status-msg" class="status-msg hidden"></div>
+                `;
+
+            } else if (view === 'reset_pass') {
+                document.getElementById('modal-title').innerText = t.modalResetPassTitle;
+                container.innerHTML = `
+                    <div style="margin-bottom:10px;"><button class="btn-sm neutral" onclick="renderSettingMenu()">${t.backBtn}</button></div>
+                    <p style="font-size:13px; color:#444; margin-bottom:8px; line-height:1.5;">${t.resetMailDesc}</p>
+                    <p style="font-weight:bold; color:var(--ajrak-blue); font-size:14px; margin-bottom:14px; background:var(--ajrak-cream); padding:8px 12px; border-radius:6px; border:1px solid #DCD4C6;" dir="ltr">
+                        ${currentUserObj?.email || ''}
+                    </p>
+                    <button id="btn-send-reset-mail" class="btn-primary" onclick="triggerResetPasswordEmail()">${t.sendResetMailBtn}</button>
+                    <div id="reset-mail-status-msg" class="status-msg hidden"></div>
+                `;
+            }
+        };
+
+        window.triggerResetPasswordEmail = async function() {
+            const t = translations[currentLang];
+            const btn = document.getElementById('btn-send-reset-mail');
+            const msgBox = document.getElementById('reset-mail-status-msg');
+            if (!currentUserObj || !currentUserObj.email) return;
+
+            msgBox.classList.add('hidden');
+            btn.disabled = true;
+            btn.innerText = t.sendingResetMail;
+
+            try {
+                // Redirect back to this exact app page so user gets New Password & Repeat Password inputs here
+                const actionCodeSettings = {
+                    url: window.location.origin + window.location.pathname,
+                    handleCodeInApp: false
+                };
+                await sendPasswordResetEmail(auth, currentUserObj.email, actionCodeSettings);
+
+                msgBox.innerText = t.resetMailSentSuccess;
+                msgBox.className = "status-msg status-success";
+                msgBox.classList.remove('hidden');
+            } catch (err) {
+                msgBox.innerText = err.message;
+                msgBox.className = "status-msg status-error";
+                msgBox.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = t.sendResetMailBtn;
+            }
+        };
+
+        window.changeUserPassword = async function() {
+            const t = translations[currentLang];
+            const currentPass = document.getElementById('setting-current-pass').value;
+            const newPass = document.getElementById('setting-new-pass').value;
+            const confirmPass = document.getElementById('setting-confirm-pass').value;
+            const msgBox = document.getElementById('setting-status-msg');
+            const btn = document.getElementById('btn-change-pass');
+
+            msgBox.classList.add('hidden');
+
+            if (!currentPass) {
+                msgBox.innerText = t.passCurrentEmptyError;
+                msgBox.className = "status-msg status-error";
+                msgBox.classList.remove('hidden');
+                return;
+            }
+            if (newPass.length < 6) {
+                msgBox.innerText = t.passShortError;
+                msgBox.className = "status-msg status-error";
+                msgBox.classList.remove('hidden');
+                return;
+            }
+            if (newPass !== confirmPass) {
+                msgBox.innerText = t.passMismatchError;
+                msgBox.className = "status-msg status-error";
+                msgBox.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            try {
+                const user = auth.currentUser;
+                const credential = EmailAuthProvider.credential(user.email, currentPass);
+                await reauthenticateWithCredential(user, credential);
+                await updatePassword(user, newPass);
+
+                document.getElementById('setting-current-pass').value = '';
+                document.getElementById('setting-new-pass').value = '';
+                document.getElementById('setting-confirm-pass').value = '';
+
+                msgBox.innerText = t.passChangedSuccess;
+                msgBox.className = "status-msg status-success";
+                msgBox.classList.remove('hidden');
+            } catch (err) {
+                msgBox.innerText = err.message;
+                msgBox.className = "status-msg status-error";
+                msgBox.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+            }
+        };
+
+        // ==================== FIND FRIENDS ====================
         window.renderFindPopup = function() {
             const t = translations[currentLang];
             const container = document.getElementById('popup-find-list');
@@ -1275,6 +2418,9 @@
             }
 
             const filteredUsers = allUsersList.filter(u => {
+                const isProfilePublic = (u.profilePrivacy || 'public') === 'public';
+                if (!isProfilePublic) return false;
+
                 const fullName = (u.name || '').toLowerCase().trim();
                 const email = (u.email || '').toLowerCase().trim();
 
@@ -1296,7 +2442,7 @@
                 const isFriend = myFriendsList.includes(u.uid);
                 const targetRequests = u.friendRequests || [];
                 const requestSent = targetRequests.includes(currentUserObj.uid);
-                const firstLetter = u.name ? u.name.charAt(0) : 'U';
+                const avatarInner = getAvatarHTML(u.photoUrl, u.name);
 
                 let btnHTML = '';
                 if (isFriend) {
@@ -1310,7 +2456,7 @@
                 container.innerHTML += `
                     <div class="popup-list-item">
                         <div class="popup-user-info">
-                            <div class="mini-avatar">${firstLetter}</div>
+                            <div class="mini-avatar">${avatarInner}</div>
                             <span class="popup-user-name">${u.name}</span>
                         </div>
                         <div class="popup-actions">${btnHTML}</div>
@@ -1332,12 +2478,12 @@
             incomingRequests.forEach(senderUid => {
                 const senderUser = allUsersList.find(u => u.uid === senderUid);
                 const senderName = senderUser ? senderUser.name : "User";
-                const firstLetter = senderName.charAt(0);
+                const avatarInner = getAvatarHTML(senderUser?.photoUrl, senderName);
 
                 container.innerHTML += `
                     <div class="popup-list-item">
                         <div class="popup-user-info">
-                            <div class="mini-avatar">${firstLetter}</div>
+                            <div class="mini-avatar">${avatarInner}</div>
                             <span class="popup-user-name">${senderName}</span>
                         </div>
                         <div class="popup-actions">
@@ -1385,6 +2531,12 @@
                 } else if (n.type === 'comment') {
                     const label = own ? t.notifCommentOwn : t.notifComment;
                     actionMsg = `${label}: "${n.replyText || n.extraText || ''}"`;
+                    if (snippet) previewHTML = `<span class="notif-preview-quote">(${snippet}...)</span>`;
+                } else if (n.type === 'reply_like') {
+                    actionMsg = `${t.notifReplyLike}: "${n.replyText || ''}"`;
+                    if (snippet) previewHTML = `<span class="notif-preview-quote">(${snippet}...)</span>`;
+                } else if (n.type === 'reply_unlike') {
+                    actionMsg = `${t.notifReplyUnlike}: "${n.replyText || ''}"`;
                     if (snippet) previewHTML = `<span class="notif-preview-quote">(${snippet}...)</span>`;
                 } else if (n.type === 'delete_comment') {
                     const label = own ? t.notifDeleteCommentOwn : t.notifDeleteComment;
@@ -1484,59 +2636,48 @@
             if (file) {
                 compressImage(file, async (compressedData) => {
                     try {
-                        const response = await fetch(DRIVE_UPLOAD_URL, {
-                            method: "POST",
-                            redirect: "follow",
-                            headers: {
-                                "Content-Type": "text/plain;charset=utf-8"
-                            },
-                            body: JSON.stringify({
-                                base64: compressedData,
-                                mimeType: "image/jpeg",
-                                fileName: "sb_" + Date.now() + ".jpg"
-                            })
-                        });
-
-                        const responseText = await response.text();
-                        const result = JSON.parse(responseText);
-
-                        if (result.status === "success") {
-                            await saveToFirestore(text, result.url, result.fileId);
-                        } else {
-                            alert("Google Drive Upload Error: " + result.message);
-                        }
+                        const uploadResult = await uploadToAvailableDrive(
+                            compressedData,
+                            "sb_" + Date.now() + ".jpg"
+                        );
+                        await saveToFirestore(text, uploadResult.url, uploadResult.fileId, uploadResult.driveIndex);
                     } catch (err) {
-                        alert("Upload Failed: " + err.message);
+                        alert("Google Drive Upload Failed: " + err.message);
                     } finally {
                         btn.disabled = false;
                         btn.innerText = translations[currentLang].btnPost;
                     }
                 });
             } else {
-                await saveToFirestore(text, null, null);
+                await saveToFirestore(text, null, null, null);
                 btn.disabled = false;
                 btn.innerText = translations[currentLang].btnPost;
             }
         };
 
-        async function saveToFirestore(text, imageUrl, imageFileId = null) {
+        async function saveToFirestore(text, imageUrl, imageFileId = null, driveIndex = null) {
+            const t = translations[currentLang];
             try {
                 const now = new Date();
                 const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " · " + now.toLocaleDateString();
 
-                await addDoc(collection(db, "posts"), {
+                const docRef = await addDoc(collection(db, "posts"), {
                     authorId: currentUserObj.uid,
                     authorName: currentUserObj.name,
                     timeText: timeString,
                     text: text,
                     image: imageUrl,
                     imageFileId: imageFileId,
+                    driveIndex: driveIndex,
                     likes: [],
                     unlikes: [],
                     comments: [],
                     edited: false,
                     createdAt: serverTimestamp()
                 });
+
+                const snippet = text ? text.substring(0, 45) : t.photoPostTag;
+                await logActivityHistory('post', docRef.id, snippet);
 
                 document.getElementById('post-text').value = '';
                 document.getElementById('post-image').value = '';
@@ -1613,6 +2754,72 @@
             await notifyPostParticipants(postObj, 'delete_comment', snippet, deletedReplyInfo, true);
         };
 
+        window.handleCommentLike = async function(postId, commentIndex) {
+            const t = translations[currentLang];
+            const postObj = latestDocs.find(p => p.id === postId);
+            if (!postObj || !postObj.comments || !postObj.comments[commentIndex]) return;
+
+            const updatedComments = [...postObj.comments];
+            const targetComment = { ...updatedComments[commentIndex] };
+            let cLikes = Array.isArray(targetComment.likes) ? [...targetComment.likes] : [];
+            let cUnlikes = Array.isArray(targetComment.unlikes) ? [...targetComment.unlikes] : [];
+
+            const alreadyLiked = cLikes.includes(currentUserObj.uid);
+            if (alreadyLiked) {
+                cLikes = cLikes.filter(uid => uid !== currentUserObj.uid);
+            } else {
+                cLikes.push(currentUserObj.uid);
+                cUnlikes = cUnlikes.filter(uid => uid !== currentUserObj.uid);
+            }
+
+            targetComment.likes = cLikes;
+            targetComment.unlikes = cUnlikes;
+            updatedComments[commentIndex] = targetComment;
+
+            await updateDoc(doc(db, "posts", postId), { comments: updatedComments });
+
+            if (!alreadyLiked) {
+                await logActivityHistory('reply_like', postId, targetComment.text.substring(0, 45));
+                if (targetComment.authorId && targetComment.authorId !== currentUserObj.uid) {
+                    const snippet = postObj.text ? postObj.text.substring(0, 45) : t.photoPostTag;
+                    await createNotification(targetComment.authorId, 'reply_like', postId, snippet, targetComment.text, false);
+                }
+            }
+        };
+
+        window.handleCommentUnlike = async function(postId, commentIndex) {
+            const t = translations[currentLang];
+            const postObj = latestDocs.find(p => p.id === postId);
+            if (!postObj || !postObj.comments || !postObj.comments[commentIndex]) return;
+
+            const updatedComments = [...postObj.comments];
+            const targetComment = { ...updatedComments[commentIndex] };
+            let cLikes = Array.isArray(targetComment.likes) ? [...targetComment.likes] : [];
+            let cUnlikes = Array.isArray(targetComment.unlikes) ? [...targetComment.unlikes] : [];
+
+            const alreadyUnliked = cUnlikes.includes(currentUserObj.uid);
+            if (alreadyUnliked) {
+                cUnlikes = cUnlikes.filter(uid => uid !== currentUserObj.uid);
+            } else {
+                cUnlikes.push(currentUserObj.uid);
+                cLikes = cLikes.filter(uid => uid !== currentUserObj.uid);
+            }
+
+            targetComment.likes = cLikes;
+            targetComment.unlikes = cUnlikes;
+            updatedComments[commentIndex] = targetComment;
+
+            await updateDoc(doc(db, "posts", postId), { comments: updatedComments });
+
+            if (!alreadyUnliked) {
+                await logActivityHistory('reply_unlike', postId, targetComment.text.substring(0, 45));
+                if (targetComment.authorId && targetComment.authorId !== currentUserObj.uid) {
+                    const snippet = postObj.text ? postObj.text.substring(0, 45) : t.photoPostTag;
+                    await createNotification(targetComment.authorId, 'reply_unlike', postId, snippet, targetComment.text, false);
+                }
+            }
+        };
+
         window.deletePost = async function(postId) {
             const t = translations[currentLang];
             if (!confirm(t.confirmDelete)) return;
@@ -1622,19 +2829,22 @@
                 const snippet = postObj.text ? postObj.text.substring(0, 45) : t.photoPostTag;
                 await notifyPostParticipants(postObj, 'delete_post', snippet, "", false);
 
-                // Google Drive se bhi tasveer trash/delete karein agar fileId mojood ho
                 if (postObj.imageFileId) {
-                    fetch(DRIVE_UPLOAD_URL, {
-                        method: "POST",
-                        redirect: "follow",
-                        headers: {
-                            "Content-Type": "text/plain;charset=utf-8"
-                        },
-                        body: JSON.stringify({
-                            action: "delete",
-                            fileId: postObj.imageFileId
-                        })
-                    }).catch(() => {});
+                    const idx = typeof postObj.driveIndex === "number" ? postObj.driveIndex : 0;
+                    const targetDriveUrl = DRIVE_URLS[idx] || DRIVE_URLS[0];
+                    if (targetDriveUrl) {
+                        fetch(targetDriveUrl, {
+                            method: "POST",
+                            redirect: "follow",
+                            headers: {
+                                "Content-Type": "text/plain;charset=utf-8"
+                            },
+                            body: JSON.stringify({
+                                action: "delete",
+                                fileId: postObj.imageFileId
+                            })
+                        }).catch(() => {});
+                    }
                 }
             }
 
@@ -1650,6 +2860,9 @@
                 });
                 renderPostsList(latestDocs);
                 renderNotificationsPopup();
+                if (!document.getElementById('popup-profile').classList.contains('hidden')) {
+                    renderProfilePopup();
+                }
             });
         }
 
@@ -1674,22 +2887,47 @@
                 const comments = post.comments || [];
                 const isLiked = likes.includes(currentUserObj.uid);
                 const isUnliked = unlikes.includes(currentUserObj.uid);
-                const firstLetter = post.authorName ? post.authorName.charAt(0) : 'S';
                 const isPostOwner = post.authorId === currentUserObj.uid;
+
+                let displayAuthorName = post.authorName;
+                let authorPhotoUrl = null;
+                if (isPostOwner) {
+                    displayAuthorName = currentUserObj.name;
+                    authorPhotoUrl = currentUserObj.photoUrl;
+                } else {
+                    const authorObj = allUsersList.find(u => u.uid === post.authorId);
+                    if (authorObj) {
+                        displayAuthorName = authorObj.name || post.authorName;
+                        authorPhotoUrl = authorObj.photoUrl || null;
+                    }
+                }
+                const avatarInner = getAvatarHTML(authorPhotoUrl, displayAuthorName);
 
                 let commentsHTML = '';
                 comments.forEach((c, idx) => {
                     const isCommentOwner = c.authorId === currentUserObj.uid;
                     const canDeleteComment = isCommentOwner || isPostOwner;
+                    const cLikes = c.likes || [];
+                    const cUnlikes = c.unlikes || [];
+                    const isCommentLiked = cLikes.includes(currentUserObj.uid);
+                    const isCommentUnliked = cUnlikes.includes(currentUserObj.uid);
+
+                    let cAuthorName = c.author;
+                    if (isCommentOwner) {
+                        cAuthorName = currentUserObj.name;
+                    } else {
+                        const cUserObj = allUsersList.find(u => u.uid === c.authorId);
+                        if (cUserObj && cUserObj.name) cAuthorName = cUserObj.name;
+                    }
 
                     commentsHTML += `
                         <div class="comment-item">
                             <div class="comment-top">
-                                <span class="comment-author">${c.author} <small style="font-weight:normal; color:#777;">${c.edited ? t.edited : ''}</small></span>
+                                <span class="comment-author">${cAuthorName} <small style="font-weight:normal; color:#777;">${c.edited ? t.edited : ''}</small></span>
                                 ${(isCommentOwner || canDeleteComment) ? `
                                     <div class="comment-controls">
-                                        ${isCommentOwner ? `<button class="edit" onclick="enableCommentEdit('${postId}', ${idx})">${t.edit}</button>` : ''}
-                                        ${canDeleteComment ? `<button class="delete" onclick="deleteComment('${postId}', ${idx})">${t.delete}</button>` : ''}
+                                        ${isCommentOwner ? `<button class="edit" title="${t.editTitle}" onclick="enableCommentEdit('${postId}', ${idx})">${ICON_EDIT_SVG}</button>` : ''}
+                                        ${canDeleteComment ? `<button class="delete" title="${t.deleteTitle}" onclick="deleteComment('${postId}', ${idx})">${ICON_DUSTBIN_SVG}</button>` : ''}
                                     </div>
                                 ` : ''}
                             </div>
@@ -1703,6 +2941,14 @@
                                     </div>
                                 </div>
                             ` : ''}
+                            <div class="comment-reactions">
+                                <button class="comment-react-btn ${isCommentLiked ? 'active-like' : ''}" title="${t.likeTitle}" onclick="handleCommentLike('${postId}', ${idx})">
+                                    ❤️ <span>${cLikes.length}</span>
+                                </button>
+                                <button class="comment-react-btn ${isCommentUnliked ? 'active-unlike' : ''}" title="${t.unlikeTitle}" onclick="handleCommentUnlike('${postId}', ${idx})">
+                                    💔 <span>${cUnlikes.length}</span>
+                                </button>
+                            </div>
                         </div>
                     `;
                 });
@@ -1713,16 +2959,16 @@
                         <div class="card-body">
                             <div class="post-header">
                                 <div class="author-info">
-                                    <div class="avatar">${firstLetter}</div>
+                                    <div class="avatar">${avatarInner}</div>
                                     <div>
-                                        <div class="author-name">${post.authorName}</div>
+                                        <div class="author-name">${displayAuthorName}</div>
                                         <div class="post-time">${post.timeText || ''} ${post.edited ? t.edited : ''}</div>
                                     </div>
                                 </div>
                                 ${isPostOwner ? `
                                     <div class="owner-controls">
-                                        <button class="control-btn edit" onclick="enableEdit('${postId}')">${t.edit}</button>
-                                        <button class="control-btn delete" onclick="deletePost('${postId}')">${t.delete}</button>
+                                        <button class="control-btn edit" title="${t.editTitle}" onclick="enableEdit('${postId}')">${ICON_EDIT_SVG}</button>
+                                        <button class="control-btn delete" title="${t.deleteTitle}" onclick="deletePost('${postId}')">${ICON_DUSTBIN_SVG}</button>
                                     </div>
                                 ` : ''}
                             </div>
@@ -1748,13 +2994,12 @@
                             </div>
 
                             <div class="post-actions">
-                                <button class="action-btn ${isLiked ? 'active-like' : ''}" onclick="handleLike('${postId}', ${isLiked})">
-                                    ${t.likeBtn}
+                                <button class="action-btn ${isLiked ? 'active-like' : ''}" title="${t.likeTitle}" onclick="handleLike('${postId}', ${isLiked})">
+                                    ❤️
                                 </button>
-                                <button class="action-btn ${isUnliked ? 'active-unlike' : ''}" onclick="handleUnlike('${postId}', ${isUnliked})">
-                                    ${t.unlikeBtn}
+                                <button class="action-btn ${isUnliked ? 'active-unlike' : ''}" title="${t.unlikeTitle}" onclick="handleUnlike('${postId}', ${isUnliked})">
+                                    💔
                                 </button>
-                                <div style="width: 70px;"></div>
                             </div>
 
                             <div class="comments-section">
@@ -1783,6 +3028,7 @@
                 const targetPost = latestDocs.find(p => p.id === postId);
                 if (targetPost) {
                     const snippet = targetPost.text ? targetPost.text.substring(0, 45) : t.photoPostTag;
+                    await logActivityHistory('like', postId, snippet);
                     await notifyPostParticipants(targetPost, 'like', snippet, "", true);
                 }
             }
@@ -1801,6 +3047,7 @@
                 const targetPost = latestDocs.find(p => p.id === postId);
                 if (targetPost) {
                     const snippet = targetPost.text ? targetPost.text.substring(0, 45) : t.photoPostTag;
+                    await logActivityHistory('unlike', postId, snippet);
                     await notifyPostParticipants(targetPost, 'unlike', snippet, "", true);
                 }
             }
@@ -1819,9 +3066,13 @@
                     authorId: currentUserObj.uid,
                     author: currentUserObj.name,
                     text: commentText,
+                    likes: [],
+                    unlikes: [],
                     edited: false
                 })
             });
+
+            await logActivityHistory('reply', postId, commentText.substring(0, 45));
 
             const targetPost = latestDocs.find(p => p.id === postId);
             if (targetPost) {
