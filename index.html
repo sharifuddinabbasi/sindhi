@@ -82,35 +82,40 @@
         }
 
         .header-top-row {
-            padding: 10px 14px 6px;
+            padding: 10px 12px 6px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-        }
-
-        header h1 {
-            font-size: 20px;
-            color: #FFFFFF;
-            display: flex;
             align-items: center;
             gap: 6px;
         }
 
+        header h1 {
+            font-size: 18px;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         header h1 span {
             color: var(--ajrak-gold);
-            font-size: 17px;
+            font-size: 16px;
         }
 
         .fb-icon-bar {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
+            flex-shrink: 0;
         }
 
         .icon-circle-btn {
             position: relative;
-            width: 36px;
-            height: 36px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.14);
             border: 1px solid var(--ajrak-gold);
@@ -120,6 +125,7 @@
             justify-content: center;
             cursor: pointer;
             transition: 0.2s;
+            flex-shrink: 0;
         }
 
         .icon-circle-btn:hover, .icon-circle-btn.active {
@@ -128,8 +134,8 @@
         }
 
         .icon-circle-btn svg {
-            width: 18px;
-            height: 18px;
+            width: 17px;
+            height: 17px;
             fill: currentColor;
         }
 
@@ -151,7 +157,7 @@
             border: 1.5px solid #FFFFFF;
         }
 
-        /* Header Bottom Row: Left = User Dropdown, Center = Install App, Right = Language Switcher */
+        /* Header Bottom Row */
         .header-bottom-row {
             padding: 4px 10px 10px;
             display: flex;
@@ -187,7 +193,6 @@
             color: #FFFFFF;
         }
 
-        /* Compact Install App Button inside Header Center */
         .btn-install-app {
             background: linear-gradient(135deg, #1E9E5A 0%, #157A43 100%);
             color: #FFFFFF;
@@ -218,7 +223,7 @@
             flex-shrink: 0;
         }
 
-        /* User Dropdown Menu (Left Side) */
+        /* User Dropdown Menu */
         .user-dropdown-wrapper {
             position: relative;
             display: inline-block;
@@ -317,7 +322,7 @@
             display: flex;
             align-items: flex-start;
             justify-content: center;
-            padding: 65px 12px 20px;
+            padding: 55px 12px 20px;
             overflow-y: auto;
         }
 
@@ -374,8 +379,211 @@
 
         .modal-body {
             padding: 14px;
-            max-height: 72vh;
+            max-height: 75vh;
             overflow-y: auto;
+        }
+
+        /* WhatsApp Style Chat UI */
+        .chat-friend-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            border: 1px solid #E5DEC9;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .chat-friend-row:hover {
+            background: var(--ajrak-cream);
+            border-color: #25D366;
+        }
+
+        .chat-friend-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .chat-friend-meta {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .chat-friend-name {
+            font-weight: bold;
+            color: var(--ajrak-blue);
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-last-preview {
+            font-size: 12px;
+            color: #667781;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+
+        .chat-unread-pill {
+            background-color: #25D366;
+            color: #FFFFFF;
+            font-size: 11px;
+            font-weight: bold;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px;
+            flex-shrink: 0;
+        }
+
+        .wa-chat-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 410px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #C8BEB0;
+        }
+
+        .wa-chat-topbar {
+            background-color: #075E54;
+            color: #FFFFFF;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .wa-back-btn {
+            background: none;
+            border: none;
+            color: #FFFFFF;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 50%;
+        }
+
+        .wa-back-btn:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .wa-chat-topbar-name {
+            font-weight: bold;
+            font-size: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .wa-messages-area {
+            flex: 1;
+            background-color: #EFEAE2;
+            background-image: radial-gradient(rgba(11, 20, 26, 0.06) 1px, transparent 1px);
+            background-size: 16px 16px;
+            padding: 12px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .wa-msg-bubble {
+            max-width: 78%;
+            padding: 7px 10px 5px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            line-height: 1.45;
+            position: relative;
+            word-wrap: break-word;
+            box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.13);
+        }
+
+        .wa-msg-sent {
+            align-self: flex-end;
+            background-color: #D9FDD3;
+            color: #111B21;
+            border-top-right-radius: 0;
+        }
+
+        .wa-msg-received {
+            align-self: flex-start;
+            background-color: #FFFFFF;
+            color: #111B21;
+            border-top-left-radius: 0;
+        }
+
+        .wa-msg-meta {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: #667781;
+            margin-top: 3px;
+            direction: ltr;
+        }
+
+        .wa-tick-read {
+            color: #53BDEB;
+            font-weight: bold;
+        }
+
+        .wa-input-bar {
+            background-color: #F0F2F5;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-top: 1px solid #DCD4C6;
+        }
+
+        .wa-input-bar input {
+            flex: 1;
+            margin-bottom: 0;
+            border-radius: 20px;
+            background-color: #FFFFFF;
+            border: 1px solid #D1D7DB;
+            padding: 9px 14px;
+            font-size: 14px;
+        }
+
+        .wa-send-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background-color: #00A884;
+            color: #FFFFFF;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: 0.15s;
+        }
+
+        .wa-send-btn:hover {
+            background-color: #008F6F;
+        }
+
+        .wa-send-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
         }
 
         /* Settings Menu List */
@@ -1011,6 +1219,12 @@
             <h1><span>❖</span> <span id="header-title">Sindhi World Book</span></h1>
             
             <div id="fb-icon-bar" class="fb-icon-bar hidden">
+                <!-- New Message Icon (Left of Search Icon) -->
+                <button class="icon-circle-btn" onclick="openPopup('messages')" title="Messages">
+                    <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM7 9h10v2H7zm0-3h10v2H7zm0 6h7v2H7z"/></svg>
+                    <span id="msg-badge" class="badge-count hidden">0</span>
+                </button>
+
                 <button class="icon-circle-btn" onclick="openPopup('find')" title="Find Friends">
                     <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 </button>
@@ -1074,6 +1288,29 @@
                 <button class="modal-close" onclick="closePopup()">✕</button>
             </div>
             <div class="modal-body">
+                <!-- WhatsApp Style Chat Popup -->
+                <div id="popup-messages" class="hidden">
+                    <div id="chat-friends-view">
+                        <div id="popup-chat-friends-list"></div>
+                    </div>
+                    <div id="chat-conversation-view" class="hidden">
+                        <div class="wa-chat-wrapper">
+                            <div class="wa-chat-topbar">
+                                <button type="button" class="wa-back-btn" onclick="backToChatFriendsList()">←</button>
+                                <div id="wa-active-friend-avatar" class="mini-avatar" style="width:32px; height:32px; font-size:14px;"></div>
+                                <div id="wa-active-friend-name" class="wa-chat-topbar-name">Friend</div>
+                            </div>
+                            <div id="wa-messages-container" class="wa-messages-area"></div>
+                            <form class="wa-input-bar" onsubmit="sendChatMessage(event)">
+                                <input type="text" id="wa-chat-input" placeholder="Type a message..." autocomplete="off">
+                                <button type="submit" class="wa-send-btn" title="Send">
+                                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="popup-profile" class="hidden">
                     <div id="popup-profile-content"></div>
                 </div>
@@ -1287,6 +1524,11 @@
                 menuFriends: "👥 Friends",
                 menuSetting: "⚙️ Setting",
                 menuLogout: "🚪 Logout",
+                modalMessagesTitle: "💬 Messages",
+                chatInputPlaceholder: "Type a message...",
+                noChatMessages: "No messages yet. Say Salam! 👋",
+                tapToChat: "Tap to chat",
+                youPrefix: "You: ",
                 modalProfileTitle: "👤 My Profile",
                 modalFriendsTitle: "👥 My Friends List",
                 modalSettingTitle: "⚙️ Settings",
@@ -1413,6 +1655,11 @@
                 menuFriends: "👥 دوست (Friends)",
                 menuSetting: "⚙️ سيٽنگ (Setting)",
                 menuLogout: "🚪 لاگ آئوٽ (Logout)",
+                modalMessagesTitle: "💬 پيغام (Messages)",
+                chatInputPlaceholder: "پيغام لکو...",
+                noChatMessages: "اڃا تائين ڪو به پيغام ناهي. سلام موڪليو! 👋",
+                tapToChat: "ڳالهه ٻولهه لاءِ ڪلڪ ڪريو",
+                youPrefix: "توهان: ",
                 modalProfileTitle: "👤 منهنجي پروفائيل",
                 modalFriendsTitle: "👥 منهنجن دوستن جي لسٽ",
                 modalSettingTitle: "⚙️ سيٽنگ (Settings)",
@@ -1527,12 +1774,15 @@
         let allUsersList = [];
         let myNotifications = [];
         let myHistoryList = [];
+        let allMyMessages = [];
+        let activeChatFriendUid = null;
         let latestDocs = [];
         let unsubscribePosts = null;
         let unsubscribeUsers = null;
         let unsubscribeMyProfile = null;
         let unsubscribeNotifs = null;
         let unsubscribeHistory = null;
+        let unsubscribeMessages = null;
 
         let deferredInstallPrompt = null;
 
@@ -1771,6 +2021,16 @@
             return name ? name.charAt(0) : 'S';
         }
 
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         async function uploadToAvailableDrive(compressedData, fileName) {
             let lastError = "No Google Drive configured.";
 
@@ -1834,6 +2094,7 @@
             document.getElementById('popup-overlay').classList.remove('hidden');
             document.getElementById('modal-header-extra').innerHTML = '';
 
+            document.getElementById('popup-messages').classList.add('hidden');
             document.getElementById('popup-profile').classList.add('hidden');
             document.getElementById('popup-friends').classList.add('hidden');
             document.getElementById('popup-friend-view').classList.add('hidden');
@@ -1842,7 +2103,11 @@
             document.getElementById('popup-requests').classList.add('hidden');
             document.getElementById('popup-notifications').classList.add('hidden');
 
-            if (type === 'profile') {
+            if (type === 'messages') {
+                document.getElementById('modal-title').innerText = t.modalMessagesTitle;
+                document.getElementById('popup-messages').classList.remove('hidden');
+                backToChatFriendsList();
+            } else if (type === 'profile') {
                 document.getElementById('modal-title').innerText = t.modalProfileTitle;
                 document.getElementById('popup-profile').classList.remove('hidden');
                 renderProfilePopup();
@@ -1875,6 +2140,7 @@
         };
 
         window.closePopup = function() {
+            activeChatFriendUid = null;
             document.getElementById('popup-overlay').classList.add('hidden');
         };
 
@@ -1934,12 +2200,21 @@
             document.getElementById('menu-setting-label').innerText = t.menuSetting;
             document.getElementById('menu-logout-label').innerText = t.menuLogout;
 
+            document.getElementById('wa-chat-input').placeholder = t.chatInputPlaceholder;
             document.getElementById('search-friend-input').placeholder = t.searchFriendPlaceholder;
             document.getElementById('post-text').placeholder = t.postPlaceholder;
             document.getElementById('post-submit-btn').innerText = t.btnPost;
             updatePhotoLabel();
 
             if (currentUserObj) {
+                if (!document.getElementById('popup-messages').classList.contains('hidden')) {
+                    document.getElementById('modal-title').innerText = t.modalMessagesTitle;
+                    if (activeChatFriendUid) {
+                        renderActiveChatMessages();
+                    } else {
+                        renderChatFriendsList();
+                    }
+                }
                 if (!document.getElementById('popup-profile').classList.contains('hidden')) {
                     document.getElementById('modal-title').innerText = t.modalProfileTitle;
                     renderProfilePopup();
@@ -2047,6 +2322,7 @@
             if (unsubscribeMyProfile) unsubscribeMyProfile();
             if (unsubscribeNotifs) unsubscribeNotifs();
             if (unsubscribeHistory) unsubscribeHistory();
+            if (unsubscribeMessages) unsubscribeMessages();
             closePopup();
             await signOut(auth);
         };
@@ -2089,6 +2365,7 @@
                 listenToAllUsers();
                 listenToNotifications();
                 listenToHistory();
+                listenToMessages();
                 listenToPosts();
             } else {
                 currentUserObj = null;
@@ -2098,6 +2375,211 @@
                 document.getElementById('fb-icon-bar').classList.add('hidden');
             }
         });
+
+        /* ==================== WHATSAPP STYLE MESSAGING LOGIC ==================== */
+        function listenToMessages() {
+            const q = query(
+                collection(db, "messages"),
+                where("participants", "array-contains", currentUserObj.uid)
+            );
+            unsubscribeMessages = onSnapshot(q, (snapshot) => {
+                allMyMessages = [];
+                snapshot.forEach((docSnap) => {
+                    allMyMessages.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                allMyMessages.sort((a, b) => (a.clientTime || 0) - (b.clientTime || 0));
+
+                // Calculate total unread messages received by current user
+                const unreadMsgs = allMyMessages.filter(
+                    m => m.receiverId === currentUserObj.uid && !m.read
+                );
+                const msgBadge = document.getElementById('msg-badge');
+                if (unreadMsgs.length > 0) {
+                    msgBadge.innerText = unreadMsgs.length;
+                    msgBadge.classList.remove('hidden');
+                } else {
+                    msgBadge.classList.add('hidden');
+                }
+
+                // If chat popup is open, refresh live
+                const popupMsgEl = document.getElementById('popup-messages');
+                if (popupMsgEl && !popupMsgEl.classList.contains('hidden')) {
+                    if (activeChatFriendUid) {
+                        renderActiveChatMessages();
+                        markFriendMessagesAsRead(activeChatFriendUid);
+                    } else {
+                        renderChatFriendsList();
+                    }
+                }
+            });
+        }
+
+        async function markFriendMessagesAsRead(friendUid) {
+            if (!friendUid || !currentUserObj) return;
+            const unreadFromFriend = allMyMessages.filter(
+                m => m.senderId === friendUid && m.receiverId === currentUserObj.uid && !m.read
+            );
+            for (const msg of unreadFromFriend) {
+                await updateDoc(doc(db, "messages", msg.id), { read: true }).catch(() => {});
+            }
+        }
+
+        window.backToChatFriendsList = function() {
+            activeChatFriendUid = null;
+            document.getElementById('chat-conversation-view').classList.add('hidden');
+            document.getElementById('chat-friends-view').classList.remove('hidden');
+            renderChatFriendsList();
+        };
+
+        window.renderChatFriendsList = function() {
+            const t = translations[currentLang];
+            const container = document.getElementById('popup-chat-friends-list');
+            if (!container) return;
+            container.innerHTML = '';
+
+            // Collect friends + anyone who has sent/received messages with current user
+            const chatPartnerIds = new Set(myFriendsList);
+            allMyMessages.forEach(m => {
+                if (m.senderId && m.senderId !== currentUserObj.uid) chatPartnerIds.add(m.senderId);
+                if (m.receiverId && m.receiverId !== currentUserObj.uid) chatPartnerIds.add(m.receiverId);
+            });
+
+            const chatUsers = allUsersList.filter(u => chatPartnerIds.has(u.uid));
+
+            if (chatUsers.length === 0) {
+                container.innerHTML = `<p style="text-align:center; color:#666; font-size:13px; padding:16px;">${t.noFriends}</p>`;
+                return;
+            }
+
+            // Enrich with unread count and last message timestamp for WhatsApp-like sorting
+            const enriched = chatUsers.map(u => {
+                const thread = allMyMessages.filter(
+                    m => (m.senderId === u.uid && m.receiverId === currentUserObj.uid) ||
+                         (m.senderId === currentUserObj.uid && m.receiverId === u.uid)
+                );
+                const unreadCount = thread.filter(m => m.receiverId === currentUserObj.uid && !m.read).length;
+                const lastMsg = thread.length > 0 ? thread[thread.length - 1] : null;
+                return {
+                    user: u,
+                    unreadCount,
+                    lastMsg,
+                    lastTime: lastMsg ? (lastMsg.clientTime || 0) : 0
+                };
+            });
+
+            enriched.sort((a, b) => {
+                if (b.unreadCount !== a.unreadCount) return b.unreadCount - a.unreadCount;
+                return b.lastTime - a.lastTime;
+            });
+
+            enriched.forEach(item => {
+                const u = item.user;
+                const avatarInner = getAvatarHTML(u.photoUrl, u.name);
+                let previewText = t.tapToChat;
+                if (item.lastMsg) {
+                    const prefix = item.lastMsg.senderId === currentUserObj.uid ? t.youPrefix : "";
+                    previewText = escapeHTML(prefix + item.lastMsg.text);
+                }
+
+                const badgeHTML = item.unreadCount > 0
+                    ? `<span class="chat-unread-pill">${item.unreadCount}</span>`
+                    : '';
+
+                container.innerHTML += `
+                    <div class="chat-friend-row" onclick="openFriendChat('${u.uid}')">
+                        <div class="chat-friend-left">
+                            <div class="mini-avatar">${avatarInner}</div>
+                            <div class="chat-friend-meta">
+                                <div class="chat-friend-name">${escapeHTML(u.name)}</div>
+                                <div class="chat-last-preview">${previewText}</div>
+                            </div>
+                        </div>
+                        ${badgeHTML}
+                    </div>
+                `;
+            });
+        };
+
+        window.openFriendChat = async function(friendUid) {
+            const friendUser = allUsersList.find(u => u.uid === friendUid);
+            if (!friendUser) return;
+
+            activeChatFriendUid = friendUid;
+            document.getElementById('chat-friends-view').classList.add('hidden');
+            document.getElementById('chat-conversation-view').classList.remove('hidden');
+
+            document.getElementById('wa-active-friend-name').innerText = friendUser.name;
+            document.getElementById('wa-active-friend-avatar').innerHTML = getAvatarHTML(friendUser.photoUrl, friendUser.name);
+
+            renderActiveChatMessages();
+            await markFriendMessagesAsRead(friendUid);
+            setTimeout(() => {
+                const input = document.getElementById('wa-chat-input');
+                if (input) input.focus();
+            }, 100);
+        };
+
+        function renderActiveChatMessages() {
+            const t = translations[currentLang];
+            const container = document.getElementById('wa-messages-container');
+            if (!container || !activeChatFriendUid) return;
+
+            const thread = allMyMessages.filter(
+                m => (m.senderId === activeChatFriendUid && m.receiverId === currentUserObj.uid) ||
+                     (m.senderId === currentUserObj.uid && m.receiverId === activeChatFriendUid)
+            );
+
+            if (thread.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color:#54656F; font-size:12.5px; margin:auto; background:rgba(255,255,255,0.85); padding:8px 14px; border-radius:8px;">${t.noChatMessages}</div>`;
+                return;
+            }
+
+            let html = '';
+            thread.forEach(m => {
+                const isMine = m.senderId === currentUserObj.uid;
+                const tickHTML = isMine
+                    ? `<span class="${m.read ? 'wa-tick-read' : ''}">${m.read ? '✓✓' : '✓'}</span>`
+                    : '';
+
+                html += `
+                    <div class="wa-msg-bubble ${isMine ? 'wa-msg-sent' : 'wa-msg-received'}">
+                        <div>${escapeHTML(m.text)}</div>
+                        <div class="wa-msg-meta">
+                            <span>${escapeHTML(m.timeText || '')}</span>
+                            ${tickHTML}
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        window.sendChatMessage = async function(e) {
+            e.preventDefault();
+            if (!activeChatFriendUid || !currentUserObj) return;
+
+            const input = document.getElementById('wa-chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            input.value = '';
+            const now = new Date();
+            const timeText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            await addDoc(collection(db, "messages"), {
+                senderId: currentUserObj.uid,
+                receiverId: activeChatFriendUid,
+                participants: [currentUserObj.uid, activeChatFriendUid],
+                text: text,
+                timeText: timeText,
+                clientTime: Date.now(),
+                read: false,
+                createdAt: serverTimestamp()
+            });
+        };
+        /* ==================== END MESSAGING LOGIC ==================== */
 
         async function logActivityHistory(type, postId = null, snippet = "") {
             if (!currentUserObj) return;
@@ -2194,6 +2676,9 @@
                         reqBadge.classList.add('hidden');
                     }
 
+                    if (!document.getElementById('popup-messages').classList.contains('hidden') && !activeChatFriendUid) {
+                        renderChatFriendsList();
+                    }
                     if (!document.getElementById('popup-profile').classList.contains('hidden')) {
                         renderProfilePopup();
                     }
@@ -2215,6 +2700,9 @@
                         allUsersList.push(docSnap.data());
                     }
                 });
+                if (!document.getElementById('popup-messages').classList.contains('hidden') && !activeChatFriendUid) {
+                    renderChatFriendsList();
+                }
                 if (!document.getElementById('popup-friends').classList.contains('hidden')) {
                     renderFriendsPopup();
                 }
@@ -2265,7 +2753,7 @@
                     <div id="profile-upload-status" style="font-size:12px; color:var(--ajrak-blue); margin-bottom:6px; font-weight:bold;" class="hidden"></div>
 
                     <div id="profile-name-view" class="profile-name-row">
-                        <h3 style="color: var(--ajrak-blue); font-size: 18px;">${currentUserObj.name}</h3>
+                        <h3 style="color: var(--ajrak-blue); font-size: 18px;">${escapeHTML(currentUserObj.name)}</h3>
                         <button class="profile-edit-icon-btn" onclick="enableProfileNameEdit()" title="${t.editTitle}">
                             ${ICON_EDIT_SVG}
                         </button>
@@ -2279,7 +2767,7 @@
                         </div>
                     </div>
 
-                    <p style="color: #666; font-size: 13px;" dir="ltr">${currentUserObj.email || ''}</p>
+                    <p style="color: #666; font-size: 13px;" dir="ltr">${escapeHTML(currentUserObj.email || '')}</p>
 
                     <div class="profile-stats-grid">
                         <div class="profile-stat-item">
@@ -2439,7 +2927,7 @@
                     <div class="popup-list-item">
                         <div class="popup-user-info" style="cursor:pointer;" onclick="viewFriendFriendsList('${u.uid}')">
                             <div class="mini-avatar">${avatarInner}</div>
-                            <span class="popup-user-name" style="text-decoration:underline;">${u.name}</span>
+                            <span class="popup-user-name" style="text-decoration:underline;">${escapeHTML(u.name)}</span>
                         </div>
                         <div class="popup-actions">
                             <button class="btn-sm danger" onclick="unfriendUser('${u.uid}')">${t.unfriendBtn}</button>
@@ -2492,7 +2980,7 @@
                             <div class="popup-list-item">
                                 <div class="popup-user-info">
                                     <div class="mini-avatar">${myAv}</div>
-                                    <span class="popup-user-name">${currentUserObj.name} (You)</span>
+                                    <span class="popup-user-name">${escapeHTML(currentUserObj.name)} (You)</span>
                                 </div>
                             </div>
                         `;
@@ -2504,7 +2992,7 @@
                                 <div class="popup-list-item">
                                     <div class="popup-user-info">
                                         <div class="mini-avatar">${fAv}</div>
-                                        <span class="popup-user-name">${fUser.name}</span>
+                                        <span class="popup-user-name">${escapeHTML(fUser.name)}</span>
                                     </div>
                                 </div>
                             `;
@@ -2559,7 +3047,7 @@
 
                         const hasPost = Boolean(item.postId);
                         const clickAttr = hasPost ? `onclick="goToPost('${item.postId}')"` : '';
-                        const quoteHTML = item.snippet ? `<span class="notif-preview-quote">"${item.snippet}..."</span>` : '';
+                        const quoteHTML = item.snippet ? `<span class="notif-preview-quote">"${escapeHTML(item.snippet)}..."</span>` : '';
 
                         html += `
                             <div class="history-item ${hasPost ? 'clickable' : ''}" ${clickAttr}>
@@ -2608,7 +3096,7 @@
                     <div style="margin-bottom:10px;"><button class="btn-sm neutral" onclick="renderSettingMenu()">${t.backBtn}</button></div>
                     <p style="font-size:13px; color:#444; margin-bottom:8px; line-height:1.5;">${t.resetMailDesc}</p>
                     <p style="font-weight:bold; color:var(--ajrak-blue); font-size:14px; margin-bottom:14px; background:var(--ajrak-cream); padding:8px 12px; border-radius:6px; border:1px solid #DCD4C6;" dir="ltr">
-                        ${currentUserObj?.email || ''}
+                        ${escapeHTML(currentUserObj?.email || '')}
                     </p>
                     <button id="btn-send-reset-mail" class="btn-primary" onclick="triggerCustomResetEmail()">${t.sendResetMailBtn}</button>
                     <div id="reset-mail-status-msg" class="status-msg hidden"></div>
@@ -2748,7 +3236,7 @@
                     <div class="popup-list-item">
                         <div class="popup-user-info">
                             <div class="mini-avatar">${avatarInner}</div>
-                            <span class="popup-user-name">${u.name}</span>
+                            <span class="popup-user-name">${escapeHTML(u.name)}</span>
                         </div>
                         <div class="popup-actions">${btnHTML}</div>
                     </div>
@@ -2775,7 +3263,7 @@
                     <div class="popup-list-item">
                         <div class="popup-user-info">
                             <div class="mini-avatar">${avatarInner}</div>
-                            <span class="popup-user-name">${senderName}</span>
+                            <span class="popup-user-name">${escapeHTML(senderName)}</span>
                         </div>
                         <div class="popup-actions">
                             <button class="btn-sm primary" onclick="acceptRequest('${senderUid}')">${t.acceptBtn}</button>
@@ -2814,28 +3302,28 @@
                 if (n.type === 'like') {
                     const label = own ? t.notifLikeOwn : t.notifLike;
                     actionMsg = `${label}${snippet ? ':' : '.'}`;
-                    if (snippet) previewHTML = `<span class="notif-preview-quote">"${snippet}..."</span>`;
+                    if (snippet) previewHTML = `<span class="notif-preview-quote">"${escapeHTML(snippet)}..."</span>`;
                 } else if (n.type === 'unlike') {
                     const label = own ? t.notifUnlikeOwn : t.notifUnlike;
                     actionMsg = `${label}${snippet ? ':' : '.'}`;
-                    if (snippet) previewHTML = `<span class="notif-preview-quote">"${snippet}..."</span>`;
+                    if (snippet) previewHTML = `<span class="notif-preview-quote">"${escapeHTML(snippet)}..."</span>`;
                 } else if (n.type === 'comment') {
                     const label = own ? t.notifCommentOwn : t.notifComment;
-                    actionMsg = `${label}: "${n.replyText || n.extraText || ''}"`;
-                    if (snippet) previewHTML = `<span class="notif-preview-quote">(${snippet}...)</span>`;
+                    actionMsg = `${label}: "${escapeHTML(n.replyText || n.extraText || '')}"`;
+                    if (snippet) previewHTML = `<span class="notif-preview-quote">(${escapeHTML(snippet)}...)</span>`;
                 } else if (n.type === 'reply_like') {
-                    actionMsg = `${t.notifReplyLike}: "${n.replyText || ''}"`;
-                    if (snippet) previewHTML = `<span class="notif-preview-quote">(${snippet}...)</span>`;
+                    actionMsg = `${t.notifReplyLike}: "${escapeHTML(n.replyText || '')}"`;
+                    if (snippet) previewHTML = `<span class="notif-preview-quote">(${escapeHTML(snippet)}...)</span>`;
                 } else if (n.type === 'reply_unlike') {
-                    actionMsg = `${t.notifReplyUnlike}: "${n.replyText || ''}"`;
-                    if (snippet) previewHTML = `<span class="notif-preview-quote">(${snippet}...)</span>`;
+                    actionMsg = `${t.notifReplyUnlike}: "${escapeHTML(n.replyText || '')}"`;
+                    if (snippet) previewHTML = `<span class="notif-preview-quote">(${escapeHTML(snippet)}...)</span>`;
                 } else if (n.type === 'delete_comment') {
                     const label = own ? t.notifDeleteCommentOwn : t.notifDeleteComment;
-                    actionMsg = `${label}: "${n.replyText || ''}"`;
-                    if (snippet) previewHTML = `<span class="notif-preview-quote">(${snippet}...)</span>`;
+                    actionMsg = `${label}: "${escapeHTML(n.replyText || '')}"`;
+                    if (snippet) previewHTML = `<span class="notif-preview-quote">(${escapeHTML(snippet)}...)</span>`;
                 } else if (n.type === 'delete_post') {
                     actionMsg = `${t.notifDeletePost}${snippet ? ':' : '.'}`;
-                    if (snippet) previewHTML = `<span class="notif-preview-quote">"${snippet}..."</span>`;
+                    if (snippet) previewHTML = `<span class="notif-preview-quote">"${escapeHTML(snippet)}..."</span>`;
                 } else if (n.type === 'accept') {
                     actionMsg = t.notifAccept;
                 }
@@ -2844,7 +3332,7 @@
 
                 container.innerHTML += `
                     <div class="notif-item ${!n.read ? 'unread' : ''} ${hasPost ? 'clickable' : ''}" ${clickAttr}>
-                        <strong>${n.fromName}</strong> ${actionMsg}
+                        <strong>${escapeHTML(n.fromName)}</strong> ${actionMsg}
                         ${previewHTML}
                         <span class="notif-time">${n.timeText || ''}</span>
                     </div>
@@ -3214,7 +3702,7 @@
                     commentsHTML += `
                         <div class="comment-item">
                             <div class="comment-top">
-                                <span class="comment-author">${cAuthorName} <small style="font-weight:normal; color:#777;">${c.edited ? t.edited : ''}</small></span>
+                                <span class="comment-author">${escapeHTML(cAuthorName)} <small style="font-weight:normal; color:#777;">${c.edited ? t.edited : ''}</small></span>
                                 ${(isCommentOwner || canDeleteComment) ? `
                                     <div class="comment-controls">
                                         ${isCommentOwner ? `<button class="edit" title="${t.editTitle}" onclick="enableCommentEdit('${postId}', ${idx})">${ICON_EDIT_SVG}</button>` : ''}
@@ -3222,10 +3710,10 @@
                                     </div>
                                 ` : ''}
                             </div>
-                            <div id="comment-text-${postId}-${idx}" class="comment-body-text">${c.text}</div>
+                            <div id="comment-text-${postId}-${idx}" class="comment-body-text">${escapeHTML(c.text)}</div>
                             ${isCommentOwner ? `
                                 <div id="comment-edit-${postId}-${idx}" class="comment-edit-box hidden">
-                                    <input type="text" id="comment-input-edit-${postId}-${idx}" value="${c.text.replace(/"/g, '&quot;')}">
+                                    <input type="text" id="comment-input-edit-${postId}-${idx}" value="${(c.text || '').replace(/"/g, '&quot;')}">
                                     <div style="display:flex; gap:6px; justify-content:flex-end;">
                                         <button class="btn-cancel" onclick="cancelCommentEdit('${postId}', ${idx})">${t.cancel}</button>
                                         <button class="btn-save" onclick="saveCommentEdit('${postId}', ${idx})">${t.saveChanges}</button>
@@ -3252,7 +3740,7 @@
                                 <div class="author-info">
                                     <div class="avatar">${avatarInner}</div>
                                     <div>
-                                        <div class="author-name">${displayAuthorName}</div>
+                                        <div class="author-name">${escapeHTML(displayAuthorName)}</div>
                                         <div class="post-time">${post.timeText || ''} ${post.edited ? t.edited : ''}</div>
                                     </div>
                                 </div>
@@ -3264,11 +3752,11 @@
                                 ` : ''}
                             </div>
                             
-                            <div id="post-text-display-${postId}" class="post-content ${!post.text ? 'hidden' : ''}">${post.text || ''}</div>
+                            <div id="post-text-display-${postId}" class="post-content ${!post.text ? 'hidden' : ''}">${escapeHTML(post.text || '')}</div>
                             
                             ${isPostOwner ? `
                                 <div id="edit-box-${postId}" class="edit-box hidden">
-                                    <textarea id="edit-input-${postId}">${post.text || ''}</textarea>
+                                    <textarea id="edit-input-${postId}">${escapeHTML(post.text || '')}</textarea>
                                     <div class="edit-actions">
                                         <button class="btn-cancel" onclick="cancelEdit('${postId}')">${t.cancel}</button>
                                         <button class="btn-save" onclick="saveEdit('${postId}')">${t.saveChanges}</button>
