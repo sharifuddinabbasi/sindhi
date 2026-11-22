@@ -269,6 +269,42 @@
             border-radius: 10px;
         }
 
+        /* Install App Banner Row (Visible until app is installed) */
+        .install-app-bar {
+            max-width: 550px;
+            margin: 12px auto 0;
+            padding: 0 12px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn-install-app {
+            background: linear-gradient(135deg, #1E9E5A 0%, #157A43 100%);
+            color: #FFFFFF;
+            border: 1.5px solid #A7F3D0;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            box-shadow: 0 3px 10px rgba(21, 122, 67, 0.32);
+            transition: 0.2s;
+        }
+
+        .btn-install-app:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 14px rgba(21, 122, 67, 0.42);
+        }
+
+        .btn-install-app svg {
+            width: 17px;
+            height: 17px;
+            fill: currentColor;
+        }
+
         /* پاپ اپ موڈل */
         .modal-overlay {
             position: fixed;
@@ -604,7 +640,7 @@
 
         .container {
             max-width: 550px;
-            margin: 16px auto;
+            margin: 12px auto 16px;
             padding: 0 12px;
         }
 
@@ -625,7 +661,7 @@
 
         .card-body { padding: 14px; }
 
-        #auth-section, #reset-password-screen { max-width: 420px; margin: 30px auto; text-align: center; }
+        #auth-section, #reset-password-screen { max-width: 420px; margin: 20px auto 30px; text-align: center; }
         #auth-section h2, #reset-password-screen h2 { color: var(--ajrak-red); margin-bottom: 6px; font-size: 24px; }
         #auth-section p.subtitle, #reset-password-screen p.subtitle { color: var(--ajrak-blue); margin-bottom: 16px; font-size: 14px; }
 
@@ -972,6 +1008,14 @@
         <div class="ajrak-border-strip"></div>
     </header>
 
+    <!-- Persistent "Install App" Button (Stays visible until PWA app is installed) -->
+    <div id="install-app-bar" class="install-app-bar">
+        <button id="btn-install-app" class="btn-install-app" onclick="triggerPwaInstall()">
+            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            <span id="install-app-label">Install App</span>
+        </button>
+    </div>
+
     <!-- Popup Modal -->
     <div id="popup-overlay" class="modal-overlay hidden" onclick="closePopupOutside(event)">
         <div class="modal-box">
@@ -1016,7 +1060,7 @@
         </div>
     </div>
 
-    <!-- Custom Email Reset Password Screen (Opens when user clicks reset link in Gmail) -->
+    <!-- Custom Email Reset Password Screen -->
     <div id="reset-password-screen" class="card hidden">
         <div class="ajrak-border-strip"></div>
         <div class="card-body">
@@ -1145,6 +1189,8 @@
             en: {
                 dir: "ltr",
                 brand: "Sindhi Book",
+                installAppBtn: "Install App",
+                installManualGuide: "To install Sindhi Book:\n1. Tap the browser menu (⋮ or Share icon)\n2. Select 'Install app' or 'Add to Home screen'.",
                 authTitle: "❖ Sindhi Book ❖",
                 subtitle: "Connect with friends in the traditional colors of Sindh",
                 tabLogin: "Login",
@@ -1266,6 +1312,8 @@
             sd: {
                 dir: "rtl",
                 brand: "سنڌي بڪ",
+                installAppBtn: "ايپ انسٽال ڪريو",
+                installManualGuide: "سنڌي بڪ ايپ انسٽال ڪرڻ لاءِ:\n1. برائوزر جي مينيو (⋮ يا Share) تي ڪلڪ ڪريو\n2. 'Install app' يا 'Add to Home screen' چونڊيو.",
                 authTitle: "❖ سنڌي بڪ ❖",
                 subtitle: "سنڌ جي ثقافت ۽ اجرڪ جي رنگن ۾ دوستن سان جڙيل رهو",
                 tabLogin: "لاگ ان ڪريو",
@@ -1402,6 +1450,55 @@
         let unsubscribeNotifs = null;
         let unsubscribeHistory = null;
 
+        // ==================== PWA INSTALL LOGIC (Stays visible until installed) ====================
+        let deferredInstallPrompt = null;
+
+        function isAppAlreadyInstalled() {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                   window.navigator.standalone === true ||
+                   localStorage.getItem('sb_pwa_installed') === 'true';
+        }
+
+        function updateInstallButtonVisibility() {
+            const installBar = document.getElementById('install-app-bar');
+            if (!installBar) return;
+            if (isAppAlreadyInstalled()) {
+                installBar.classList.add('hidden');
+            } else {
+                installBar.classList.remove('hidden');
+            }
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            localStorage.removeItem('sb_pwa_installed');
+            updateInstallButtonVisibility();
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            localStorage.setItem('sb_pwa_installed', 'true');
+            updateInstallButtonVisibility();
+        });
+
+        window.triggerPwaInstall = async function() {
+            const t = translations[currentLang];
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                const choiceResult = await deferredInstallPrompt.userChoice;
+                if (choiceResult.outcome === 'accepted') {
+                    deferredInstallPrompt = null;
+                    localStorage.setItem('sb_pwa_installed', 'true');
+                    updateInstallButtonVisibility();
+                }
+            } else {
+                alert(t.installManualGuide);
+            }
+        };
+
+        updateInstallButtonVisibility();
+
         // Verify & Initialize Custom Password Reset Screen when user clicks link in Gmail
         async function initCustomResetScreen() {
             const t = translations[currentLang];
@@ -1469,7 +1566,6 @@
                     throw new Error(t.invalidResetLink);
                 }
 
-                // Mark token as used and store updated sync reference
                 await updateDoc(doc(db, "password_resets", customResetToken), {
                     used: true
                 });
@@ -1667,6 +1763,7 @@
             document.getElementById('btn-lang-sd').classList.toggle('active', lang === 'sd');
 
             document.getElementById('header-title').innerText = t.brand;
+            document.getElementById('install-app-label').innerText = t.installAppBtn;
             document.getElementById('auth-title').innerText = t.authTitle;
             document.getElementById('auth-subtitle').innerText = t.subtitle;
             document.getElementById('tab-login').innerText = t.tabLogin;
@@ -2370,7 +2467,6 @@
             btn.innerText = t.sendingResetMail;
 
             try {
-                // Create secure 15-minute reset token in Firestore
                 const tokenDoc = await addDoc(collection(db, "password_resets"), {
                     uid: currentUserObj.uid,
                     email: currentUserObj.email.toLowerCase(),
