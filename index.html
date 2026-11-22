@@ -313,7 +313,7 @@
             border-radius: 10px;
         }
 
-        /* Beautiful Alert / Error Popup Modal */
+        /* Beautiful Alert / Error / No Internet Popup Modal */
         .alert-modal-overlay {
             position: fixed;
             inset: 0;
@@ -329,7 +329,7 @@
         .alert-modal-box {
             background: #FFFFFF;
             width: 100%;
-            max-width: 340px;
+            max-width: 345px;
             border-radius: 14px;
             box-shadow: 0 14px 35px rgba(0, 0, 0, 0.42);
             border: 1.5px solid var(--ajrak-gold);
@@ -349,8 +349,8 @@
         }
 
         .alert-icon-circle {
-            width: 56px;
-            height: 56px;
+            width: 58px;
+            height: 58px;
             margin: 0 auto 12px;
             border-radius: 50%;
             background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
@@ -360,6 +360,20 @@
             align-items: center;
             justify-content: center;
             box-shadow: 0 4px 12px rgba(139, 30, 36, 0.22);
+        }
+
+        .alert-icon-circle.network-icon {
+            background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+            border-color: var(--ajrak-blue);
+            color: var(--ajrak-blue);
+            box-shadow: 0 4px 12px rgba(20, 40, 75, 0.22);
+        }
+
+        .alert-icon-circle.install-icon {
+            background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+            border-color: #1E9E5A;
+            color: #157A43;
+            box-shadow: 0 4px 12px rgba(30, 158, 90, 0.22);
         }
 
         .alert-icon-circle svg {
@@ -375,12 +389,17 @@
             margin-bottom: 6px;
         }
 
+        .alert-modal-title.blue-title {
+            color: var(--ajrak-blue);
+        }
+
         .alert-modal-text {
             font-size: 13.5px;
             color: var(--ajrak-blue);
-            line-height: 1.5;
+            line-height: 1.55;
             margin-bottom: 18px;
             font-weight: 500;
+            white-space: pre-line;
         }
 
         .alert-modal-ok-btn {
@@ -1378,12 +1397,12 @@
         <div class="ajrak-border-strip"></div>
     </header>
 
-    <!-- Beautiful Invalid Login / Alert Popup Modal -->
+    <!-- Beautiful Alert / No Internet / Invalid Login / Install Guide Popup Modal -->
     <div id="custom-alert-overlay" class="alert-modal-overlay hidden" onclick="if(event.target.id === 'custom-alert-overlay') closeCustomAlert()">
         <div class="alert-modal-box">
             <div class="ajrak-border-strip"></div>
             <div class="alert-modal-body">
-                <div class="alert-icon-circle">
+                <div id="custom-alert-icon-box" class="alert-icon-circle">
                     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                 </div>
                 <div id="custom-alert-title" class="alert-modal-title">Invalid Username/Password</div>
@@ -1603,6 +1622,9 @@
         const ICON_DUSTBIN_SVG = `<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
         const ICON_EYE_OPEN = `<svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
         const ICON_EYE_CLOSED = `<svg viewBox="0 0 24 24"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>`;
+        const ICON_ALERT_EXCLAMATION = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
+        const ICON_WIFI_OFF = `<svg viewBox="0 0 24 24"><path d="M23.64 7c-.45-.34-4.93-4-11.64-4-1.5 0-2.89.19-4.15.48L18.18 13.8 23.64 7zm-6.6 8.22L3.27 1.44 2 2.72l2.05 2.06C1.91 5.76.59 6.82.36 7l11.63 14.49.01.01.01-.01 3.9-4.86 3.32 3.32 1.27-1.27-3.46-3.46z"/></svg>`;
+        const ICON_INSTALL_PHONE = `<svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14zm-1-6h-3V8h-2v5H8l4 4 4-4z"/></svg>`;
 
         window.togglePassVisibility = function(inputId, btnEl) {
             const input = document.getElementById(inputId);
@@ -1621,7 +1643,8 @@
                 dir: "ltr",
                 brand: "Sindhi World Book",
                 installAppBtn: "Install App",
-                installManualGuide: "To install Sindhi World Book:\n1. Tap the browser menu (⋮ or Share icon)\n2. Select 'Install app' or 'Add to Home screen'.",
+                installTitle: "Install Sindhi World Book",
+                installManualGuide: "If 'Installing app' gets stuck on Android:\n1. Open Phone Settings > Apps > Chrome > Storage > Clear Cache.\n2. Or tap Chrome Menu (⋮) > 'Add to Home screen' > 'Install'.",
                 authTitle: "❖ Sindhi World Book ❖",
                 subtitle: "Connect with friends in the traditional colors of Sindh",
                 tabLogin: "Login",
@@ -1631,7 +1654,9 @@
                 btnLogin: "Login",
                 invalidLoginTitle: "Invalid Username / Password",
                 invalidLoginDesc: "The email address or password you entered is incorrect. Please check and try again.",
-                alertOkBtn: "Try Again",
+                noInternetTitle: "No Internet Connection",
+                noInternetDesc: "Unable to connect to the server. Please check your Wi-Fi or Mobile Data connection and try again.",
+                alertOkBtn: "OK",
                 forgotPassBtn: "🔑 Forgot Password?",
                 forgotEnterEmail: "Please enter your registered email address in the email box above first, then click Forgot Password.",
                 forgotAccountNotFound: "No account found with this email address.",
@@ -1755,7 +1780,8 @@
                 dir: "rtl",
                 brand: "سنڌي ورلڊ بڪ",
                 installAppBtn: "ايپ انسٽال",
-                installManualGuide: "سنڌي ورلڊ بڪ ايپ انسٽال ڪرڻ لاءِ:\n1. برائوزر جي مينيو (⋮ يا Share) تي ڪلڪ ڪريو\n2. 'Install app' يا 'Add to Home screen' چونڊيو.",
+                installTitle: "سنڌي ورلڊ بڪ ايپ انسٽال",
+                installManualGuide: "جيڪڏهن اينڊرائيڊ تي 'Installing app' رڪجي وڃي:\n1. موبائيل جي Settings > Apps > Chrome > Storage > Clear Cache ڪريو.\n2. يا ڪروم مينيو (⋮) > 'Add to Home screen' > 'Install' چونڊيو.",
                 authTitle: "❖ سنڌي ورلڊ بڪ ❖",
                 subtitle: "سنڌ جي ثقافت ۽ اجرڪ جي رنگن ۾ دوستن سان جڙيل رهو",
                 tabLogin: "لاگ ان ڪريو",
@@ -1765,7 +1791,9 @@
                 btnLogin: "لاگ ان ڪريو",
                 invalidLoginTitle: "غلط اي ميل يا پاسورڊ!",
                 invalidLoginDesc: "توهان جو لکيل اي ميل ايڊريس يا پاسورڊ درست ناهي. مهرباني ڪري چيڪ ڪري ٻيهر ڪوشش ڪريو.",
-                alertOkBtn: "ٻيهر ڪوشش ڪريو",
+                noInternetTitle: "انٽرنيٽ ڪنيڪشن ناهي!",
+                noInternetDesc: "سرور سان رابطو نٿو ٿي سگهي. مهرباني ڪري پنهنجو وائي فائي يا موبائيل ڊيٽا چيڪ ڪري ٻيهر ڪوشش ڪريو.",
+                alertOkBtn: "ٺيڪ آهي",
                 forgotPassBtn: "🔑 پاسورڊ وسري ويو؟ (Forgot Password)",
                 forgotEnterEmail: "مهرباني ڪري پهرين مٿي اي ميل واري خاني ۾ پنهنجو اي ميل لکو ۽ پوءِ Forgot Password تي ڪلڪ ڪريو.",
                 forgotAccountNotFound: "هن اي ميل سان ڪو به اڪائونٽ موجود ناهي.",
@@ -1907,10 +1935,28 @@
         let unsubscribeHistory = null;
         let unsubscribeMessages = null;
 
-        /* Custom Beautiful Alert Popup Functions */
-        window.showCustomAlert = function(title, desc, btnLabel) {
+        /* Custom Beautiful Alert Popup Functions (Supports Error, Network, Install types) */
+        window.showCustomAlert = function(title, desc, btnLabel, type = "error") {
             const t = translations[currentLang];
-            document.getElementById('custom-alert-title').innerText = title || t.invalidLoginTitle;
+            const iconBox = document.getElementById('custom-alert-icon-box');
+            const titleEl = document.getElementById('custom-alert-title');
+
+            iconBox.className = "alert-icon-circle";
+            titleEl.className = "alert-modal-title";
+
+            if (type === "network") {
+                iconBox.classList.add("network-icon");
+                titleEl.classList.add("blue-title");
+                iconBox.innerHTML = ICON_WIFI_OFF;
+            } else if (type === "install") {
+                iconBox.classList.add("install-icon");
+                titleEl.classList.add("blue-title");
+                iconBox.innerHTML = ICON_INSTALL_PHONE;
+            } else {
+                iconBox.innerHTML = ICON_ALERT_EXCLAMATION;
+            }
+
+            titleEl.innerText = title || t.invalidLoginTitle;
             document.getElementById('custom-alert-desc').innerText = desc || t.invalidLoginDesc;
             document.getElementById('custom-alert-btn').innerText = btnLabel || t.alertOkBtn;
             document.getElementById('custom-alert-overlay').classList.remove('hidden');
@@ -1920,12 +1966,27 @@
             document.getElementById('custom-alert-overlay').classList.add('hidden');
         };
 
+        // Automatically show No Internet popup if device goes offline
+        window.addEventListener('offline', () => {
+            const t = translations[currentLang];
+            showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+        });
+
+        function isNetworkError(err) {
+            if (!navigator.onLine) return true;
+            const code = (err?.code || '').toLowerCase();
+            const msg = (err?.message || '').toLowerCase();
+            return code.includes('network-request-failed') ||
+                   msg.includes('network-request-failed') ||
+                   msg.includes('failed to fetch') ||
+                   msg.includes('networkerror');
+        }
+
         let deferredInstallPrompt = null;
 
         function isAppAlreadyInstalled() {
             return window.matchMedia('(display-mode: standalone)').matches ||
-                   window.navigator.standalone === true ||
-                   localStorage.getItem('sb_pwa_installed') === 'true';
+                   window.navigator.standalone === true;
         }
 
         function updateInstallButtonVisibility() {
@@ -1941,28 +2002,28 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredInstallPrompt = e;
-            localStorage.removeItem('sb_pwa_installed');
             updateInstallButtonVisibility();
         });
 
         window.addEventListener('appinstalled', () => {
             deferredInstallPrompt = null;
-            localStorage.setItem('sb_pwa_installed', 'true');
             updateInstallButtonVisibility();
         });
 
         window.triggerPwaInstall = async function() {
             const t = translations[currentLang];
             if (deferredInstallPrompt) {
-                deferredInstallPrompt.prompt();
-                const choiceResult = await deferredInstallPrompt.userChoice;
-                if (choiceResult.outcome === 'accepted') {
-                    deferredInstallPrompt = null;
-                    localStorage.setItem('sb_pwa_installed', 'true');
-                    updateInstallButtonVisibility();
+                try {
+                    await deferredInstallPrompt.prompt();
+                    const choiceResult = await deferredInstallPrompt.userChoice;
+                    if (choiceResult.outcome === 'accepted') {
+                        deferredInstallPrompt = null;
+                    }
+                } catch (err) {
+                    showCustomAlert(t.installTitle, t.installManualGuide, t.alertOkBtn, "install");
                 }
             } else {
-                alert(t.installManualGuide);
+                showCustomAlert(t.installTitle, t.installManualGuide, t.alertOkBtn, "install");
             }
         };
 
@@ -2002,6 +2063,10 @@
 
         window.sendLoginForgotPassword = async function() {
             const t = translations[currentLang];
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
             const emailInput = document.getElementById('login-email').value.trim().toLowerCase();
             const btn = document.getElementById('btn-forgot-password');
 
@@ -2026,7 +2091,11 @@
                 await sendCustomResetLinkForUser(userData);
                 showMessage(t.resetMailSentSuccess, false);
             } catch (err) {
-                showMessage(err.message, true);
+                if (isNetworkError(err)) {
+                    showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                } else {
+                    showMessage(err.message, true);
+                }
             } finally {
                 btn.disabled = false;
                 btn.innerText = t.forgotPassBtn;
@@ -2067,6 +2136,10 @@
 
         window.confirmCustomEmailPasswordReset = async function() {
             const t = translations[currentLang];
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
             const newPass = document.getElementById('email-reset-new-pass').value;
             const repeatPass = document.getElementById('email-reset-repeat-pass').value;
             const statusEl = document.getElementById('email-reset-status');
@@ -2110,9 +2183,13 @@
                 document.getElementById('email-reset-new-pass').value = '';
                 document.getElementById('email-reset-repeat-pass').value = '';
             } catch (err) {
-                statusEl.innerText = err.message;
-                statusEl.className = "status-msg status-error";
-                statusEl.classList.remove('hidden');
+                if (isNetworkError(err)) {
+                    showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                } else {
+                    statusEl.innerText = err.message;
+                    statusEl.className = "status-msg status-error";
+                    statusEl.classList.remove('hidden');
+                }
                 btn.disabled = false;
             }
         };
@@ -2390,6 +2467,10 @@
 
         window.registerUser = async function() {
             const t = translations[currentLang];
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
             const name = document.getElementById('signup-name').value.trim();
             const email = document.getElementById('signup-email').value.trim();
             const password = document.getElementById('signup-password').value;
@@ -2423,7 +2504,11 @@
                 switchTab('login');
                 showMessage(t.msgSignupSuccess, false);
             } catch (error) {
-                showMessage(error.message, true);
+                if (isNetworkError(error)) {
+                    showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                } else {
+                    showMessage(error.message, true);
+                }
             }
         };
 
@@ -2434,8 +2519,13 @@
 
             document.getElementById('auth-message').classList.add('hidden');
 
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
+
             if (!email || !password) {
-                showCustomAlert(t.invalidLoginTitle, t.msgLoginEmpty, t.alertOkBtn);
+                showCustomAlert(t.invalidLoginTitle, t.msgLoginEmpty, t.alertOkBtn, "error");
                 return;
             }
 
@@ -2450,7 +2540,11 @@
                     }).catch(() => {});
                 }
             } catch (error) {
-                showCustomAlert(t.invalidLoginTitle, t.invalidLoginDesc, t.alertOkBtn);
+                if (isNetworkError(error)) {
+                    showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                } else {
+                    showCustomAlert(t.invalidLoginTitle, t.invalidLoginDesc, t.alertOkBtn, "error");
+                }
             }
         };
 
@@ -2749,6 +2843,11 @@
 
         window.sendChatMessage = async function(e) {
             e.preventDefault();
+            const t = translations[currentLang];
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
             if (!activeChatFriendUid || !currentUserObj) return;
 
             const input = document.getElementById('wa-chat-input');
@@ -3298,6 +3397,10 @@
 
         window.triggerCustomResetEmail = async function() {
             const t = translations[currentLang];
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
             const btn = document.getElementById('btn-send-reset-mail');
             const msgBox = document.getElementById('reset-mail-status-msg');
             if (!currentUserObj || !currentUserObj.email) return;
@@ -3323,6 +3426,10 @@
 
         window.changeUserPassword = async function() {
             const t = translations[currentLang];
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
             const currentPass = document.getElementById('setting-current-pass').value;
             const newPass = document.getElementById('setting-new-pass').value;
             const confirmPass = document.getElementById('setting-confirm-pass').value;
@@ -3591,6 +3698,10 @@
 
         window.createPost = async function() {
             const t = translations[currentLang];
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
             const text = document.getElementById('post-text').value.trim();
             const imageInput = document.getElementById('post-image');
             const file = imageInput.files[0];
