@@ -151,14 +151,13 @@
             border: 1.5px solid #FFFFFF;
         }
 
-        /* Header Bottom Row: Left = User Dropdown, Right = Language Switcher */
+        /* Header Bottom Row: Left = User Dropdown, Center = Install App, Right = Language Switcher */
         .header-bottom-row {
-            padding: 4px 14px 10px;
+            padding: 4px 10px 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 8px;
+            gap: 5px;
             direction: ltr;
         }
 
@@ -169,15 +168,16 @@
             border-radius: 20px;
             padding: 2px;
             margin-left: auto;
+            flex-shrink: 0;
         }
 
         .lang-btn {
             background: none;
             border: none;
             color: #EAE2D3;
-            padding: 3px 10px;
+            padding: 3px 8px;
             border-radius: 18px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             cursor: pointer;
         }
@@ -187,25 +187,64 @@
             color: #FFFFFF;
         }
 
+        /* Compact Install App Button inside Header Center */
+        .btn-install-app {
+            background: linear-gradient(135deg, #1E9E5A 0%, #157A43 100%);
+            color: #FFFFFF;
+            border: 1px solid #A7F3D0;
+            padding: 4px 9px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+            transition: 0.2s;
+            flex-shrink: 0;
+        }
+
+        .btn-install-app:hover {
+            transform: scale(1.03);
+            background: #17874B;
+        }
+
+        .btn-install-app svg {
+            width: 12px;
+            height: 12px;
+            fill: currentColor;
+            flex-shrink: 0;
+        }
+
         /* User Dropdown Menu (Left Side) */
         .user-dropdown-wrapper {
             position: relative;
             display: inline-block;
+            flex-shrink: 0;
         }
 
         .user-menu-trigger {
             background-color: var(--ajrak-red);
             border: 1px solid var(--ajrak-gold);
             color: #FFFFFF;
-            padding: 5px 12px;
+            padding: 4px 10px;
             border-radius: 20px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 13px;
+            font-size: 12px;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
+            max-width: 125px;
             transition: 0.2s;
+        }
+
+        .user-menu-trigger span:first-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .user-menu-trigger:hover {
@@ -267,42 +306,6 @@
             font-weight: bold;
             padding: 1px 7px;
             border-radius: 10px;
-        }
-
-        /* Install App Banner Row (Visible until app is installed) */
-        .install-app-bar {
-            max-width: 550px;
-            margin: 12px auto 0;
-            padding: 0 12px;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .btn-install-app {
-            background: linear-gradient(135deg, #1E9E5A 0%, #157A43 100%);
-            color: #FFFFFF;
-            border: 1.5px solid #A7F3D0;
-            padding: 8px 16px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            box-shadow: 0 3px 10px rgba(21, 122, 67, 0.32);
-            transition: 0.2s;
-        }
-
-        .btn-install-app:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 5px 14px rgba(21, 122, 67, 0.42);
-        }
-
-        .btn-install-app svg {
-            width: 17px;
-            height: 17px;
-            fill: currentColor;
         }
 
         /* پاپ اپ موڈل */
@@ -640,7 +643,7 @@
 
         .container {
             max-width: 550px;
-            margin: 12px auto 16px;
+            margin: 16px auto;
             padding: 0 12px;
         }
 
@@ -661,7 +664,7 @@
 
         .card-body { padding: 14px; }
 
-        #auth-section, #reset-password-screen { max-width: 420px; margin: 20px auto 30px; text-align: center; }
+        #auth-section, #reset-password-screen { max-width: 420px; margin: 24px auto 30px; text-align: center; }
         #auth-section h2, #reset-password-screen h2 { color: var(--ajrak-red); margin-bottom: 6px; font-size: 24px; }
         #auth-section p.subtitle, #reset-password-screen p.subtitle { color: var(--ajrak-blue); margin-bottom: 16px; font-size: 14px; }
 
@@ -697,6 +700,22 @@
         .btn-primary:disabled {
             opacity: 0.65;
             cursor: not-allowed;
+        }
+
+        .btn-forgot-link {
+            background: none;
+            border: none;
+            color: var(--ajrak-blue);
+            font-size: 13px;
+            font-weight: bold;
+            margin-top: 12px;
+            cursor: pointer;
+            text-decoration: underline;
+            display: inline-block;
+        }
+
+        .btn-forgot-link:hover {
+            color: var(--ajrak-red);
         }
 
         .status-msg { margin-top: 12px; padding: 10px; border-radius: 6px; font-size: 13px; line-height: 1.6; text-align: start; }
@@ -999,6 +1018,12 @@
                 </div>
             </div>
 
+            <!-- Center (Red Marked Area): Compact Install App Button -->
+            <button id="btn-install-app" class="btn-install-app" onclick="triggerPwaInstall()">
+                <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                <span id="install-app-label">Install App</span>
+            </button>
+
             <!-- Right Side: English / Sindhi Switcher -->
             <div class="lang-switcher">
                 <button id="btn-lang-en" class="lang-btn active" onclick="setLanguage('en')">English</button>
@@ -1007,14 +1032,6 @@
         </div>
         <div class="ajrak-border-strip"></div>
     </header>
-
-    <!-- Persistent "Install App" Button (Stays visible until PWA app is installed) -->
-    <div id="install-app-bar" class="install-app-bar">
-        <button id="btn-install-app" class="btn-install-app" onclick="triggerPwaInstall()">
-            <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-            <span id="install-app-label">Install App</span>
-        </button>
-    </div>
 
     <!-- Popup Modal -->
     <div id="popup-overlay" class="modal-overlay hidden" onclick="closePopupOutside(event)">
@@ -1091,6 +1108,7 @@
                 <input type="email" id="login-email" placeholder="Enter your email address" dir="ltr">
                 <input type="password" id="login-password" placeholder="Enter your password" dir="ltr">
                 <button id="btn-login-submit" class="btn-primary" onclick="loginUser()">Login</button>
+                <button id="btn-forgot-password" class="btn-forgot-link" onclick="sendLoginForgotPassword()">🔑 Forgot Password?</button>
             </div>
 
             <div id="signup-form" class="hidden">
@@ -1146,6 +1164,7 @@
             query, 
             orderBy, 
             where,
+            getDocs,
             doc, 
             setDoc,
             getDoc,
@@ -1198,6 +1217,9 @@
                 loginEmail: "Enter your email address",
                 loginPass: "Enter your password",
                 btnLogin: "Login",
+                forgotPassBtn: "🔑 Forgot Password?",
+                forgotEnterEmail: "Please enter your registered email address in the email box above first, then click Forgot Password.",
+                forgotAccountNotFound: "No account found with this email address.",
                 signupName: "Full Name",
                 signupEmail: "Email Address",
                 signupPass: "Create Password (min 6 characters)",
@@ -1235,8 +1257,8 @@
                 newPassPlaceholder: "New Password (min 6 characters)",
                 repeatPassPlaceholder: "Repeat Password",
                 saveNewPassBtn: "Save New Password",
-                invalidResetLink: "This password reset link has expired or is invalid. Please request a new one from Settings.",
-                resetPassDoneSuccess: "Your password has been updated successfully! You can now continue using Sindhi Book.",
+                invalidResetLink: "This password reset link has expired or is invalid. Please request a new one.",
+                resetPassDoneSuccess: "Your password has been updated successfully! You can now log in with your new password.",
                 profileFriendsCount: "Friends",
                 profilePostsCount: "My Posts",
                 publicLabel: "🌐 Public",
@@ -1312,7 +1334,7 @@
             sd: {
                 dir: "rtl",
                 brand: "سنڌي بڪ",
-                installAppBtn: "ايپ انسٽال ڪريو",
+                installAppBtn: "ايپ انسٽال",
                 installManualGuide: "سنڌي بڪ ايپ انسٽال ڪرڻ لاءِ:\n1. برائوزر جي مينيو (⋮ يا Share) تي ڪلڪ ڪريو\n2. 'Install app' يا 'Add to Home screen' چونڊيو.",
                 authTitle: "❖ سنڌي بڪ ❖",
                 subtitle: "سنڌ جي ثقافت ۽ اجرڪ جي رنگن ۾ دوستن سان جڙيل رهو",
@@ -1321,6 +1343,9 @@
                 loginEmail: "پنهنجو اي ميل ايڊريس لکو",
                 loginPass: "پنهنجو پاسورڊ لکو",
                 btnLogin: "لاگ ان ڪريو",
+                forgotPassBtn: "🔑 پاسورڊ وسري ويو؟ (Forgot Password)",
+                forgotEnterEmail: "مهرباني ڪري پهرين مٿي اي ميل واري خاني ۾ پنهنجو اي ميل لکو ۽ پوءِ Forgot Password تي ڪلڪ ڪريو.",
+                forgotAccountNotFound: "هن اي ميل سان ڪو به اڪائونٽ موجود ناهي.",
                 signupName: "توهان جو پورو نالو",
                 signupEmail: "اي ميل ايڊريس",
                 signupPass: "نئون پاسورڊ (گهٽ ۾ گهٽ 6 اکر)",
@@ -1358,8 +1383,8 @@
                 newPassPlaceholder: "نئون پاسورڊ (New Password)",
                 repeatPassPlaceholder: "ٻيهر پاسورڊ لکو (Repeat Password)",
                 saveNewPassBtn: "نئون پاسورڊ محفوظ ڪريو",
-                invalidResetLink: "هي لنڪ ختم ٿي چڪي آهي يا غلط آهي. مهرباني ڪري سيٽنگ مان نئين لنڪ موڪليو.",
-                resetPassDoneSuccess: "توهان جو پاسورڊ ڪاميابيءَ سان تبديل ٿي ويو آهي!",
+                invalidResetLink: "هي لنڪ ختم ٿي چڪي آهي يا غلط آهي. مهرباني ڪري نئين لنڪ موڪليو.",
+                resetPassDoneSuccess: "توهان جو پاسورڊ ڪاميابيءَ سان تبديل ٿي ويو آهي! هاڻي نئين پاسورڊ سان لاگ ان ڪريو.",
                 profileFriendsCount: "دوست",
                 profilePostsCount: "منهنجون پوسٽون",
                 publicLabel: "🌐 پبلڪ (Public)",
@@ -1450,7 +1475,7 @@
         let unsubscribeNotifs = null;
         let unsubscribeHistory = null;
 
-        // ==================== PWA INSTALL LOGIC (Stays visible until installed) ====================
+        // ==================== PWA INSTALL LOGIC ====================
         let deferredInstallPrompt = null;
 
         function isAppAlreadyInstalled() {
@@ -1460,12 +1485,12 @@
         }
 
         function updateInstallButtonVisibility() {
-            const installBar = document.getElementById('install-app-bar');
-            if (!installBar) return;
+            const installBtn = document.getElementById('btn-install-app');
+            if (!installBtn) return;
             if (isAppAlreadyInstalled()) {
-                installBar.classList.add('hidden');
+                installBtn.classList.add('hidden');
             } else {
-                installBar.classList.remove('hidden');
+                installBtn.classList.remove('hidden');
             }
         }
 
@@ -1498,6 +1523,73 @@
         };
 
         updateInstallButtonVisibility();
+
+        // ==================== CUSTOM RESET EMAIL HELPER ====================
+        async function sendCustomResetLinkForUser(userRecord) {
+            const tokenDoc = await addDoc(collection(db, "password_resets"), {
+                uid: userRecord.uid,
+                email: userRecord.email.toLowerCase(),
+                name: userRecord.name || "User",
+                currentKey: userRecord.passSync || null,
+                used: false,
+                expiresAt: Date.now() + (15 * 60 * 1000)
+            });
+
+            const baseUrl = window.location.origin + window.location.pathname;
+            const customResetUrl = `${baseUrl}?resetToken=${tokenDoc.id}`;
+
+            const response = await fetch(DRIVE_URLS[0], {
+                method: "POST",
+                redirect: "follow",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify({
+                    action: "send_reset_email",
+                    email: userRecord.email,
+                    name: userRecord.name,
+                    resetUrl: customResetUrl
+                })
+            });
+
+            const resText = await response.text();
+            const resJson = JSON.parse(resText);
+            if (resJson.status !== "sent") {
+                throw new Error(resJson.message || "Email send failed");
+            }
+        }
+
+        // Forgot Password from Login Page
+        window.sendLoginForgotPassword = async function() {
+            const t = translations[currentLang];
+            const emailInput = document.getElementById('login-email').value.trim().toLowerCase();
+            const btn = document.getElementById('btn-forgot-password');
+
+            if (!emailInput) {
+                showMessage(t.forgotEnterEmail, true);
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = t.sendingResetMail;
+
+            try {
+                const q = query(collection(db, "users"), where("email", "==", emailInput));
+                const snap = await getDocs(q);
+
+                if (snap.empty) {
+                    showMessage(t.forgotAccountNotFound, true);
+                    return;
+                }
+
+                const userData = snap.docs[0].data();
+                await sendCustomResetLinkForUser(userData);
+                showMessage(t.resetMailSentSuccess, false);
+            } catch (err) {
+                showMessage(err.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = t.forgotPassBtn;
+            }
+        };
 
         // Verify & Initialize Custom Password Reset Screen when user clicks link in Gmail
         async function initCustomResetScreen() {
@@ -1772,6 +1864,7 @@
             document.getElementById('login-email').placeholder = t.loginEmail;
             document.getElementById('login-password').placeholder = t.loginPass;
             document.getElementById('btn-login-submit').innerText = t.btnLogin;
+            document.getElementById('btn-forgot-password').innerText = t.forgotPassBtn;
 
             document.getElementById('signup-name').placeholder = t.signupName;
             document.getElementById('signup-email').placeholder = t.signupEmail;
@@ -2373,7 +2466,7 @@
             content.innerHTML = listHTML;
         };
 
-        // ==================== SETTINGS POPUP (History, Change Password, Custom Email Reset Password) ====================
+        // ==================== SETTINGS POPUP ====================
         window.renderSettingMenu = function() {
             const t = translations[currentLang];
             document.getElementById('modal-title').innerText = t.modalSettingTitle;
@@ -2455,7 +2548,7 @@
             }
         };
 
-        // Send Branded Sindhi Book Reset Link via Apps Script
+        // Send Branded Sindhi Book Reset Link from Settings
         window.triggerCustomResetEmail = async function() {
             const t = translations[currentLang];
             const btn = document.getElementById('btn-send-reset-mail');
@@ -2467,40 +2560,10 @@
             btn.innerText = t.sendingResetMail;
 
             try {
-                const tokenDoc = await addDoc(collection(db, "password_resets"), {
-                    uid: currentUserObj.uid,
-                    email: currentUserObj.email.toLowerCase(),
-                    name: currentUserObj.name,
-                    currentKey: currentUserObj.passSync || null,
-                    used: false,
-                    expiresAt: Date.now() + (15 * 60 * 1000)
-                });
-
-                const baseUrl = window.location.origin + window.location.pathname;
-                const customResetUrl = `${baseUrl}?resetToken=${tokenDoc.id}`;
-
-                const response = await fetch(DRIVE_URLS[0], {
-                    method: "POST",
-                    redirect: "follow",
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({
-                        action: "send_reset_email",
-                        email: currentUserObj.email,
-                        name: currentUserObj.name,
-                        resetUrl: customResetUrl
-                    })
-                });
-
-                const resText = await response.text();
-                const resJson = JSON.parse(resText);
-
-                if (resJson.status === "sent") {
-                    msgBox.innerText = t.resetMailSentSuccess;
-                    msgBox.className = "status-msg status-success";
-                    msgBox.classList.remove('hidden');
-                } else {
-                    throw new Error(resJson.message || "Email send failed");
-                }
+                await sendCustomResetLinkForUser(currentUserObj);
+                msgBox.innerText = t.resetMailSentSuccess;
+                msgBox.className = "status-msg status-success";
+                msgBox.classList.remove('hidden');
             } catch (err) {
                 msgBox.innerText = err.message;
                 msgBox.className = "status-msg status-error";
