@@ -308,7 +308,7 @@
             border-radius: 10px;
         }
 
-        /* پاپ اپ موڈل */
+        /* Popup Modal */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -816,7 +816,6 @@
         .control-btn.edit:hover { color: var(--ajrak-blue); border-color: var(--ajrak-blue); }
         .control-btn.delete:hover { color: var(--ajrak-red); border-color: var(--ajrak-red); background: #FFEBEE; }
 
-        /* پوسٹ کی تحریر کا رنگ: نارمل براؤن */
         .post-content {
             font-size: 15px;
             line-height: 1.6;
@@ -901,14 +900,12 @@
         .comment-controls button.edit:hover { color: var(--ajrak-blue); border-color: var(--ajrak-blue); }
         .comment-controls button.delete:hover { color: var(--ajrak-red); border-color: var(--ajrak-red); background: #FFEBEE; }
 
-        /* ریپلائی/کمنٹ کی تحریر کا رنگ: نارمل بلیو */
         .comment-body-text {
             color: var(--normal-blue-text);
             font-weight: 500;
             line-height: 1.5;
         }
 
-        /* Reply Like & Unlike Bar */
         .comment-reactions {
             display: flex;
             align-items: center;
@@ -975,18 +972,15 @@
             <h1><span>❖</span> <span id="header-title">Sindhi Book</span></h1>
             
             <div id="fb-icon-bar" class="fb-icon-bar hidden">
-                <!-- 1. Find Friends Icon -->
                 <button class="icon-circle-btn" onclick="openPopup('find')" title="Find Friends">
                     <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 </button>
 
-                <!-- 2. Friend Requests Icon -->
                 <button class="icon-circle-btn" onclick="openPopup('requests')" title="Friend Requests">
                     <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                     <span id="req-badge" class="badge-count hidden">0</span>
                 </button>
 
-                <!-- 3. Notifications Icon -->
                 <button class="icon-circle-btn" onclick="openPopup('notifications')" title="Notifications">
                     <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
                     <span id="notif-badge" class="badge-count hidden">0</span>
@@ -995,7 +989,6 @@
         </div>
 
         <div class="header-bottom-row">
-            <!-- Left Side: User Name + Dropdown Menu -->
             <div id="user-nav" class="user-dropdown-wrapper hidden">
                 <button class="user-menu-trigger" onclick="toggleUserDropdown(event)">
                     <span id="current-user-display"></span>
@@ -1018,13 +1011,11 @@
                 </div>
             </div>
 
-            <!-- Center (Red Marked Area): Compact Install App Button -->
             <button id="btn-install-app" class="btn-install-app" onclick="triggerPwaInstall()">
                 <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                 <span id="install-app-label">Install App</span>
             </button>
 
-            <!-- Right Side: English / Sindhi Switcher -->
             <div class="lang-switcher">
                 <button id="btn-lang-en" class="lang-btn active" onclick="setLanguage('en')">English</button>
                 <button id="btn-lang-sd" class="lang-btn" onclick="setLanguage('sd')">سنڌي</button>
@@ -1033,7 +1024,6 @@
         <div class="ajrak-border-strip"></div>
     </header>
 
-    <!-- Popup Modal -->
     <div id="popup-overlay" class="modal-overlay hidden" onclick="closePopupOutside(event)">
         <div class="modal-box">
             <div class="ajrak-border-strip"></div>
@@ -1077,7 +1067,6 @@
         </div>
     </div>
 
-    <!-- Custom Email Reset Password Screen -->
     <div id="reset-password-screen" class="card hidden">
         <div class="ajrak-border-strip"></div>
         <div class="card-body">
@@ -1092,7 +1081,6 @@
         </div>
     </div>
 
-    <!-- Login & Signup Section -->
     <div id="auth-section" class="card">
         <div class="ajrak-border-strip"></div>
         <div class="card-body">
@@ -1122,7 +1110,6 @@
         </div>
     </div>
 
-    <!-- Main News Feed -->
     <div id="feed-section" class="container hidden">
         <div class="card create-post">
             <div class="ajrak-border-strip"></div>
@@ -1141,7 +1128,6 @@
         <div id="posts-container"></div>
     </div>
 
-    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
@@ -1175,7 +1161,6 @@
             serverTimestamp 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Updated Google Apps Script Web App URL
         const DRIVE_URLS = [
             "https://script.google.com/macros/s/AKfycbysbfGXsJGM2Wbah8I7vUdpD7BOxqyWEtNY6sOGsIAFZUfDwMLYwtldrrYzXDeZ71eCNQ/exec"
         ];
@@ -1194,13 +1179,11 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Check URL parameters for Custom Reset Password Link (?resetToken=...)
         const urlParams = new URLSearchParams(window.location.search);
         const customResetToken = urlParams.get('resetToken');
         let isResetPasswordFlow = Boolean(customResetToken);
         let resetTokenData = null;
 
-        // SVG Icons for Edit (Pencil) and Delete (Dustbin)
         const ICON_EDIT_SVG = `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>`;
         const ICON_DUSTBIN_SVG = `<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
 
@@ -1475,7 +1458,6 @@
         let unsubscribeNotifs = null;
         let unsubscribeHistory = null;
 
-        // ==================== PWA INSTALL LOGIC ====================
         let deferredInstallPrompt = null;
 
         function isAppAlreadyInstalled() {
@@ -1524,7 +1506,6 @@
 
         updateInstallButtonVisibility();
 
-        // ==================== CUSTOM RESET EMAIL HELPER ====================
         async function sendCustomResetLinkForUser(userRecord) {
             const tokenDoc = await addDoc(collection(db, "password_resets"), {
                 uid: userRecord.uid,
@@ -1557,7 +1538,6 @@
             }
         }
 
-        // Forgot Password from Login Page
         window.sendLoginForgotPassword = async function() {
             const t = translations[currentLang];
             const emailInput = document.getElementById('login-email').value.trim().toLowerCase();
@@ -1591,7 +1571,6 @@
             }
         };
 
-        // Verify & Initialize Custom Password Reset Screen when user clicks link in Gmail
         async function initCustomResetScreen() {
             const t = translations[currentLang];
             document.getElementById('auth-section').classList.add('hidden');
@@ -1689,7 +1668,6 @@
             }
         };
 
-        // Dropdown Controls
         window.toggleUserDropdown = function(e) {
             e.stopPropagation();
             document.getElementById('user-dropdown-menu').classList.toggle('hidden');
@@ -2194,7 +2172,6 @@
             });
         }
 
-        // ==================== PROFILE POPUP ====================
         window.renderProfilePopup = function() {
             const t = translations[currentLang];
             const container = document.getElementById('popup-profile-content');
@@ -2356,7 +2333,6 @@
             await updateDoc(doc(db, "users", currentUserObj.uid), { profilePrivacy: nextState });
         };
 
-        // ==================== FRIENDS POPUP ====================
         window.renderFriendsPopup = function() {
             const t = translations[currentLang];
             const container = document.getElementById('popup-friends-list');
@@ -2466,7 +2442,6 @@
             content.innerHTML = listHTML;
         };
 
-        // ==================== SETTINGS POPUP ====================
         window.renderSettingMenu = function() {
             const t = translations[currentLang];
             document.getElementById('modal-title').innerText = t.modalSettingTitle;
@@ -2548,7 +2523,6 @@
             }
         };
 
-        // Send Branded Sindhi Book Reset Link from Settings
         window.triggerCustomResetEmail = async function() {
             const t = translations[currentLang];
             const btn = document.getElementById('btn-send-reset-mail');
@@ -2630,7 +2604,6 @@
             }
         };
 
-        // ==================== FIND FRIENDS ====================
         window.renderFindPopup = function() {
             const t = translations[currentLang];
             const container = document.getElementById('popup-find-list');
@@ -3309,7 +3282,6 @@
         setLanguage(currentLang);
     </script>
 
-    <!-- Service Worker Registration for PWA Install -->
     <script>
         if ("serviceWorker" in navigator) {
             window.addEventListener("load", () => {
