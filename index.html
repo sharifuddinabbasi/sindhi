@@ -537,9 +537,23 @@
             direction: ltr;
         }
 
-        .wa-tick-read {
-            color: #53BDEB;
+        /* Tick States: Sent (Single Grey), Delivered (Double Grey), Read (Double Green) */
+        .wa-tick-sent {
+            color: #8696A0;
             font-weight: bold;
+            letter-spacing: -1px;
+        }
+
+        .wa-tick-delivered {
+            color: #8696A0;
+            font-weight: bold;
+            letter-spacing: -1.5px;
+        }
+
+        .wa-tick-read {
+            color: #1E9E5A;
+            font-weight: 800;
+            letter-spacing: -1.5px;
         }
 
         .wa-input-bar {
@@ -1219,7 +1233,6 @@
             <h1><span>❖</span> <span id="header-title">Sindhi World Book</span></h1>
             
             <div id="fb-icon-bar" class="fb-icon-bar hidden">
-                <!-- New Message Icon (Left of Search Icon) -->
                 <button class="icon-circle-btn" onclick="openPopup('messages')" title="Messages">
                     <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.17L4 17.17V4h16v12zM7 9h10v2H7zm0-3h10v2H7zm0 6h7v2H7z"/></svg>
                     <span id="msg-badge" class="badge-count hidden">0</span>
@@ -1776,6 +1789,7 @@
         let myHistoryList = [];
         let allMyMessages = [];
         let activeChatFriendUid = null;
+        let previousUnreadCount = 0;
         let latestDocs = [];
         let unsubscribePosts = null;
         let unsubscribeUsers = null;
@@ -2377,6 +2391,32 @@
         });
 
         /* ==================== WHATSAPP STYLE MESSAGING LOGIC ==================== */
+        function playMessagePopSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.18);
+            } catch (e) {}
+        }
+
+        function updateAppIconBadge(count) {
+            if ("setAppBadge" in navigator) {
+                if (count > 0) {
+                    navigator.setAppBadge(count).catch(() => {});
+                } else if ("clearAppBadge" in navigator) {
+                    navigator.clearAppBadge().catch(() => {});
+                }
+            }
+        }
+
         function listenToMessages() {
             const q = query(
                 collection(db, "messages"),
@@ -2389,17 +2429,32 @@
                 });
                 allMyMessages.sort((a, b) => (a.clientTime || 0) - (b.clientTime || 0));
 
+                // Automatically mark incoming messages as Delivered (Double Grey Tick) when receiver's app syncs them
+                allMyMessages.forEach((m) => {
+                    if (m.receiverId === currentUserObj.uid && !m.delivered) {
+                        updateDoc(doc(db, "messages", m.id), { delivered: true }).catch(() => {});
+                    }
+                });
+
                 // Calculate total unread messages received by current user
                 const unreadMsgs = allMyMessages.filter(
                     m => m.receiverId === currentUserObj.uid && !m.read
                 );
+                const unreadCount = unreadMsgs.length;
+
+                if (unreadCount > previousUnreadCount) {
+                    playMessagePopSound();
+                }
+                previousUnreadCount = unreadCount;
+
                 const msgBadge = document.getElementById('msg-badge');
-                if (unreadMsgs.length > 0) {
-                    msgBadge.innerText = unreadMsgs.length;
+                if (unreadCount > 0) {
+                    msgBadge.innerText = unreadCount;
                     msgBadge.classList.remove('hidden');
                 } else {
                     msgBadge.classList.add('hidden');
                 }
+                updateAppIconBadge(unreadCount);
 
                 // If chat popup is open, refresh live
                 const popupMsgEl = document.getElementById('popup-messages');
@@ -2420,7 +2475,10 @@
                 m => m.senderId === friendUid && m.receiverId === currentUserObj.uid && !m.read
             );
             for (const msg of unreadFromFriend) {
-                await updateDoc(doc(db, "messages", msg.id), { read: true }).catch(() => {});
+                await updateDoc(doc(db, "messages", msg.id), {
+                    delivered: true,
+                    read: true
+                }).catch(() => {});
             }
         }
 
@@ -2437,7 +2495,6 @@
             if (!container) return;
             container.innerHTML = '';
 
-            // Collect friends + anyone who has sent/received messages with current user
             const chatPartnerIds = new Set(myFriendsList);
             allMyMessages.forEach(m => {
                 if (m.senderId && m.senderId !== currentUserObj.uid) chatPartnerIds.add(m.senderId);
@@ -2451,7 +2508,6 @@
                 return;
             }
 
-            // Enrich with unread count and last message timestamp for WhatsApp-like sorting
             const enriched = chatUsers.map(u => {
                 const thread = allMyMessages.filter(
                     m => (m.senderId === u.uid && m.receiverId === currentUserObj.uid) ||
@@ -2537,9 +2593,16 @@
             let html = '';
             thread.forEach(m => {
                 const isMine = m.senderId === currentUserObj.uid;
-                const tickHTML = isMine
-                    ? `<span class="${m.read ? 'wa-tick-read' : ''}">${m.read ? '✓✓' : '✓'}</span>`
-                    : '';
+                let tickHTML = '';
+                if (isMine) {
+                    if (m.read) {
+                        tickHTML = `<span class="wa-tick-read">✓✓</span>`;
+                    } else if (m.delivered) {
+                        tickHTML = `<span class="wa-tick-delivered">✓✓</span>`;
+                    } else {
+                        tickHTML = `<span class="wa-tick-sent">✓</span>`;
+                    }
+                }
 
                 html += `
                     <div class="wa-msg-bubble ${isMine ? 'wa-msg-sent' : 'wa-msg-received'}">
@@ -2575,6 +2638,7 @@
                 text: text,
                 timeText: timeText,
                 clientTime: Date.now(),
+                delivered: false,
                 read: false,
                 createdAt: serverTimestamp()
             });
