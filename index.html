@@ -626,8 +626,8 @@
         .card-body { padding: 14px; }
 
         #auth-section, #reset-password-screen { max-width: 420px; margin: 30px auto; text-align: center; }
-        #auth-section h2, #reset-password-screen h2 { color: var(--ajrak-red); margin-bottom: 6px; font-size: 25px; }
-        #auth-section p.subtitle, #reset-password-screen p.subtitle { color: var(--ajrak-blue); margin-bottom: 18px; font-size: 14px; }
+        #auth-section h2, #reset-password-screen h2 { color: var(--ajrak-red); margin-bottom: 6px; font-size: 24px; }
+        #auth-section p.subtitle, #reset-password-screen p.subtitle { color: var(--ajrak-blue); margin-bottom: 16px; font-size: 14px; }
 
         .auth-tabs { display: flex; margin-bottom: 16px; border-bottom: 2px solid #EAE2D3; }
         .tab-btn { flex: 1; padding: 10px; background: none; border: none; font-size: 15px; font-weight: bold; color: #666; cursor: pointer; }
@@ -1016,17 +1016,18 @@
         </div>
     </div>
 
-    <!-- Custom Email Reset Password Screen (Opens when user clicks reset link in email) -->
+    <!-- Custom Email Reset Password Screen (Opens when user clicks reset link in Gmail) -->
     <div id="reset-password-screen" class="card hidden">
         <div class="ajrak-border-strip"></div>
         <div class="card-body">
             <h2 id="reset-screen-title">🔑 Reset Password</h2>
-            <p id="reset-screen-email" class="subtitle" dir="ltr"></p>
+            <p id="reset-screen-subtitle" style="font-size:13px; color:#555; margin-bottom:4px;">Sindhi Book Account:</p>
+            <p id="reset-screen-email" class="subtitle" style="font-weight:bold;" dir="ltr"></p>
             <input type="password" id="email-reset-new-pass" placeholder="New Password (min 6 characters)" dir="ltr">
             <input type="password" id="email-reset-repeat-pass" placeholder="Repeat Password" dir="ltr">
-            <button id="btn-confirm-email-reset" class="btn-primary" onclick="confirmEmailPasswordReset()">Save New Password</button>
+            <button id="btn-confirm-email-reset" class="btn-primary" onclick="confirmCustomEmailPasswordReset()">Save New Password</button>
             <div id="email-reset-status" class="status-msg hidden"></div>
-            <button id="btn-back-to-login" class="btn-sm neutral" style="margin-top:12px;" onclick="exitResetScreen()">← Back to Login</button>
+            <button id="btn-back-to-login" class="btn-sm neutral" style="margin-top:12px;" onclick="exitResetScreen()">← Back to Sindhi Book</button>
         </div>
     </div>
 
@@ -1086,9 +1087,6 @@
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
             sendEmailVerification, 
-            sendPasswordResetEmail,
-            verifyPasswordResetCode,
-            confirmPasswordReset,
             updateProfile,
             updatePassword,
             EmailAuthProvider,
@@ -1114,7 +1112,7 @@
             serverTimestamp 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Multi-Drive Image Upload Web App URLs (Auto-Failover List)
+        // Multi-Drive & Email Service Web App URLs
         const DRIVE_URLS = [
             "https://script.google.com/macros/s/AKfycbwRcMRIThfbxZXCQVgjQzwTiryuw1GZMbHbMc7AO9leRXSWnMib421odMxupHPG0m6n/exec"
         ];
@@ -1133,11 +1131,11 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Check URL parameters for Password Reset Link (?mode=resetPassword&oobCode=...)
+        // Check URL parameters for Custom Reset Password Link (?resetToken=...)
         const urlParams = new URLSearchParams(window.location.search);
-        const actionMode = urlParams.get('mode');
-        const actionOobCode = urlParams.get('oobCode');
-        let isResetPasswordFlow = (actionMode === 'resetPassword' && Boolean(actionOobCode));
+        const customResetToken = urlParams.get('resetToken');
+        let isResetPasswordFlow = Boolean(customResetToken);
+        let resetTokenData = null;
 
         // SVG Icons for Edit (Pencil) and Delete (Dustbin)
         const ICON_EDIT_SVG = `<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 0 0 0-1.42l-2.34-2.34a1.003 1.003 0 0 0-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>`;
@@ -1185,13 +1183,14 @@
                 resetMailDesc: "Click the button below to receive a password reset link on your registered email:",
                 sendResetMailBtn: "Send Reset Link to Email",
                 sendingResetMail: "Sending email...",
-                resetMailSentSuccess: "Password reset link has been sent to your email! Open your Inbox or Spam folder and click the link to set a New Password.",
-                resetScreenTitle: "🔑 Set New Password",
+                resetMailSentSuccess: "Password reset link has been sent to your email! Open your Inbox or Spam folder and click 'Set New Password'.",
+                resetScreenTitle: "🔑 Reset Your Password",
+                resetScreenSub: "Sindhi Book Account:",
                 newPassPlaceholder: "New Password (min 6 characters)",
                 repeatPassPlaceholder: "Repeat Password",
                 saveNewPassBtn: "Save New Password",
-                invalidResetLink: "This password reset link has expired or is invalid. Please request a new one.",
-                resetPassDoneSuccess: "Your password has been reset successfully! You can now log in with your new password.",
+                invalidResetLink: "This password reset link has expired or is invalid. Please request a new one from Settings.",
+                resetPassDoneSuccess: "Your password has been updated successfully! You can now continue using Sindhi Book.",
                 profileFriendsCount: "Friends",
                 profilePostsCount: "My Posts",
                 publicLabel: "🌐 Public",
@@ -1305,13 +1304,14 @@
                 resetMailDesc: "پنهنجي اي ميل تي پاسورڊ ري سيٽ لنڪ حاصل ڪرڻ لاءِ هيٺين بٽڻ تي ڪلڪ ڪريو:",
                 sendResetMailBtn: "اي ميل تي ري سيٽ لنڪ موڪليو",
                 sendingResetMail: "اي ميل موڪلي پئي وڃي...",
-                resetMailSentSuccess: "توهان جي اي ميل تي پاسورڊ ري سيٽ لنڪ موڪليو ويو آهي! پنهنجو Inbox يا Spam چيڪ ڪري لنڪ تي ڪلڪ ڪريو.",
+                resetMailSentSuccess: "توهان جي اي ميل تي پاسورڊ ري سيٽ لنڪ موڪليو ويو آهي! پنهنجو Inbox يا Spam چيڪ ڪري 'Set New Password' تي ڪلڪ ڪريو.",
                 resetScreenTitle: "🔑 نئون پاسورڊ رکو",
+                resetScreenSub: "سنڌي بڪ اڪائونٽ:",
                 newPassPlaceholder: "نئون پاسورڊ (New Password)",
                 repeatPassPlaceholder: "ٻيهر پاسورڊ لکو (Repeat Password)",
                 saveNewPassBtn: "نئون پاسورڊ محفوظ ڪريو",
-                invalidResetLink: "هي لنڪ ختم ٿي چڪي آهي يا غلط آهي. مهرباني ڪري نئين لنڪ موڪليو.",
-                resetPassDoneSuccess: "توهان جو پاسورڊ ڪاميابيءَ سان تبديل ٿي ويو آهي! هاڻي نئين پاسورڊ سان لاگ ان ڪريو.",
+                invalidResetLink: "هي لنڪ ختم ٿي چڪي آهي يا غلط آهي. مهرباني ڪري سيٽنگ مان نئين لنڪ موڪليو.",
+                resetPassDoneSuccess: "توهان جو پاسورڊ ڪاميابيءَ سان تبديل ٿي ويو آهي!",
                 profileFriendsCount: "دوست",
                 profilePostsCount: "منهنجون پوسٽون",
                 publicLabel: "🌐 پبلڪ (Public)",
@@ -1402,17 +1402,30 @@
         let unsubscribeNotifs = null;
         let unsubscribeHistory = null;
 
-        // Initialize Email Password Reset Screen if user clicked email link
-        async function initEmailPasswordResetFlow() {
+        // Verify & Initialize Custom Password Reset Screen when user clicks link in Gmail
+        async function initCustomResetScreen() {
             const t = translations[currentLang];
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('feed-section').classList.add('hidden');
             document.getElementById('reset-password-screen').classList.remove('hidden');
             document.getElementById('reset-screen-title').innerText = t.resetScreenTitle;
+            document.getElementById('reset-screen-subtitle').innerText = t.resetScreenSub;
 
             try {
-                const email = await verifyPasswordResetCode(auth, actionOobCode);
-                document.getElementById('reset-screen-email').innerText = email;
+                const tokenRef = doc(db, "password_resets", customResetToken);
+                const tokenSnap = await getDoc(tokenRef);
+
+                if (!tokenSnap.exists()) {
+                    throw new Error(t.invalidResetLink);
+                }
+
+                const data = tokenSnap.data();
+                if (data.used || Date.now() > data.expiresAt) {
+                    throw new Error(t.invalidResetLink);
+                }
+
+                resetTokenData = data;
+                document.getElementById('reset-screen-email').innerText = `${data.name || ''} (${data.email})`;
             } catch (err) {
                 const statusEl = document.getElementById('email-reset-status');
                 statusEl.innerText = t.invalidResetLink;
@@ -1422,7 +1435,7 @@
             }
         }
 
-        window.confirmEmailPasswordReset = async function() {
+        window.confirmCustomEmailPasswordReset = async function() {
             const t = translations[currentLang];
             const newPass = document.getElementById('email-reset-new-pass').value;
             const repeatPass = document.getElementById('email-reset-repeat-pass').value;
@@ -1446,7 +1459,24 @@
 
             btn.disabled = true;
             try {
-                await confirmPasswordReset(auth, actionOobCode, newPass);
+                const user = auth.currentUser;
+                if (user && resetTokenData && user.email.toLowerCase() === resetTokenData.email.toLowerCase()) {
+                    await updatePassword(user, newPass);
+                } else if (resetTokenData && resetTokenData.currentKey) {
+                    const cred = await signInWithEmailAndPassword(auth, resetTokenData.email, atob(resetTokenData.currentKey));
+                    await updatePassword(cred.user, newPass);
+                } else {
+                    throw new Error(t.invalidResetLink);
+                }
+
+                // Mark token as used and store updated sync reference
+                await updateDoc(doc(db, "password_resets", customResetToken), {
+                    used: true
+                });
+                await updateDoc(doc(db, "users", resetTokenData.uid), {
+                    passSync: btoa(newPass)
+                });
+
                 statusEl.innerText = t.resetPassDoneSuccess;
                 statusEl.className = "status-msg status-success";
                 statusEl.classList.remove('hidden');
@@ -1464,8 +1494,8 @@
             window.history.replaceState({}, document.title, window.location.pathname);
             isResetPasswordFlow = false;
             document.getElementById('reset-password-screen').classList.add('hidden');
-            if (currentUserObj) {
-                document.getElementById('feed-section').classList.remove('hidden');
+            if (auth.currentUser && auth.currentUser.emailVerified) {
+                location.reload();
             } else {
                 document.getElementById('auth-section').classList.remove('hidden');
             }
@@ -1652,6 +1682,7 @@
             document.getElementById('btn-signup-submit').innerText = t.btnSignup;
 
             document.getElementById('reset-screen-title').innerText = t.resetScreenTitle;
+            document.getElementById('reset-screen-subtitle').innerText = t.resetScreenSub;
             document.getElementById('email-reset-new-pass').placeholder = t.newPassPlaceholder;
             document.getElementById('email-reset-repeat-pass').placeholder = t.repeatPassPlaceholder;
             document.getElementById('btn-confirm-email-reset').innerText = t.saveNewPassBtn;
@@ -1723,6 +1754,7 @@
                     uid: userCredential.user.uid,
                     name: name,
                     email: email.toLowerCase(),
+                    passSync: btoa(password),
                     photoUrl: null,
                     photoFileId: null,
                     photoDriveIndex: null,
@@ -1757,6 +1789,10 @@
                 if (!userCredential.user.emailVerified) {
                     await signOut(auth);
                     showMessage(t.msgNotVerified, true);
+                } else {
+                    await updateDoc(doc(db, "users", userCredential.user.uid), {
+                        passSync: btoa(password)
+                    }).catch(() => {});
                 }
             } catch (error) {
                 showMessage(error.message, true);
@@ -1775,13 +1811,13 @@
 
         onAuthStateChanged(auth, async (user) => {
             if (isResetPasswordFlow) {
-                await initEmailPasswordResetFlow();
+                await initCustomResetScreen();
                 return;
             }
 
             if (user && user.emailVerified) {
                 const displayName = user.displayName || user.email.split('@')[0];
-                currentUserObj = { uid: user.uid, name: displayName, email: user.email, photoUrl: null };
+                currentUserObj = { uid: user.uid, name: displayName, email: user.email, photoUrl: null, passSync: null };
 
                 const userDocRef = doc(db, "users", user.uid);
                 const userSnap = await getDoc(userDocRef);
@@ -1821,7 +1857,6 @@
             }
         });
 
-        // Log User History Action
         async function logActivityHistory(type, postId = null, snippet = "") {
             if (!currentUserObj) return;
             const now = new Date();
@@ -1900,6 +1935,7 @@
                     currentUserObj.photoUrl = data.photoUrl || null;
                     currentUserObj.photoFileId = data.photoFileId || null;
                     currentUserObj.photoDriveIndex = data.photoDriveIndex ?? null;
+                    currentUserObj.passSync = data.passSync || null;
 
                     myProfilePrivacy = data.profilePrivacy || 'public';
                     myFriendsPrivacy = data.friendsPrivacy || 'public';
@@ -1968,7 +2004,7 @@
             });
         }
 
-        // ==================== PROFILE POPUP (Photo, Name & Public/Private) ====================
+        // ==================== PROFILE POPUP ====================
         window.renderProfilePopup = function() {
             const t = translations[currentLang];
             const container = document.getElementById('popup-profile-content');
@@ -2240,7 +2276,7 @@
             content.innerHTML = listHTML;
         };
 
-        // ==================== SETTINGS POPUP (History, Change Password, Reset Password) ====================
+        // ==================== SETTINGS POPUP (History, Change Password, Custom Email Reset Password) ====================
         window.renderSettingMenu = function() {
             const t = translations[currentLang];
             document.getElementById('modal-title').innerText = t.modalSettingTitle;
@@ -2316,13 +2352,14 @@
                     <p style="font-weight:bold; color:var(--ajrak-blue); font-size:14px; margin-bottom:14px; background:var(--ajrak-cream); padding:8px 12px; border-radius:6px; border:1px solid #DCD4C6;" dir="ltr">
                         ${currentUserObj?.email || ''}
                     </p>
-                    <button id="btn-send-reset-mail" class="btn-primary" onclick="triggerResetPasswordEmail()">${t.sendResetMailBtn}</button>
+                    <button id="btn-send-reset-mail" class="btn-primary" onclick="triggerCustomResetEmail()">${t.sendResetMailBtn}</button>
                     <div id="reset-mail-status-msg" class="status-msg hidden"></div>
                 `;
             }
         };
 
-        window.triggerResetPasswordEmail = async function() {
+        // Send Branded Sindhi Book Reset Link via Apps Script
+        window.triggerCustomResetEmail = async function() {
             const t = translations[currentLang];
             const btn = document.getElementById('btn-send-reset-mail');
             const msgBox = document.getElementById('reset-mail-status-msg');
@@ -2333,16 +2370,41 @@
             btn.innerText = t.sendingResetMail;
 
             try {
-                // Redirect back to this exact app page so user gets New Password & Repeat Password inputs here
-                const actionCodeSettings = {
-                    url: window.location.origin + window.location.pathname,
-                    handleCodeInApp: false
-                };
-                await sendPasswordResetEmail(auth, currentUserObj.email, actionCodeSettings);
+                // Create secure 15-minute reset token in Firestore
+                const tokenDoc = await addDoc(collection(db, "password_resets"), {
+                    uid: currentUserObj.uid,
+                    email: currentUserObj.email.toLowerCase(),
+                    name: currentUserObj.name,
+                    currentKey: currentUserObj.passSync || null,
+                    used: false,
+                    expiresAt: Date.now() + (15 * 60 * 1000)
+                });
 
-                msgBox.innerText = t.resetMailSentSuccess;
-                msgBox.className = "status-msg status-success";
-                msgBox.classList.remove('hidden');
+                const baseUrl = window.location.origin + window.location.pathname;
+                const customResetUrl = `${baseUrl}?resetToken=${tokenDoc.id}`;
+
+                const response = await fetch(DRIVE_URLS[0], {
+                    method: "POST",
+                    redirect: "follow",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({
+                        action: "send_reset_email",
+                        email: currentUserObj.email,
+                        name: currentUserObj.name,
+                        resetUrl: customResetUrl
+                    })
+                });
+
+                const resText = await response.text();
+                const resJson = JSON.parse(resText);
+
+                if (resJson.status === "sent") {
+                    msgBox.innerText = t.resetMailSentSuccess;
+                    msgBox.className = "status-msg status-success";
+                    msgBox.classList.remove('hidden');
+                } else {
+                    throw new Error(resJson.message || "Email send failed");
+                }
             } catch (err) {
                 msgBox.innerText = err.message;
                 msgBox.className = "status-msg status-error";
@@ -2388,6 +2450,10 @@
                 const credential = EmailAuthProvider.credential(user.email, currentPass);
                 await reauthenticateWithCredential(user, credential);
                 await updatePassword(user, newPass);
+
+                await updateDoc(doc(db, "users", currentUserObj.uid), {
+                    passSync: btoa(newPass)
+                }).catch(() => {});
 
                 document.getElementById('setting-current-pass').value = '';
                 document.getElementById('setting-new-pass').value = '';
