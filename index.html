@@ -313,6 +313,94 @@
             border-radius: 10px;
         }
 
+        /* Beautiful Alert / Error Popup Modal */
+        .alert-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(11, 22, 44, 0.72);
+            backdrop-filter: blur(2px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .alert-modal-box {
+            background: #FFFFFF;
+            width: 100%;
+            max-width: 340px;
+            border-radius: 14px;
+            box-shadow: 0 14px 35px rgba(0, 0, 0, 0.42);
+            border: 1.5px solid var(--ajrak-gold);
+            overflow: hidden;
+            text-align: center;
+            animation: bouncePop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes bouncePop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .alert-modal-body {
+            padding: 22px 18px 18px;
+            background: linear-gradient(180deg, #FFFFFF 0%, var(--ajrak-cream) 100%);
+        }
+
+        .alert-icon-circle {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 12px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
+            border: 2px solid var(--ajrak-red);
+            color: var(--ajrak-red);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(139, 30, 36, 0.22);
+        }
+
+        .alert-icon-circle svg {
+            width: 30px;
+            height: 30px;
+            fill: currentColor;
+        }
+
+        .alert-modal-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--ajrak-red);
+            margin-bottom: 6px;
+        }
+
+        .alert-modal-text {
+            font-size: 13.5px;
+            color: var(--ajrak-blue);
+            line-height: 1.5;
+            margin-bottom: 18px;
+            font-weight: 500;
+        }
+
+        .alert-modal-ok-btn {
+            background: linear-gradient(135deg, var(--ajrak-blue) 0%, var(--ajrak-dark-blue) 100%);
+            color: #FFFFFF;
+            border: 1.5px solid var(--ajrak-gold);
+            padding: 9px 32px;
+            border-radius: 22px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(20, 40, 75, 0.25);
+            transition: 0.2s;
+        }
+
+        .alert-modal-ok-btn:hover {
+            background: var(--ajrak-red);
+            transform: scale(1.04);
+        }
+
         /* Popup Modal */
         .modal-overlay {
             position: fixed;
@@ -1290,6 +1378,21 @@
         <div class="ajrak-border-strip"></div>
     </header>
 
+    <!-- Beautiful Invalid Login / Alert Popup Modal -->
+    <div id="custom-alert-overlay" class="alert-modal-overlay hidden" onclick="if(event.target.id === 'custom-alert-overlay') closeCustomAlert()">
+        <div class="alert-modal-box">
+            <div class="ajrak-border-strip"></div>
+            <div class="alert-modal-body">
+                <div class="alert-icon-circle">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                </div>
+                <div id="custom-alert-title" class="alert-modal-title">Invalid Username/Password</div>
+                <div id="custom-alert-desc" class="alert-modal-text">Please check your email address and password and try again.</div>
+                <button id="custom-alert-btn" type="button" class="alert-modal-ok-btn" onclick="closeCustomAlert()">OK</button>
+            </div>
+        </div>
+    </div>
+
     <div id="popup-overlay" class="modal-overlay hidden" onclick="closePopupOutside(event)">
         <div class="modal-box">
             <div class="ajrak-border-strip"></div>
@@ -1526,6 +1629,9 @@
                 loginEmail: "Enter your email address",
                 loginPass: "Enter your password",
                 btnLogin: "Login",
+                invalidLoginTitle: "Invalid Username / Password",
+                invalidLoginDesc: "The email address or password you entered is incorrect. Please check and try again.",
+                alertOkBtn: "Try Again",
                 forgotPassBtn: "🔑 Forgot Password?",
                 forgotEnterEmail: "Please enter your registered email address in the email box above first, then click Forgot Password.",
                 forgotAccountNotFound: "No account found with this email address.",
@@ -1657,6 +1763,9 @@
                 loginEmail: "پنهنجو اي ميل ايڊريس لکو",
                 loginPass: "پنهنجو پاسورڊ لکو",
                 btnLogin: "لاگ ان ڪريو",
+                invalidLoginTitle: "غلط اي ميل يا پاسورڊ!",
+                invalidLoginDesc: "توهان جو لکيل اي ميل ايڊريس يا پاسورڊ درست ناهي. مهرباني ڪري چيڪ ڪري ٻيهر ڪوشش ڪريو.",
+                alertOkBtn: "ٻيهر ڪوشش ڪريو",
                 forgotPassBtn: "🔑 پاسورڊ وسري ويو؟ (Forgot Password)",
                 forgotEnterEmail: "مهرباني ڪري پهرين مٿي اي ميل واري خاني ۾ پنهنجو اي ميل لکو ۽ پوءِ Forgot Password تي ڪلڪ ڪريو.",
                 forgotAccountNotFound: "هن اي ميل سان ڪو به اڪائونٽ موجود ناهي.",
@@ -1797,6 +1906,19 @@
         let unsubscribeNotifs = null;
         let unsubscribeHistory = null;
         let unsubscribeMessages = null;
+
+        /* Custom Beautiful Alert Popup Functions */
+        window.showCustomAlert = function(title, desc, btnLabel) {
+            const t = translations[currentLang];
+            document.getElementById('custom-alert-title').innerText = title || t.invalidLoginTitle;
+            document.getElementById('custom-alert-desc').innerText = desc || t.invalidLoginDesc;
+            document.getElementById('custom-alert-btn').innerText = btnLabel || t.alertOkBtn;
+            document.getElementById('custom-alert-overlay').classList.remove('hidden');
+        };
+
+        window.closeCustomAlert = function() {
+            document.getElementById('custom-alert-overlay').classList.add('hidden');
+        };
 
         let deferredInstallPrompt = null;
 
@@ -2310,8 +2432,10 @@
             const email = document.getElementById('login-email').value.trim();
             const password = document.getElementById('login-password').value;
 
+            document.getElementById('auth-message').classList.add('hidden');
+
             if (!email || !password) {
-                showMessage(t.msgLoginEmpty, true);
+                showCustomAlert(t.invalidLoginTitle, t.msgLoginEmpty, t.alertOkBtn);
                 return;
             }
 
@@ -2326,7 +2450,7 @@
                     }).catch(() => {});
                 }
             } catch (error) {
-                showMessage(error.message, true);
+                showCustomAlert(t.invalidLoginTitle, t.invalidLoginDesc, t.alertOkBtn);
             }
         };
 
@@ -2429,10 +2553,14 @@
                 });
                 allMyMessages.sort((a, b) => (a.clientTime || 0) - (b.clientTime || 0));
 
-                // Automatically mark incoming messages as Delivered (Double Grey Tick) when receiver's app syncs them
-                allMyMessages.forEach((m) => {
-                    if (m.receiverId === currentUserObj.uid && !m.delivered) {
-                        updateDoc(doc(db, "messages", m.id), { delivered: true }).catch(() => {});
+                // Mark incoming messages as Delivered (Double Grey Tick) as soon as receiver's app receives them
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added" || change.type === "modified") {
+                        const m = change.doc.data();
+                        if (m.receiverId === currentUserObj.uid && m.delivered !== true) {
+                            updateDoc(doc(db, "messages", change.doc.id), { delivered: true })
+                                .catch((err) => console.error("Delivered update failed:", err));
+                        }
                     }
                 });
 
@@ -3930,7 +4058,9 @@
     <script>
         if ("serviceWorker" in navigator) {
             window.addEventListener("load", () => {
-                navigator.serviceWorker.register("./sw.js").catch((err) => {
+                navigator.serviceWorker.register("./sw.js").then((reg) => {
+                    reg.update();
+                }).catch((err) => {
                     console.log("SW registration failed:", err);
                 });
             });
