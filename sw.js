@@ -1,4 +1,4 @@
-const CACHE_NAME = "sindhi-world-book-v7";
+const CACHE_NAME = "sindhi-world-book-v8";
 const ASSETS = [
   "./",
   "./index.html",
@@ -32,5 +32,34 @@ self.addEventListener("fetch", (event) => {
         return res;
       })
       .catch(() => caches.match(event.request))
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "NEW_MSG_BADGE") {
+    const { count, sender, text } = event.data;
+    if ("setAppBadge" in self.navigator) {
+      self.navigator.setAppBadge(count).catch(() => {});
+    }
+    self.registration.showNotification(`${sender} (${count})`, {
+      body: text,
+      icon: "./icon.png",
+      badge: "./icon.png",
+      tag: "sindhi-world-book-msg",
+      renotify: true,
+      data: { url: "./index.html" }
+    });
+  }
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ("focus" in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow("./index.html");
+    })
   );
 });

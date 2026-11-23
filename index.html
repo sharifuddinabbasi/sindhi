@@ -1491,7 +1491,12 @@
         </div>
     </div>
 
-    <div id="auth-section" class="card">
+    <div id="app-boot-loader" style="max-width:420px; margin:60px auto; text-align:center; padding:24px;">
+        <div style="width:44px; height:44px; border:4px solid #DCD4C6; border-top-color:#8B1E24; border-radius:50%; margin:0 auto 14px; animation:spinBoot 0.8s linear infinite;"></div>
+        <div style="color:#14284B; font-weight:bold; font-size:15px;">Sindhi World Book...</div>
+    </div>
+    <style>@keyframes spinBoot { to { transform: rotate(360deg); } }</style>
+    <div id="auth-section" class="card hidden">
         <div class="ajrak-border-strip"></div>
         <div class="card-body">
             <h2 id="auth-title">❖ Sindhi World Book ❖</h2>
@@ -1553,6 +1558,7 @@
         import { 
             getAuth, 
             setPersistence,
+            indexedDBLocalPersistence,
             browserLocalPersistence,
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
@@ -1599,7 +1605,7 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        setPersistence(auth, browserLocalPersistence).catch(() => {});
+        setPersistence(auth, indexedDBLocalPersistence).catch(() => setPersistence(auth, browserLocalPersistence)).catch(() => {});
         const db = getFirestore(app);
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -2566,12 +2572,18 @@
         };
 
         onAuthStateChanged(auth, async (user) => {
+            const bootLoader = document.getElementById('app-boot-loader');
+            if (bootLoader) bootLoader.classList.add('hidden');
+
             if (isResetPasswordFlow) {
                 await initCustomResetScreen();
                 return;
             }
 
             if (user && user.emailVerified) {
+                if ("Notification" in window && Notification.permission === "default") {
+                    Notification.requestPermission().catch(() => {});
+                }
                 const displayName = user.displayName || user.email.split('@')[0];
                 currentUserObj = { uid: user.uid, name: displayName, email: user.email, photoUrl: null, passSync: null };
 
@@ -2630,13 +2642,25 @@
             } catch (e) {}
         }
 
-        function updateAppIconBadge(count) {
+        function updateAppIconBadge(count, latestSenderName = "", latestText = "") {
             if ("setAppBadge" in navigator) {
                 if (count > 0) {
                     navigator.setAppBadge(count).catch(() => {});
                 } else if ("clearAppBadge" in navigator) {
                     navigator.clearAppBadge().catch(() => {});
                 }
+            }
+            if (count > 0 && "serviceWorker" in navigator && "Notification" in window && Notification.permission === "granted") {
+                navigator.serviceWorker.ready.then((reg) => {
+                    if (reg.active) {
+                        reg.active.postMessage({
+                            type: "NEW_MSG_BADGE",
+                            count: count,
+                            sender: latestSenderName || "Sindhi World Book",
+                            text: latestText || (count + " new message(s)")
+                        });
+                    }
+                }).catch(() => {});
             }
         }
 
@@ -2667,7 +2691,8 @@
                 );
                 const unreadCount = unreadMsgs.length;
 
-                if (unreadCount > previousUnreadCount) {
+                const isNewIncoming = unreadCount > previousUnreadCount;
+                if (isNewIncoming) {
                     playMessagePopSound();
                 }
                 previousUnreadCount = unreadCount;
@@ -2679,7 +2704,13 @@
                 } else {
                     msgBadge.classList.add('hidden');
                 }
-                updateAppIconBadge(unreadCount);
+                if (isNewIncoming && unreadMsgs.length > 0) {
+                    const lastUnread = unreadMsgs[unreadMsgs.length - 1];
+                    const senderObj = allUsersList.find(u => u.uid === lastUnread.senderId);
+                    updateAppIconBadge(unreadCount, senderObj ? senderObj.name : "Sindhi World Book", lastUnread.text || "");
+                } else if (unreadCount === 0) {
+                    updateAppIconBadge(0);
+                }
 
                 const popupMsgEl = document.getElementById('popup-messages');
                 if (popupMsgEl && !popupMsgEl.classList.contains('hidden')) {
