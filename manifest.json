@@ -1,5 +1,4 @@
 {
-  "id": "/sindhi-world-book-pwa/",
   "name": "Sindhi World Book - سنڌي ورلڊ بڪ",
   "short_name": "Sindhi World Book",
   "start_url": "./index.html",
@@ -20,12 +19,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "icon.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ]
 }

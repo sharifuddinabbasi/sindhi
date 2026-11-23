@@ -1,29 +1,41 @@
-const CACHE_NAME = "sindhi-world-book-v4";
+const CACHE_NAME = "sindhi-world-book-v5";
 const ASSETS = [
-  "./",
-  "./index.html",
-  "./manifest.json",
-  "./icon.png"
+"./",
+"./index.html",
+"./manifest.json",
+"./icon.png"
 ];
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
-  self.skipWaiting();
+​self.addEventListener("install", (event) => {
+event.waitUntil(
+caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+);
+self.skipWaiting();
 });
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
+​self.addEventListener("activate", (event) => {
+event.waitUntil(
+caches.keys().then((keys) =>
+Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+)
+);
+self.clients.claim();
 });
-
-self.addEventListener("fetch", (event) => {
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
-  );
+​self.addEventListener("fetch", (event) => {
+// Never cache Firebase Auth / Firestore / Google API requests
+if (
+event.request.url.includes("googleapis.com") ||
+event.request.url.includes("firebaseapp.com") ||
+event.request.url.includes("gstatic.com") ||
+event.request.method !== "GET"
+) {
+return;
+}
+​event.respondWith(
+fetch(event.request)
+.then((response) => {
+const resClone = response.clone();
+caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
+return response;
+})
+.catch(() => caches.match(event.request))
+);
 });
