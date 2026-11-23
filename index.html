@@ -1617,6 +1617,12 @@
         let messaging = null;
         try {
             messaging = getMessaging(app);
+            onMessage(messaging, (payload) => {
+                const msgId = payload?.data?.msgId;
+                if (msgId && currentUserObj) {
+                    updateDoc(doc(db, "messages", msgId), { delivered: true }).catch(() => {});
+                }
+            });
         } catch (e) {}
 
         async function registerFcmPushToken(uid) {
@@ -2930,7 +2936,7 @@
             const now = new Date();
             const timeText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-            await addDoc(collection(db, "messages"), {
+            const msgDocRef = await addDoc(collection(db, "messages"), {
                 senderId: currentUserObj.uid,
                 receiverId: activeChatFriendUid,
                 participants: [currentUserObj.uid, activeChatFriendUid],
@@ -2956,11 +2962,22 @@
                                 headers: { "Content-Type": "text/plain;charset=utf-8" },
                                 body: JSON.stringify({
                                     action: "send_fcm_push",
+                                    msgId: msgDocRef.id,
                                     tokens: tokens,
                                     senderName: currentUserObj.name || "Sindhi World Book",
                                     messageText: text
                                 })
-                            }).catch(() => {});
+                            })
+                            .then(res => res.text())
+                            .then(txt => {
+                                try {
+                                    const parsed = JSON.parse(txt);
+                                    if (parsed.status === "sent" && Array.isArray(parsed.codes) && parsed.codes.includes(200)) {
+                                        updateDoc(doc(db, "messages", msgDocRef.id), { delivered: true }).catch(() => {});
+                                    }
+                                } catch (e) {}
+                            })
+                            .catch(() => {});
                         }
                     }
                 }
