@@ -417,6 +417,40 @@
             transform: scale(1.04);
         }
 
+        .alert-modal-btn-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .alert-modal-cancel-btn {
+            background: #EAE2D3;
+            color: var(--ajrak-blue);
+            border: 1.5px solid #C8BEB0;
+            padding: 9px 22px;
+            border-radius: 22px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .alert-modal-cancel-btn:hover {
+            background: #DCD4C6;
+            transform: scale(1.03);
+        }
+
+        .alert-modal-ok-btn.danger-confirm {
+            background: linear-gradient(135deg, var(--ajrak-red) 0%, var(--ajrak-dark-red) 100%);
+            border-color: var(--ajrak-gold);
+        }
+
+        .alert-modal-ok-btn.danger-confirm:hover {
+            background: var(--ajrak-dark-red);
+        }
+
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -1394,7 +1428,10 @@
                 </div>
                 <div id="custom-alert-title" class="alert-modal-title">Invalid Username/Password</div>
                 <div id="custom-alert-desc" class="alert-modal-text">Please check your email address and password and try again.</div>
-                <button id="custom-alert-btn" type="button" class="alert-modal-ok-btn" onclick="closeCustomAlert()">OK</button>
+                <div class="alert-modal-btn-row">
+                    <button id="custom-alert-cancel-btn" type="button" class="alert-modal-cancel-btn hidden" onclick="resolveCustomConfirm(false)">Cancel</button>
+                    <button id="custom-alert-btn" type="button" class="alert-modal-ok-btn" onclick="resolveCustomConfirm(true)">OK</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1787,6 +1824,13 @@
                 btnPost: "Post",
                 posting: "Posting...",
                 uploadingPhoto: "Uploading photo...",
+                noticeTitle: "Notice",
+                confirmTitle: "Please Confirm",
+                deletePostConfirmTitle: "Delete Post?",
+                deleteReplyConfirmTitle: "Delete Reply?",
+                unfriendConfirmTitle: "Remove Friend?",
+                yesDeleteBtn: "Yes, Delete",
+                yesRemoveBtn: "Yes, Remove",
                 avatarUploadErrTitle: "Profile Photo Not Updated",
                 avatarUploadErrDesc: "Unable to update your profile photo right now. Please check your internet connection and try again.",
                 postPhotoErrTitle: "Photo Upload Failed",
@@ -1928,6 +1972,13 @@
                 btnPost: "پوسٽ ڪريو",
                 posting: "پوسٽ ٿي رهي آهي...",
                 uploadingPhoto: "تصوير اپلوڊ ٿي رهي آهي...",
+                noticeTitle: "اطلاع",
+                confirmTitle: "تصديق ڪريو",
+                deletePostConfirmTitle: "پوسٽ ڊليٽ ڪجي؟",
+                deleteReplyConfirmTitle: "جواب ڊليٽ ڪجي؟",
+                unfriendConfirmTitle: "دوست ختم ڪجي؟",
+                yesDeleteBtn: "ها، ڊليٽ ڪريو",
+                yesRemoveBtn: "ها، ختم ڪريو",
                 avatarUploadErrTitle: "پروفائيل تصوير اپلوڊ نه ٿي",
                 avatarUploadErrDesc: "هن وقت توهان جي پروفائيل تصوير اپڊيٽ نه ٿي سگهي. مهرباني ڪري پنهنجو انٽرنيٽ چيڪ ڪري ٻيهر ڪوشش ڪريو.",
                 postPhotoErrTitle: "تصوير اپلوڊ نه ٿي",
@@ -1976,11 +2027,18 @@
         let unsubscribeHistory = null;
         let unsubscribeMessages = null;
 
+        let customConfirmResolver = null;
+
         window.showCustomAlert = function(title, desc, btnLabel, type = "error") {
             const t = translations[currentLang];
             const iconBox = document.getElementById('custom-alert-icon-box');
             const titleEl = document.getElementById('custom-alert-title');
+            const okBtn = document.getElementById('custom-alert-btn');
+            const cancelBtn = document.getElementById('custom-alert-cancel-btn');
 
+            customConfirmResolver = null;
+            cancelBtn.classList.add('hidden');
+            okBtn.classList.remove('danger-confirm');
             iconBox.className = "alert-icon-circle";
             titleEl.className = "alert-modal-title";
 
@@ -1992,18 +2050,60 @@
                 iconBox.classList.add("install-icon");
                 titleEl.classList.add("blue-title");
                 iconBox.innerHTML = ICON_INSTALL_PHONE;
+            } else if (type === "info") {
+                titleEl.classList.add("blue-title");
+                iconBox.innerHTML = ICON_ALERT_EXCLAMATION;
             } else {
                 iconBox.innerHTML = ICON_ALERT_EXCLAMATION;
             }
 
-            titleEl.innerText = title || t.invalidLoginTitle;
-            document.getElementById('custom-alert-desc').innerText = desc || t.invalidLoginDesc;
-            document.getElementById('custom-alert-btn').innerText = btnLabel || t.alertOkBtn;
+            titleEl.innerText = title || t.noticeTitle;
+            document.getElementById('custom-alert-desc').innerText = desc || '';
+            okBtn.innerText = btnLabel || t.alertOkBtn;
             document.getElementById('custom-alert-overlay').classList.remove('hidden');
         };
 
-        window.closeCustomAlert = function() {
+        window.showCustomConfirm = function(title, desc, confirmLabel, isDanger = true) {
+            const t = translations[currentLang];
+            const iconBox = document.getElementById('custom-alert-icon-box');
+            const titleEl = document.getElementById('custom-alert-title');
+            const okBtn = document.getElementById('custom-alert-btn');
+            const cancelBtn = document.getElementById('custom-alert-cancel-btn');
+
+            iconBox.className = "alert-icon-circle";
+            titleEl.className = "alert-modal-title";
+            iconBox.innerHTML = ICON_ALERT_EXCLAMATION;
+
+            titleEl.innerText = title || t.confirmTitle;
+            document.getElementById('custom-alert-desc').innerText = desc || '';
+            cancelBtn.innerText = t.cancel;
+            cancelBtn.classList.remove('hidden');
+
+            okBtn.innerText = confirmLabel || t.alertOkBtn;
+            if (isDanger) {
+                okBtn.classList.add('danger-confirm');
+            } else {
+                okBtn.classList.remove('danger-confirm');
+            }
+
+            document.getElementById('custom-alert-overlay').classList.remove('hidden');
+
+            return new Promise((resolve) => {
+                customConfirmResolver = resolve;
+            });
+        };
+
+        window.resolveCustomConfirm = function(result) {
             document.getElementById('custom-alert-overlay').classList.add('hidden');
+            if (typeof customConfirmResolver === 'function') {
+                const resolver = customConfirmResolver;
+                customConfirmResolver = null;
+                resolver(Boolean(result));
+            }
+        };
+
+        window.closeCustomAlert = function() {
+            resolveCustomConfirm(false);
         };
 
         window.addEventListener('offline', () => {
@@ -2355,7 +2455,7 @@
                     postElement.classList.remove('highlight-post');
                 }, 2500);
             } else {
-                alert(t.postDeletedAlert);
+                showCustomAlert(t.noticeTitle, t.postDeletedAlert, t.alertOkBtn, "info");
             }
         };
 
@@ -3219,7 +3319,7 @@
             const t = translations[currentLang];
             const newName = document.getElementById('profile-name-input').value.trim();
             if (!newName) {
-                alert(t.alertEmptyEdit);
+                showCustomAlert(t.noticeTitle, t.alertEmptyEdit, t.alertOkBtn, "error");
                 return;
             }
             try {
@@ -3231,7 +3331,7 @@
                 document.getElementById('current-user-display').innerText = newName;
                 renderProfilePopup();
             } catch (err) {
-                alert(err.message);
+                showCustomAlert(t.noticeTitle, err.message, t.alertOkBtn, "error");
             }
         };
 
@@ -3796,7 +3896,8 @@
 
         window.unfriendUser = async function(targetUid) {
             const t = translations[currentLang];
-            if (!confirm(t.confirmUnfriend)) return;
+            const confirmed = await showCustomConfirm(t.unfriendConfirmTitle, t.confirmUnfriend, t.yesRemoveBtn, true);
+            if (!confirmed) return;
 
             await updateDoc(doc(db, "users", currentUserObj.uid), { friends: arrayRemove(targetUid) });
             await updateDoc(doc(db, "users", targetUid), { friends: arrayRemove(currentUserObj.uid) });
@@ -3833,7 +3934,7 @@
             const btn = document.getElementById('post-submit-btn');
 
             if (!text && !file) {
-                alert(t.alertEmptyPost);
+                showCustomAlert(t.noticeTitle, t.alertEmptyPost, t.alertOkBtn, "error");
                 return;
             }
 
@@ -3895,7 +3996,7 @@
                 document.getElementById('post-image').value = '';
                 updatePhotoLabel();
             } catch (error) {
-                alert(error.message);
+                showCustomAlert(t.noticeTitle, error.message, t.alertOkBtn, "error");
             }
         }
 
@@ -3913,7 +4014,7 @@
             const t = translations[currentLang];
             const newText = document.getElementById(`edit-input-${postId}`).value.trim();
             if (!newText) {
-                alert(t.alertEmptyEdit);
+                showCustomAlert(t.noticeTitle, t.alertEmptyEdit, t.alertOkBtn, "error");
                 return;
             }
             await updateDoc(doc(db, "posts", postId), { text: newText, edited: true });
@@ -3933,7 +4034,7 @@
             const t = translations[currentLang];
             const newText = document.getElementById(`comment-input-edit-${postId}-${commentIndex}`).value.trim();
             if (!newText) {
-                alert(t.alertEmptyEdit);
+                showCustomAlert(t.noticeTitle, t.alertEmptyEdit, t.alertOkBtn, "error");
                 return;
             }
             const postObj = latestDocs.find(p => p.id === postId);
@@ -3951,7 +4052,8 @@
 
         window.deleteComment = async function(postId, commentIndex) {
             const t = translations[currentLang];
-            if (!confirm(t.confirmDeleteComment)) return;
+            const confirmed = await showCustomConfirm(t.deleteReplyConfirmTitle, t.confirmDeleteComment, t.yesDeleteBtn, true);
+            if (!confirmed) return;
 
             const postObj = latestDocs.find(p => p.id === postId);
             if (!postObj) return;
@@ -4034,7 +4136,8 @@
 
         window.deletePost = async function(postId) {
             const t = translations[currentLang];
-            if (!confirm(t.confirmDelete)) return;
+            const confirmed = await showCustomConfirm(t.deletePostConfirmTitle, t.confirmDelete, t.yesDeleteBtn, true);
+            if (!confirmed) return;
 
             const postObj = latestDocs.find(p => p.id === postId);
             if (postObj) {
