@@ -1787,6 +1787,10 @@
                 btnPost: "Post",
                 posting: "Posting...",
                 uploadingPhoto: "Uploading photo...",
+                avatarUploadErrTitle: "Profile Photo Not Updated",
+                avatarUploadErrDesc: "Unable to update your profile photo right now. Please check your internet connection and try again.",
+                postPhotoErrTitle: "Photo Upload Failed",
+                postPhotoErrDesc: "Unable to upload your photo right now. Please check your internet connection and try again.",
                 emptyFeed: "No posts to show. Click the 🔍 icon above to find and add friends!",
                 edited: "· (Edited)",
                 editTitle: "Edit",
@@ -1924,6 +1928,10 @@
                 btnPost: "پوسٽ ڪريو",
                 posting: "پوسٽ ٿي رهي آهي...",
                 uploadingPhoto: "تصوير اپلوڊ ٿي رهي آهي...",
+                avatarUploadErrTitle: "پروفائيل تصوير اپلوڊ نه ٿي",
+                avatarUploadErrDesc: "هن وقت توهان جي پروفائيل تصوير اپڊيٽ نه ٿي سگهي. مهرباني ڪري پنهنجو انٽرنيٽ چيڪ ڪري ٻيهر ڪوشش ڪريو.",
+                postPhotoErrTitle: "تصوير اپلوڊ نه ٿي",
+                postPhotoErrDesc: "هن وقت توهان جي تصوير اپلوڊ نه ٿي سگهي. مهرباني ڪري پنهنجو انٽرنيٽ چيڪ ڪري ٻيهر ڪوشش ڪريو.",
                 emptyFeed: "ڏسڻ لاءِ ڪا به پوسٽ ناهي. مٿي 🔍 آئیکن تي ڪلڪ ڪري دوست ڳوليو!",
                 edited: "· (تبديل ٿيل)",
                 editTitle: "تبديل ڪريو",
@@ -3281,7 +3289,12 @@
                         currentUserObj.photoDriveIndex = uploadResult.driveIndex;
                         renderProfilePopup();
                     } catch (err) {
-                        alert("Avatar Upload Failed: " + err.message);
+                        const tErr = translations[currentLang];
+                        if (isNetworkError(err)) {
+                            showCustomAlert(tErr.noInternetTitle, tErr.noInternetDesc, tErr.alertOkBtn, "network");
+                        } else {
+                            showCustomAlert(tErr.avatarUploadErrTitle, tErr.avatarUploadErrDesc, tErr.alertOkBtn, "error");
+                        }
                     } finally {
                         if (statusEl) statusEl.classList.add('hidden');
                     }
@@ -3836,7 +3849,12 @@
                         );
                         await saveToFirestore(text, uploadResult.url, uploadResult.fileId, uploadResult.driveIndex);
                     } catch (err) {
-                        alert("Google Drive Upload Failed: " + err.message);
+                        const tErr = translations[currentLang];
+                        if (isNetworkError(err)) {
+                            showCustomAlert(tErr.noInternetTitle, tErr.noInternetDesc, tErr.alertOkBtn, "network");
+                        } else {
+                            showCustomAlert(tErr.postPhotoErrTitle, tErr.postPhotoErrDesc, tErr.alertOkBtn, "error");
+                        }
                     } finally {
                         btn.disabled = false;
                         btn.innerText = translations[currentLang].btnPost;
