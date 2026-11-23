@@ -1588,25 +1588,57 @@
             arrayRemove,
             serverTimestamp 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { 
+            getMessaging, 
+            getToken, 
+            onMessage 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
         const DRIVE_URLS = [
             "https://script.google.com/macros/s/AKfycbysbfGXsJGM2Wbah8I7vUdpD7BOxqyWEtNY6sOGsIAFZUfDwMLYwtldrrYzXDeZ71eCNQ/exec"
         ];
+        const PUSH_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQZISldGyttphX2f31WoaxT1Yp0d-os7--AV3IRYFzTe_Z5tEtqYUB5nHaTK941Y1v/exec";
+        const FCM_VAPID_KEY = "BIzEz16losQI06LKI5ZVl4l3eWpvj3JrX6yuweJ8ce6sfnlb1y7wSDlk0WhrfGeIyj8HqMuKOuRdSl_vxJpeIgM";
 
         const firebaseConfig = {
-            apiKey: "AIzaSyAK0P6rAjep2Zr-t3hnTJVgrVpndTWvhGc",
-            authDomain: "sindhi-book.firebaseapp.com",
-            projectId: "sindhi-book",
-            storageBucket: "sindhi-book.firebasestorage.app",
-            messagingSenderId: "1095941124815",
-            appId: "1:1095941124815:web:30ccf1b7e6264709d27dba",
-            measurementId: "G-VYWS0H6EL3"
+            apiKey: "AIzaSyDCBKKetL3qfC-pwMa9ytWCkfrEMq5yNCM",
+            authDomain: "sindhi-world-book.firebaseapp.com",
+            projectId: "sindhi-world-book",
+            storageBucket: "sindhi-world-book.firebasestorage.app",
+            messagingSenderId: "67009619087",
+            appId: "1:67009619087:web:2a6578fa389835f9a8fcfa",
+            measurementId: "G-LQZ1XQJJH6"
         };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         setPersistence(auth, indexedDBLocalPersistence).catch(() => setPersistence(auth, browserLocalPersistence)).catch(() => {});
         const db = getFirestore(app);
+        let messaging = null;
+        try {
+            messaging = getMessaging(app);
+        } catch (e) {}
+
+        async function registerFcmPushToken(uid) {
+            if (!messaging || !("Notification" in window) || !("serviceWorker" in navigator)) return;
+            try {
+                const perm = await Notification.requestPermission();
+                if (perm !== "granted") return;
+                const swReg = await navigator.serviceWorker.ready;
+                const token = await getToken(messaging, {
+                    vapidKey: FCM_VAPID_KEY,
+                    serviceWorkerRegistration: swReg
+                });
+                if (token) {
+                    await updateDoc(doc(db, "users", uid), {
+                        fcmTokens: arrayUnion(token),
+                        lastFcmToken: token
+                    }).catch(() => {});
+                }
+            } catch (err) {
+                console.log("FCM token error:", err);
+            }
+        }
 
         const urlParams = new URLSearchParams(window.location.search);
         const customResetToken = urlParams.get('resetToken');
@@ -2581,9 +2613,7 @@
             }
 
             if (user && user.emailVerified) {
-                if ("Notification" in window && Notification.permission === "default") {
-                    Notification.requestPermission().catch(() => {});
-                }
+                registerFcmPushToken(user.uid);
                 const displayName = user.displayName || user.email.split('@')[0];
                 currentUserObj = { uid: user.uid, name: displayName, email: user.email, photoUrl: null, passSync: null };
 
@@ -2650,15 +2680,18 @@
                     navigator.clearAppBadge().catch(() => {});
                 }
             }
-            if (count > 0 && "serviceWorker" in navigator && "Notification" in window && Notification.permission === "granted") {
+            if ("serviceWorker" in navigator) {
                 navigator.serviceWorker.ready.then((reg) => {
-                    if (reg.active) {
+                    if (!reg.active) return;
+                    if (count > 0 && "Notification" in window && Notification.permission === "granted") {
                         reg.active.postMessage({
                             type: "NEW_MSG_BADGE",
                             count: count,
                             sender: latestSenderName || "Sindhi World Book",
                             text: latestText || (count + " new message(s)")
                         });
+                    } else if (count === 0) {
+                        reg.active.postMessage({ type: "CLEAR_MSG_BADGE" });
                     }
                 }).catch(() => {});
             }
@@ -2734,6 +2767,12 @@
                     delivered: true,
                     read: true
                 }).catch(() => {});
+            }
+            const remainingUnread = allMyMessages.filter(
+                m => m.receiverId === currentUserObj.uid && !m.read && m.senderId !== friendUid
+            ).length;
+            if (remainingUnread === 0) {
+                updateAppIconBadge(0);
             }
         }
 
@@ -2902,6 +2941,30 @@
                 read: false,
                 createdAt: serverTimestamp()
             });
+
+            // Trigger background push notification to receiver even if their app is completely closed
+            try {
+                if (PUSH_SCRIPT_URL && PUSH_SCRIPT_URL.startsWith("https://")) {
+                    const receiverSnap = await getDoc(doc(db, "users", activeChatFriendUid));
+                    if (receiverSnap.exists()) {
+                        const rData = receiverSnap.data();
+                        const tokens = Array.isArray(rData.fcmTokens) ? rData.fcmTokens : (rData.lastFcmToken ? [rData.lastFcmToken] : []);
+                        if (tokens.length > 0) {
+                            fetch(PUSH_SCRIPT_URL, {
+                                method: "POST",
+                                redirect: "follow",
+                                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                                body: JSON.stringify({
+                                    action: "send_fcm_push",
+                                    tokens: tokens,
+                                    senderName: currentUserObj.name || "Sindhi World Book",
+                                    messageText: text
+                                })
+                            }).catch(() => {});
+                        }
+                    }
+                }
+            } catch (pushErr) {}
         };
 
         async function logActivityHistory(type, postId = null, snippet = "") {
@@ -4201,8 +4264,15 @@
     <script>
         if ("serviceWorker" in navigator) {
             window.addEventListener("load", () => {
-                navigator.serviceWorker.register("./sw.js").then((reg) => {
+                navigator.serviceWorker.register("./sw.js").then(async (reg) => {
                     reg.update();
+                    if ("periodicSync" in reg) {
+                        try {
+                            await reg.periodicSync.register("check-sindhi-world-book", {
+                                minInterval: 15 * 60 * 1000
+                            });
+                        } catch (e) {}
+                    }
                 }).catch((err) => {
                     console.log("SW registration failed:", err);
                 });

@@ -1,10 +1,45 @@
-const CACHE_NAME = "sindhi-world-book-v8";
+importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
+
+const CACHE_NAME = "sindhi-world-book-v11";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
   "./icon.png"
 ];
+
+firebase.initializeApp({
+  apiKey: "AIzaSyDCBKKetL3qfC-pwMa9ytWCkfrEMq5yNCM",
+  authDomain: "sindhi-world-book.firebaseapp.com",
+  projectId: "sindhi-world-book",
+  storageBucket: "sindhi-world-book.firebasestorage.app",
+  messagingSenderId: "67009619087",
+  appId: "1:67009619087:web:2a6578fa389835f9a8fcfa"
+});
+
+const messaging = firebase.messaging();
+
+// Background push handler (runs even when app is completely closed)
+messaging.onBackgroundMessage((payload) => {
+  const data = payload.data || {};
+  const notif = payload.notification || {};
+  const title = data.senderName || notif.title || "Sindhi World Book";
+  const body = data.messageText || notif.body || "New message received";
+
+  if ("setAppBadge" in self.navigator) {
+    self.navigator.setAppBadge(1).catch(() => {});
+  }
+
+  return self.registration.showNotification(title, {
+    body: body,
+    icon: "./icon.png",
+    badge: "./icon.png",
+    tag: "sindhi-world-book-msg",
+    renotify: true,
+    data: { url: "./index.html" }
+  });
+});
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -35,31 +70,47 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
+async function clearAllMsgNotificationsAndBadge() {
+  if ("clearAppBadge" in self.navigator) {
+    await self.navigator.clearAppBadge().catch(() => {});
+  }
+  const notifs = await self.registration.getNotifications({ tag: "sindhi-world-book-msg" });
+  notifs.forEach((n) => n.close());
+}
+
 self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "NEW_MSG_BADGE") {
+  if (!event.data) return;
+
+  if (event.data.type === "NEW_MSG_BADGE") {
     const { count, sender, text } = event.data;
     if ("setAppBadge" in self.navigator) {
       self.navigator.setAppBadge(count).catch(() => {});
     }
-    self.registration.showNotification(`${sender} (${count})`, {
-      body: text,
-      icon: "./icon.png",
-      badge: "./icon.png",
-      tag: "sindhi-world-book-msg",
-      renotify: true,
-      data: { url: "./index.html" }
-    });
+    event.waitUntil(
+      self.registration.showNotification(`${sender} (${count})`, {
+        body: text,
+        icon: "./icon.png",
+        badge: "./icon.png",
+        tag: "sindhi-world-book-msg",
+        renotify: true,
+        data: { url: "./index.html" }
+      })
+    );
+  } else if (event.data.type === "CLEAR_MSG_BADGE") {
+    event.waitUntil(clearAllMsgNotificationsAndBadge());
   }
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if ("focus" in client) return client.focus();
-      }
-      if (clients.openWindow) return clients.openWindow("./index.html");
-    })
+    clearAllMsgNotificationsAndBadge().then(() =>
+      clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+        for (const client of clientList) {
+          if ("focus" in client) return client.focus();
+        }
+        if (clients.openWindow) return clients.openWindow("./index.html");
+      })
+    )
   );
 });
