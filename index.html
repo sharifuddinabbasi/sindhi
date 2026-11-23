@@ -1630,7 +1630,9 @@
                 brand: "Sindhi World Book",
                 installAppBtn: "Install App",
                 installTitle: "Install Sindhi World Book",
-                installManualGuide: "To install Sindhi World Book:\n1. Open Phone Settings > Apps and uninstall any old 'Sindhi Book' app.\n2. Tap Chrome Menu (⋮) > 'Add to Home screen' > 'Install'.",
+                installManualGuide: "To install Sindhi World Book:
+1. Open Phone Settings > Apps and uninstall any old 'Sindhi Book' app.
+2. Tap Chrome Menu (⋮) > 'Add to Home screen' > 'Install'.",
                 authTitle: "❖ Sindhi World Book ❖",
                 subtitle: "Connect with friends in the traditional colors of Sindh",
                 tabLogin: "Login",
@@ -1767,7 +1769,9 @@
                 brand: "سنڌي ورلڊ بڪ",
                 installAppBtn: "ايپ انسٽال",
                 installTitle: "سنڌي ورلڊ بڪ ايپ انسٽال",
-                installManualGuide: "سنڌي ورلڊ بڪ انسٽال ڪرڻ لاءِ:\n1. موبائيل جي Settings > Apps مان پراڻي ايپ Uninstall ڪريو.\n2. ڪروم مينيو (⋮) > 'Add to Home screen' > 'Install' چونڊيو.",
+                installManualGuide: "سنڌي ورلڊ بڪ انسٽال ڪرڻ لاءِ:
+1. موبائيل جي Settings > Apps مان پراڻي ايپ Uninstall ڪريو.
+2. ڪروم مينيو (⋮) > 'Add to Home screen' > 'Install' چونڊيو.",
                 authTitle: "❖ سنڌي ورلڊ بڪ ❖",
                 subtitle: "سنڌ جي ثقافت ۽ اجرڪ جي رنگن ۾ دوستن سان جڙيل رهو",
                 tabLogin: "لاگ ان ڪريو",
@@ -1970,7 +1974,20 @@
 
         function isAppAlreadyInstalled() {
             return window.matchMedia('(display-mode: standalone)').matches ||
-                   window.navigator.standalone === true;
+                   window.navigator.standalone === true ||
+                   localStorage.getItem('sb_pwa_installed') === 'true';
+        }
+
+        async function syncInstalledStateWithBrowser() {
+            if ('getInstalledRelatedApps' in navigator) {
+                try {
+                    const relatedApps = await navigator.getInstalledRelatedApps();
+                    if (relatedApps && relatedApps.length > 0) {
+                        localStorage.setItem('sb_pwa_installed', 'true');
+                    }
+                } catch (e) {}
+            }
+            updateInstallButtonVisibility();
         }
 
         function updateInstallButtonVisibility() {
@@ -1986,11 +2003,13 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredInstallPrompt = e;
+            localStorage.removeItem('sb_pwa_installed');
             updateInstallButtonVisibility();
         });
 
         window.addEventListener('appinstalled', () => {
             deferredInstallPrompt = null;
+            localStorage.setItem('sb_pwa_installed', 'true');
             updateInstallButtonVisibility();
         });
 
@@ -2002,6 +2021,8 @@
                     const choiceResult = await deferredInstallPrompt.userChoice;
                     if (choiceResult.outcome === 'accepted') {
                         deferredInstallPrompt = null;
+                        localStorage.setItem('sb_pwa_installed', 'true');
+                        updateInstallButtonVisibility();
                     }
                 } catch (err) {
                     showCustomAlert(t.installTitle, t.installManualGuide, t.alertOkBtn, "install");
@@ -2010,6 +2031,8 @@
                 showCustomAlert(t.installTitle, t.installManualGuide, t.alertOkBtn, "install");
             }
         };
+
+        syncInstalledStateWithBrowser();
 
         updateInstallButtonVisibility();
 
