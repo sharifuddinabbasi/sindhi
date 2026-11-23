@@ -157,7 +157,6 @@
             border: 1.5px solid #FFFFFF;
         }
 
-        /* Header Bottom Row */
         .header-bottom-row {
             padding: 4px 10px 10px;
             display: flex;
@@ -223,7 +222,6 @@
             flex-shrink: 0;
         }
 
-        /* User Dropdown Menu */
         .user-dropdown-wrapper {
             position: relative;
             display: inline-block;
@@ -313,7 +311,6 @@
             border-radius: 10px;
         }
 
-        /* Beautiful Alert / Error / No Internet Popup Modal */
         .alert-modal-overlay {
             position: fixed;
             inset: 0;
@@ -420,7 +417,6 @@
             transform: scale(1.04);
         }
 
-        /* Popup Modal */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -490,7 +486,6 @@
             overflow-y: auto;
         }
 
-        /* WhatsApp Style Chat UI */
         .chat-friend-row {
             display: flex;
             align-items: center;
@@ -644,7 +639,6 @@
             direction: ltr;
         }
 
-        /* Tick States: Sent (Single Grey), Delivered (Double Grey), Read (Double Green) */
         .wa-tick-sent {
             color: #8696A0;
             font-weight: bold;
@@ -707,7 +701,6 @@
             fill: currentColor;
         }
 
-        /* Settings Menu List */
         .setting-menu-btn {
             width: 100%;
             background: var(--ajrak-cream);
@@ -749,7 +742,6 @@
             background: #EAE2D3;
         }
 
-        /* Privacy Toggle Button (Public / Private) */
         .privacy-toggle-btn {
             display: inline-flex;
             align-items: center;
@@ -775,7 +767,6 @@
             border-color: var(--ajrak-red);
         }
 
-        /* Profile Card & Avatar Upload */
         .profile-card-box {
             background: var(--ajrak-cream);
             border: 1px solid #DCD4C6;
@@ -1014,7 +1005,6 @@
 
         input:focus, textarea:focus { border-color: var(--ajrak-red); background-color: #FFFFFF; }
 
-        /* Password Input with Eye Toggle Icon */
         .password-field-wrapper {
             position: relative;
             width: 100%;
@@ -1090,7 +1080,6 @@
         .status-success { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #A5D6A7; }
         .status-error { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #EF9A9A; }
 
-        /* Create Post */
         .create-post textarea {
             resize: none;
             height: 80px;
@@ -1135,7 +1124,6 @@
             cursor: not-allowed;
         }
 
-        /* Posts Feed */
         .post-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .author-info { display: flex; align-items: center; gap: 10px; }
         .avatar {
@@ -1397,7 +1385,6 @@
         <div class="ajrak-border-strip"></div>
     </header>
 
-    <!-- Beautiful Alert / No Internet / Invalid Login / Install Guide Popup Modal -->
     <div id="custom-alert-overlay" class="alert-modal-overlay hidden" onclick="if(event.target.id === 'custom-alert-overlay') closeCustomAlert()">
         <div class="alert-modal-box">
             <div class="ajrak-border-strip"></div>
@@ -1423,7 +1410,6 @@
                 <button class="modal-close" onclick="closePopup()">✕</button>
             </div>
             <div class="modal-body">
-                <!-- WhatsApp Style Chat Popup -->
                 <div id="popup-messages" class="hidden">
                     <div id="chat-friends-view">
                         <div id="popup-chat-friends-list"></div>
@@ -1644,7 +1630,7 @@
                 brand: "Sindhi World Book",
                 installAppBtn: "Install App",
                 installTitle: "Install Sindhi World Book",
-                installManualGuide: "If 'Installing app' gets stuck on Android:\n1. Open Phone Settings > Apps > Chrome > Storage > Clear Cache.\n2. Or tap Chrome Menu (⋮) > 'Add to Home screen' > 'Install'.",
+                installManualGuide: "To install Sindhi World Book:\n1. Open Phone Settings > Apps and uninstall any old 'Sindhi Book' app.\n2. Tap Chrome Menu (⋮) > 'Add to Home screen' > 'Install'.",
                 authTitle: "❖ Sindhi World Book ❖",
                 subtitle: "Connect with friends in the traditional colors of Sindh",
                 tabLogin: "Login",
@@ -1781,7 +1767,7 @@
                 brand: "سنڌي ورلڊ بڪ",
                 installAppBtn: "ايپ انسٽال",
                 installTitle: "سنڌي ورلڊ بڪ ايپ انسٽال",
-                installManualGuide: "جيڪڏهن اينڊرائيڊ تي 'Installing app' رڪجي وڃي:\n1. موبائيل جي Settings > Apps > Chrome > Storage > Clear Cache ڪريو.\n2. يا ڪروم مينيو (⋮) > 'Add to Home screen' > 'Install' چونڊيو.",
+                installManualGuide: "سنڌي ورلڊ بڪ انسٽال ڪرڻ لاءِ:\n1. موبائيل جي Settings > Apps مان پراڻي ايپ Uninstall ڪريو.\n2. ڪروم مينيو (⋮) > 'Add to Home screen' > 'Install' چونڊيو.",
                 authTitle: "❖ سنڌي ورلڊ بڪ ❖",
                 subtitle: "سنڌ جي ثقافت ۽ اجرڪ جي رنگن ۾ دوستن سان جڙيل رهو",
                 tabLogin: "لاگ ان ڪريو",
@@ -1935,7 +1921,6 @@
         let unsubscribeHistory = null;
         let unsubscribeMessages = null;
 
-        /* Custom Beautiful Alert Popup Functions (Supports Error, Network, Install types) */
         window.showCustomAlert = function(title, desc, btnLabel, type = "error") {
             const t = translations[currentLang];
             const iconBox = document.getElementById('custom-alert-icon-box');
@@ -1966,7 +1951,6 @@
             document.getElementById('custom-alert-overlay').classList.add('hidden');
         };
 
-        // Automatically show No Internet popup if device goes offline
         window.addEventListener('offline', () => {
             const t = translations[currentLang];
             showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
@@ -2647,7 +2631,6 @@
                 });
                 allMyMessages.sort((a, b) => (a.clientTime || 0) - (b.clientTime || 0));
 
-                // Mark incoming messages as Delivered (Double Grey Tick) as soon as receiver's app receives them
                 snapshot.docChanges().forEach((change) => {
                     if (change.type === "added" || change.type === "modified") {
                         const m = change.doc.data();
@@ -2658,7 +2641,6 @@
                     }
                 });
 
-                // Calculate total unread messages received by current user
                 const unreadMsgs = allMyMessages.filter(
                     m => m.receiverId === currentUserObj.uid && !m.read
                 );
@@ -2678,7 +2660,6 @@
                 }
                 updateAppIconBadge(unreadCount);
 
-                // If chat popup is open, refresh live
                 const popupMsgEl = document.getElementById('popup-messages');
                 if (popupMsgEl && !popupMsgEl.classList.contains('hidden')) {
                     if (activeChatFriendUid) {
