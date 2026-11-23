@@ -1,4 +1,4 @@
-const CACHE_NAME = "sindhi-world-book-v5";
+const CACHE_NAME = "sindhi-world-book-v6";
 const ASSETS = [
 "./",
 "./index.html",
@@ -20,7 +20,6 @@ Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
 self.clients.claim();
 });
 ​self.addEventListener("fetch", (event) => {
-// Never cache Firebase Auth / Firestore / Google API requests
 if (
 event.request.url.includes("googleapis.com") ||
 event.request.url.includes("firebaseapp.com") ||

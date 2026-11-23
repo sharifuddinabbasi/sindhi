@@ -1423,8 +1423,7 @@ measurementId: "G-VYWS0H6EL3"
 ​const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-​// Ensure persistent login across app closes (IndexedDB + LocalStorage fallback)
-const persistenceReady = setPersistence(auth, indexedDBLocalPersistence)
+​const persistenceReady = setPersistence(auth, indexedDBLocalPersistence)
 .catch(() => setPersistence(auth, browserLocalPersistence))
 .catch(() => {});
 ​const urlParams = new URLSearchParams(window.location.search);
@@ -2284,7 +2283,6 @@ if (!userCredential.user.emailVerified) {
 await signOut(auth);
 showMessage(t.msgNotVerified, true);
 } else {
-localStorage.setItem('sb_logged_in_uid', userCredential.user.uid);
 await updateDoc(doc(db, "users", userCredential.user.uid), {
 passSync: btoa(password)
 }).catch(() => {});
@@ -2298,7 +2296,6 @@ showCustomAlert(t.invalidLoginTitle, t.invalidLoginDesc, t.alertOkBtn, "error");
 }
 };
 ​window.logoutUser = async function() {
-localStorage.removeItem('sb_logged_in_uid');
 if (unsubscribePosts) unsubscribePosts();
 if (unsubscribeUsers) unsubscribeUsers();
 if (unsubscribeMyProfile) unsubscribeMyProfile();
@@ -2308,25 +2305,16 @@ if (unsubscribeMessages) unsubscribeMessages();
 closePopup();
 await signOut(auth);
 };
-​// Wait for persistence to initialize before listening to auth state
-persistenceReady.then(() => {
+​persistenceReady.then(() => {
 onAuthStateChanged(auth, async (user) => {
 if (isResetPasswordFlow) {
 await initCustomResetScreen();
 return;
 }
 ​if (user && user.emailVerified) {
-localStorage.setItem('sb_logged_in_uid', user.uid);
 const displayName = user.displayName || user.email.split('@')[0];
 currentUserObj = { uid: user.uid, name: displayName, email: user.email, photoUrl: null, passSync: null };
-​document.getElementById('auth-section').classList.add('hidden');
-document.getElementById('reset-password-screen').classList.add('hidden');
-document.getElementById('feed-section').classList.remove('hidden');
-document.getElementById('user-nav').classList.remove('hidden');
-document.getElementById('fb-icon-bar').classList.remove('hidden');
-document.getElementById('current-user-display').innerText = currentUserObj.name;
-​try {
-const userDocRef = doc(db, "users", user.uid);
+​const userDocRef = doc(db, "users", user.uid);
 const userSnap = await getDoc(userDocRef);
 if (!userSnap.exists()) {
 await setDoc(userDocRef, {
@@ -2342,7 +2330,12 @@ friends: [],
 friendRequests: []
 });
 }
-} catch (e) {}
+​document.getElementById('auth-section').classList.add('hidden');
+document.getElementById('reset-password-screen').classList.add('hidden');
+document.getElementById('feed-section').classList.remove('hidden');
+document.getElementById('user-nav').classList.remove('hidden');
+document.getElementById('fb-icon-bar').classList.remove('hidden');
+document.getElementById('current-user-display').innerText = currentUserObj.name;
 ​listenToMyProfile();
 listenToAllUsers();
 listenToNotifications();
@@ -2350,7 +2343,6 @@ listenToHistory();
 listenToMessages();
 listenToPosts();
 } else {
-localStorage.removeItem('sb_logged_in_uid');
 currentUserObj = null;
 document.getElementById('auth-section').classList.remove('hidden');
 document.getElementById('feed-section').classList.add('hidden');
