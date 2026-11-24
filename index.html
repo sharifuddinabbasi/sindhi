@@ -1393,6 +1393,10 @@
             flex-shrink: 0;
             overflow: hidden;
         }
+        .online-golden-ring {
+            box-shadow: 0 0 0 2.5px #FFFFFF, 0 0 0 5px var(--ajrak-gold), 0 0 12px rgba(212, 175, 55, 0.8) !important;
+        }
+
         .avatar img {
             width: 100%;
             height: 100%;
@@ -2118,8 +2122,8 @@
                 notifReplyLike: "liked your reply",
                 notifReplyUnlike: "unliked your reply",
                 notifDeletePost: "deleted a post you interacted with",
-                notifAdminDeletePost: "Admin deleted your post",
-                notifAdminDeleteComment: "Admin deleted your comment",
+                notifAdminDeletePost: "Admin deleted your post because your post is against our policy. Please follow Sindhi World Book community guidelines.",
+                notifAdminDeleteComment: "Admin deleted your comment because your comment is against our policy. Please follow Sindhi World Book community guidelines.",
                 notifDeleteComment: "deleted a reply on a post you interacted with",
                 notifDeleteCommentOwn: "deleted a reply on your post",
                 notifAccept: "accepted your friend request.",
@@ -2302,8 +2306,8 @@
                 notifReplyLike: "توهان جي جواب کي پسند ڪيو",
                 notifReplyUnlike: "توهان جي جواب کي ناپسند ڪيو",
                 notifDeletePost: "اها پوسٽ ڊليٽ ڪري ڇڏي جنهن تي توهان رايو ڏنو هو",
-                notifAdminDeletePost: "ايڊمن توهان جي پوسٽ ڊليٽ ڪئي",
-                notifAdminDeleteComment: "ايڊمن توهان جو تبصرو ڊليٽ ڪيو",
+                notifAdminDeletePost: "ايڊمن توهان جي پوسٽ ڊليٽ ڪئي ڇاڪاڻ ته توهان جي پوسٽ اسان جي پاليسي جي خلاف آهي. مهرباني ڪري سنڌي ورلڊ بڪ جي ضابطن جو خيال رکو.",
+                notifAdminDeleteComment: "ايڊمن توهان جو تبصرو ڊليٽ ڪيو ڇاڪاڻ ته توهان جو تبصرو اسان جي پاليسي جي خلاف آهي. مهرباني ڪري سنڌي ورلڊ بڪ جي ضابطن جو خيال رکو.",
                 notifDeleteComment: "توهان جي پسند ڪيل پوسٽ تان هڪ جواب ڊليٽ ڪيو",
                 notifDeleteCommentOwn: "توهان جي پوسٽ تان هڪ جواب ڊليٽ ڪيو",
                 notifAccept: "توهان جي دوستيءَ جي درخواست قبول ڪئي.",
@@ -3390,6 +3394,8 @@
             enriched.forEach(item => {
                 const u = item.user;
                 const avatarInner = getAvatarHTML(u.photoUrl, u.name);
+                const ringCls = getOnlineRingClass(u);
+                const onlineRingCls = getOnlineRingClass(u);
                 let previewText = t.tapToChat;
                 if (item.lastMsg) {
                     const prefix = item.lastMsg.senderId === currentUserObj.uid ? t.youPrefix : "";
@@ -3403,7 +3409,7 @@
                 container.innerHTML += `
                     <div class="chat-friend-row" onclick="openFriendChat('${u.uid}')">
                         <div class="chat-friend-left">
-                            <div class="mini-avatar">${avatarInner}</div>
+                            <div class="mini-avatar ${ringCls}">${avatarInner}</div>
                             <div class="chat-friend-meta">
                                 <div class="chat-friend-name">${escapeHTML(u.name)}</div>
                                 <div class="chat-last-preview">${previewText}</div>
@@ -3909,10 +3915,11 @@
 
             myFriendsData.forEach(u => {
                 const avatarInner = getAvatarHTML(u.photoUrl, u.name);
+                const ringCls = getOnlineRingClass(u);
                 container.innerHTML += `
                     <div class="popup-list-item">
                         <div class="popup-user-info" style="cursor:pointer;" onclick="viewFriendFriendsList('${u.uid}')">
-                            <div class="mini-avatar">${avatarInner}</div>
+                            <div class="mini-avatar ${ringCls}">${avatarInner}</div>
                             <span class="popup-user-name" style="text-decoration:underline;">${escapeHTML(u.name)}</span>
                         </div>
                         <div class="popup-actions">
@@ -4199,6 +4206,7 @@
             filtered.forEach(u => {
                 const isBlocked = u.blocked === true;
                 const avatarInner = getAvatarHTML(u.photoUrl, u.name);
+                const onlineRingCls = getOnlineRingClass(u);
                 let statusBadge = '';
                 if (isBlocked) {
                     statusBadge = `<span class="blocked-status-pill">🚫 ${t.blockedTag}</span>`;
@@ -4339,6 +4347,7 @@
                 const targetRequests = u.friendRequests || [];
                 const requestSent = targetRequests.includes(currentUserObj.uid);
                 const avatarInner = getAvatarHTML(u.photoUrl, u.name);
+                const ringCls = getOnlineRingClass(u);
 
                 let btnHTML = '';
                 if (isFriend) {
@@ -4352,7 +4361,7 @@
                 container.innerHTML += `
                     <div class="popup-list-item">
                         <div class="popup-user-info">
-                            <div class="mini-avatar">${avatarInner}</div>
+                            <div class="mini-avatar ${ringCls}">${avatarInner}</div>
                             <span class="popup-user-name">${escapeHTML(u.name)}</span>
                         </div>
                         <div class="popup-actions">${btnHTML}</div>
@@ -4375,11 +4384,12 @@
                 const senderUser = allUsersList.find(u => u.uid === senderUid);
                 const senderName = senderUser ? senderUser.name : "User";
                 const avatarInner = getAvatarHTML(senderUser?.photoUrl, senderName);
+                const ringCls = getOnlineRingClass(senderUser);
 
                 container.innerHTML += `
                     <div class="popup-list-item">
                         <div class="popup-user-info">
-                            <div class="mini-avatar">${avatarInner}</div>
+                            <div class="mini-avatar ${ringCls}">${avatarInner}</div>
                             <span class="popup-user-name">${escapeHTML(senderName)}</span>
                         </div>
                         <div class="popup-actions">
@@ -4907,6 +4917,20 @@
             return true;
         }
 
+        function isUserCurrentlyOnline(userObj) {
+            if (!userObj || !userObj.uid || userObj.blocked === true) return false;
+            if (currentUserObj && userObj.uid === currentUserObj.uid) return false;
+            const lastSeen = typeof userObj.lastSeenMs === 'number'
+                ? userObj.lastSeenMs
+                : (typeof userObj.activeSinceMs === 'number' ? userObj.activeSinceMs : 0);
+            if (!lastSeen) return false;
+            return (Date.now() - lastSeen) <= (5 * 60 * 1000);
+        }
+
+        function getOnlineRingClass(userObj) {
+            return isUserCurrentlyOnline(userObj) ? 'online-golden-ring' : '';
+        }
+
         function formatTimeOnly(ms) {
             if (!ms || typeof ms !== 'number') return '';
             try {
@@ -5174,7 +5198,7 @@
                         <div class="card-body">
                             <div class="post-header">
                                 <div class="author-info">
-                                    <div class="avatar">${avatarInner}</div>
+                                    <div class="avatar ${postAuthorRingCls}">${avatarInner}</div>
                                     <div>
                                         <div class="author-name">${escapeHTML(displayAuthorName)}</div>
                                         <div class="post-time">${escapeHTML(post.timeText || '')}</div>
@@ -5301,6 +5325,8 @@
             let cardsHTML = '';
             matchedList.forEach(u => {
                 const avatarInner = getAvatarHTML(u.photoUrl, u.name);
+                const fullUserObj = allUsersList.find(item => item.uid === u.uid) || u;
+                const uRingCls = getOnlineRingClass(fullUserObj);
                 const activitySummary = currentLang === 'sd'
                     ? `پوسٽون: ${u.postsCount} · تبصرا: ${u.commentsCount}`
                     : `Posts: ${u.postsCount} · Comments: ${u.commentsCount}`;
@@ -5312,7 +5338,7 @@
                     <div class="card" style="margin-bottom:10px;">
                         <div class="ajrak-border-strip"></div>
                         <div class="card-body" style="padding:11px 14px; display:flex; align-items:center; gap:10px;">
-                            <div class="mini-avatar" style="cursor:pointer;" title="Admin Control Panel" onclick="adminOpenUserControlPanel('${u.uid}')">${avatarInner}</div>
+                            <div class="mini-avatar ${uRingCls}" style="cursor:pointer;" title="Admin Control Panel" onclick="adminOpenUserControlPanel('${u.uid}')">${avatarInner}</div>
                             <div style="min-width:0; flex:1; cursor:pointer;" onclick="adminShowUserActivityPosts('${u.uid}')">
                                 <div class="popup-user-name">${escapeHTML(u.name)} ${blockedPill}</div>
                                 <div style="font-size:12px; color:#555; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" dir="ltr">${escapeHTML(u.email || 'No email')}</div>
@@ -5444,6 +5470,8 @@
                     }
                 }
                 const avatarInner = getAvatarHTML(authorPhotoUrl, displayAuthorName);
+                const postAuthorUserObj = isPostOwner ? null : allUsersList.find(u => u.uid === post.authorId);
+                const postAuthorRingCls = getOnlineRingClass(postAuthorUserObj);
 
                 let commentsHTML = '';
                 comments.forEach((c, idx) => {
