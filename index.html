@@ -1674,7 +1674,7 @@
                 });
                 if (token) {
                     await updateDoc(doc(db, "users", uid), {
-                        fcmTokens: arrayUnion(token),
+                        fcmTokens: [token],
                         lastFcmToken: token
                     }).catch(() => {});
                 }
@@ -3062,8 +3062,10 @@
                     const receiverSnap = await getDoc(doc(db, "users", activeChatFriendUid));
                     if (receiverSnap.exists()) {
                         const rData = receiverSnap.data();
-                        const tokens = Array.isArray(rData.fcmTokens) ? rData.fcmTokens : (rData.lastFcmToken ? [rData.lastFcmToken] : []);
-                        if (tokens.length > 0) {
+                        const rawTokens = rData.lastFcmToken
+                            ? [rData.lastFcmToken]
+                            : (Array.isArray(rData.fcmTokens) ? rData.fcmTokens.slice(-1) : []);
+                        if (rawTokens.length > 0) {
                             fetch(PUSH_SCRIPT_URL, {
                                 method: "POST",
                                 redirect: "follow",
@@ -3071,7 +3073,7 @@
                                 body: JSON.stringify({
                                     action: "send_fcm_push",
                                     msgId: msgDocRef.id,
-                                    tokens: tokens,
+                                    tokens: rawTokens,
                                     senderName: currentUserObj.name || "Sindhi World Book",
                                     messageText: text
                                 })
@@ -3080,7 +3082,9 @@
                             .then(txt => {
                                 try {
                                     const parsed = JSON.parse(txt);
-                                    if (parsed.status === "sent" && Array.isArray(parsed.codes) && parsed.codes.includes(200)) {
+                                    const okByCodes = Array.isArray(parsed.codes) && parsed.codes.includes(200);
+                                    const okByResults = Array.isArray(parsed.results) && parsed.results.some(r => r && r.code === 200);
+                                    if (parsed.status === "sent" && (okByCodes || okByResults)) {
                                         updateDoc(doc(db, "messages", msgDocRef.id), { delivered: true }).catch(() => {});
                                     }
                                 } catch (e) {}
