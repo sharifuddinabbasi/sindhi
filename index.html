@@ -3072,6 +3072,11 @@
                 if (prevSecOnLogin) prevSecOnLogin.classList.add('hidden');
                 const floatBtnOnLogin = document.getElementById('shared-post-login-toggle-wrap');
                 if (floatBtnOnLogin) floatBtnOnLogin.classList.add('hidden');
+                const createCardElAuth = document.querySelector('#feed-section .create-post');
+                if (createCardElAuth) {
+                    if (isThisAdmin) createCardElAuth.classList.add('hidden');
+                    else createCardElAuth.classList.remove('hidden');
+                }
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('reset-password-screen').classList.add('hidden');
                 document.getElementById('feed-section').classList.remove('hidden');
