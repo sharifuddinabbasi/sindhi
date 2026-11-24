@@ -1750,6 +1750,10 @@
                     <div id="popup-notif-list"></div>
                 </div>
 
+                <div id="popup-reshare" class="hidden">
+                    <div id="popup-reshare-content"></div>
+                </div>
+
                 <div id="popup-admin-users" class="hidden">
                     <input type="text" id="admin-user-search-input" placeholder="Search user by name or email..." oninput="renderAdminUsersPopup()">
                     <div id="popup-admin-users-list"></div>
@@ -2157,6 +2161,13 @@
                 unlikeTitle: "Unlike",
                 shareTitle: "Share",
                 shareBtnText: "Share",
+                reshareTitle: "Re-Share",
+                reshareModalTitle: "🔁 Re-Share Post",
+                reshareCaptionPlaceholder: "Write your own words about this post...",
+                reshareSubmitBtn: "Re-Share Post",
+                reshareSuccessAlert: "Post re-shared with your words!",
+                resharedFromLabel: "🔁 Re-shared from",
+                notifReshareOwn: "re-shared your post",
                 sharePostTitle: "🔗 Share Post",
                 sharePostDesc: "Share this post link directly with your friends:",
                 copyLinkBtn: "📋 Copy Post Link",
@@ -2341,6 +2352,13 @@
                 unlikeTitle: "ناپسند",
                 shareTitle: "شيئر ڪريو",
                 shareBtnText: "شيئر",
+                reshareTitle: "ري شيئر (Re-Share)",
+                reshareModalTitle: "🔁 پوسٽ ري شيئر ڪريو",
+                reshareCaptionPlaceholder: "هن پوسٽ بابت پنهنجا لفظ لکو...",
+                reshareSubmitBtn: "پوسٽ ري شيئر ڪريو",
+                reshareSuccessAlert: "پوسٽ توهان جي لفظن سان ري شيئر ٿي وئي آهي!",
+                resharedFromLabel: "🔁 ري شيئر ٿيل از",
+                notifReshareOwn: "توهان جي پوسٽ ري شيئر ڪئي",
                 sharePostTitle: "🔗 پوسٽ شيئر ڪريو",
                 sharePostDesc: "هن پوسٽ جي لنڪ سڌو پنهنجن دوستن سان شيئر ڪريو:",
                 copyLinkBtn: "📋 پوسٽ لنڪ ڪاپي ڪريو",
@@ -2886,6 +2904,9 @@
                 document.getElementById('modal-title').innerText = t.modalAdminTitle;
                 document.getElementById('popup-admin-users').classList.remove('hidden');
                 renderAdminUsersPopup();
+            } else if (type === 'reshare') {
+                document.getElementById('modal-title').innerText = t.reshareModalTitle;
+                document.getElementById('popup-reshare').classList.remove('hidden');
             } else if (type === 'notifications') {
                 document.getElementById('modal-title').innerText = t.modalNotifTitle;
                 document.getElementById('popup-notifications').classList.remove('hidden');
@@ -4031,7 +4052,7 @@
                 } else {
                     myHistoryList.forEach(item => {
                         let label = "";
-                        if (item.type === 'post') label = t.histPosted;
+                        if (item.type === 'post' || item.type === 'reshare') label = item.type === 'reshare' ? `${t.histPosted} (${t.reshareTitle})` : t.histPosted;
                         else if (item.type === 'reply') label = t.histReplied;
                         else if (item.type === 'like') label = t.histLikedPost;
                         else if (item.type === 'unlike') label = t.histUnlikedPost;
@@ -4426,7 +4447,10 @@
 
                 const own = (n.isOwnPost !== false);
 
-                if (n.type === 'like') {
+                if (n.type === 'reshare') {
+                    actionMsg = `${t.notifReshareOwn}${snippet ? ':' : '.'}`;
+                    if (snippet) previewHTML = `<span class="notif-preview-quote">"${escapeHTML(snippet)}..."</span>`;
+                } else if (n.type === 'like') {
                     const label = own ? t.notifLikeOwn : t.notifLike;
                     actionMsg = `${label}${snippet ? ':' : '.'}`;
                     if (snippet) previewHTML = `<span class="notif-preview-quote">"${escapeHTML(snippet)}..."</span>`;
@@ -4531,6 +4555,126 @@
             };
             reader.readAsDataURL(file);
         }
+
+        let pendingReshareSourcePost = null;
+        let pendingResharePrivacy = 'public';
+
+        window.openReshareModal = function(postId) {
+            const t = translations[currentLang];
+            const postObj = latestDocs.find(p => p.id === postId);
+            if (!postObj || !currentUserObj) return;
+
+            pendingReshareSourcePost = postObj;
+            pendingResharePrivacy = 'public';
+            openPopup('reshare');
+
+            const container = document.getElementById('popup-reshare-content');
+            if (!container) return;
+
+            const origAuthor = escapeHTML(postObj.authorName || 'User');
+            const origText = postObj.text ? `<div style="font-size:13px; color:#555; margin-bottom:8px; white-space:pre-wrap;">${escapeHTML(postObj.text)}</div>` : '';
+            const origImg = postObj.image ? `<img src="${escapeHTML(postObj.image)}" style="width:100%; max-height:220px; object-fit:cover; border-radius:8px; margin-bottom:8px;" alt="Original Image">` : '';
+
+            container.innerHTML = `
+                <div style="margin-bottom:10px; font-size:12.5px; font-weight:700; color:var(--ajrak-blue);">
+                    ${t.resharedFromLabel} <strong>${origAuthor}</strong>
+                </div>
+                <textarea id="reshare-custom-text" placeholder="${t.reshareCaptionPlaceholder}" style="resize:none; height:85px; background:var(--ajrak-cream); border:1px solid #DCD4C6; margin-bottom:10px;"></textarea>
+                <div style="background:#FAF8F5; border:1px solid #E5DEC9; border-radius:8px; padding:10px; margin-bottom:12px;">
+                    ${origText}
+                    ${origImg}
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <button type="button" id="reshare-privacy-btn" class="privacy-toggle-btn public" onclick="toggleResharePrivacy()">${t.postPublicBtn}</button>
+                    <button type="button" id="btn-submit-reshare" class="btn-post" onclick="submitResharePost()">${t.reshareSubmitBtn}</button>
+                </div>
+            `;
+        };
+
+        window.toggleResharePrivacy = function() {
+            const t = translations[currentLang];
+            pendingResharePrivacy = pendingResharePrivacy === 'public' ? 'private' : 'public';
+            const btn = document.getElementById('reshare-privacy-btn');
+            if (!btn) return;
+            if (pendingResharePrivacy === 'private') {
+                btn.className = "privacy-toggle-btn private";
+                btn.innerText = t.postPrivateBtn;
+            } else {
+                btn.className = "privacy-toggle-btn public";
+                btn.innerText = t.postPublicBtn;
+            }
+        };
+
+        window.submitResharePost = async function() {
+            const t = translations[currentLang];
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
+            if (!pendingReshareSourcePost || !currentUserObj) return;
+
+            const customText = (document.getElementById('reshare-custom-text')?.value || '').trim();
+            const srcPost = pendingReshareSourcePost;
+            const btn = document.getElementById('btn-submit-reshare');
+
+            if (!customText && !srcPost.image && !srcPost.text) {
+                showCustomAlert(t.noticeTitle, t.alertEmptyPost, t.alertOkBtn, "error");
+                return;
+            }
+
+            if (btn) btn.disabled = true;
+
+            try {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " · " + now.toLocaleDateString();
+                const h24 = now.getHours();
+                const ampm = h24 >= 12 ? "PM" : "AM";
+                const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+
+                const finalText = customText || srcPost.text || '';
+
+                const docRef = await addDoc(collection(db, "posts"), {
+                    authorId: currentUserObj.uid,
+                    authorName: currentUserObj.name,
+                    timeText: timeString,
+                    postYear: now.getFullYear(),
+                    postMonth: now.getMonth() + 1,
+                    postDay: now.getDate(),
+                    postHour12: h12,
+                    postAmPm: ampm,
+                    postMinute: now.getMinutes(),
+                    text: finalText,
+                    image: srcPost.image || null,
+                    imageFileId: srcPost.imageFileId || null,
+                    driveIndex: srcPost.driveIndex ?? null,
+                    privacy: pendingResharePrivacy,
+                    resharedFrom: {
+                        postId: srcPost.id,
+                        authorId: srcPost.authorId || null,
+                        authorName: srcPost.authorName || 'User'
+                    },
+                    likes: [],
+                    unlikes: [],
+                    comments: [],
+                    edited: false,
+                    createdAt: serverTimestamp()
+                });
+
+                const snippet = finalText ? finalText.substring(0, 45) : t.photoPostTag;
+                await logActivityHistory('reshare', docRef.id, snippet);
+                if (srcPost.authorId && srcPost.authorId !== currentUserObj.uid) {
+                    await createNotification(srcPost.authorId, 'reshare', docRef.id, snippet, finalText, true);
+                }
+
+                pendingReshareSourcePost = null;
+                closePopup();
+                showCustomAlert(t.noticeTitle, t.reshareSuccessAlert, t.alertOkBtn, "info");
+            } catch (err) {
+                showCustomAlert(t.noticeTitle, err.message, t.alertOkBtn, "error");
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        };
 
         window.createPost = async function() {
             const t = translations[currentLang];
@@ -5549,7 +5693,7 @@
                                                 return `<span class="post-privacy-badge ${pPriv}">${pLabel}</span>`;
                                             })()}
                                         </div>
-                                        <div class="post-time">${post.timeText || ''} ${post.edited ? t.edited : ''}</div>
+                                        <div class="post-time">${post.timeText || ''} ${post.edited ? t.edited : ''}${post.resharedFrom ? ` · <span style="color:var(--ajrak-red); font-weight:700;">${t.resharedFromLabel} ${escapeHTML(post.resharedFrom.authorName || 'User')}</span>` : ''}</div>
                                     </div>
                                 </div>
                                 ${canManagePost ? `
@@ -5596,6 +5740,9 @@
                                         💔
                                     </button>
                                 ` : ''}
+                                <button class="action-btn" title="${t.reshareTitle}" onclick="openReshareModal('${postId}')">
+                                    🔁
+                                </button>
                                 <button class="action-btn" title="${t.shareTitle}" onclick="sharePost('${postId}')">
                                     ${ICON_SHARE_SVG}
                                     <span class="share-btn-label">${t.shareBtnText}</span>
