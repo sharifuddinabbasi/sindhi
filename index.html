@@ -5173,6 +5173,7 @@
                 const authorObj = allUsersList.find(u => u.uid === post.authorId);
                 const displayAuthorName = (authorObj && authorObj.name) ? authorObj.name : (post.authorName || 'User');
                 const avatarInner = getAvatarHTML(authorObj?.photoUrl || null, displayAuthorName);
+                const postAuthorRingCls = getOnlineRingClass(authorObj);
                 const pPriv = (post.privacy || 'public') === 'private' ? 'private' : 'public';
                 const pPrivLabel = pPriv === 'private' ? tAct.postPrivateBtn : tAct.postPublicBtn;
 
