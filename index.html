@@ -1257,32 +1257,6 @@
             color: var(--normal-brown-text);
             font-weight: 500;
         }
-
-        .post-time-filter-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 10px;
-        }
-
-        .post-filter-select {
-            flex: 1 1 85px;
-            min-width: 78px;
-            padding: 6px 8px;
-            border-radius: 6px;
-            border: 1px solid #C8BEB0;
-            background-color: #FAF8F5;
-            color: var(--ajrak-blue);
-            font-size: 12px;
-            font-weight: 700;
-            outline: none;
-            cursor: pointer;
-        }
-
-        .post-filter-select:focus {
-            border-color: var(--ajrak-red);
-            background-color: #FFFFFF;
-        }
         .post-options { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; }
         .custom-file-label {
             display: inline-flex;
@@ -1778,23 +1752,6 @@
             <div class="ajrak-border-strip"></div>
             <div class="card-body">
                 <textarea id="post-text" placeholder="What's on your mind? Share something..."></textarea>
-                <div id="post-time-filter-bar" class="post-time-filter-bar">
-                    <select id="filter-year" class="post-filter-select" aria-label="Year" onchange="applyPostTimeFilters()">
-                        <option value="ALL" selected>All</option>
-                    </select>
-                    <select id="filter-month" class="post-filter-select" aria-label="Month" onchange="applyPostTimeFilters()">
-                        <option value="ALL" selected>All</option>
-                    </select>
-                    <select id="filter-hour" class="post-filter-select" aria-label="Hours (AM/PM)" onchange="applyPostTimeFilters()">
-                        <option value="ALL" selected>All</option>
-                    </select>
-                    <select id="filter-minute" class="post-filter-select" aria-label="Minutes" onchange="applyPostTimeFilters()">
-                        <option value="ALL" selected>All</option>
-                    </select>
-                    <select id="filter-second" class="post-filter-select" aria-label="Seconds" onchange="applyPostTimeFilters()">
-                        <option value="ALL" selected>All</option>
-                    </select>
-                </div>
                 <div class="post-options" style="flex-wrap: wrap;">
                     <label for="post-image" class="custom-file-label">
                         📷 <span id="photo-label-text">Add Photo</span>
@@ -3072,11 +3029,6 @@
                 if (prevSecOnLogin) prevSecOnLogin.classList.add('hidden');
                 const floatBtnOnLogin = document.getElementById('shared-post-login-toggle-wrap');
                 if (floatBtnOnLogin) floatBtnOnLogin.classList.add('hidden');
-                const createCardElAuth = document.querySelector('#feed-section .create-post');
-                if (createCardElAuth) {
-                    if (isThisAdmin) createCardElAuth.classList.add('hidden');
-                    else createCardElAuth.classList.remove('hidden');
-                }
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('reset-password-screen').classList.add('hidden');
                 document.getElementById('feed-section').classList.remove('hidden');
@@ -4467,21 +4419,12 @@
             const t = translations[currentLang];
             try {
                 const now = new Date();
-                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + " · " + now.toLocaleDateString();
-                const h24 = now.getHours();
-                const ampm = h24 >= 12 ? "PM" : "AM";
-                const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " · " + now.toLocaleDateString();
 
                 const docRef = await addDoc(collection(db, "posts"), {
                     authorId: currentUserObj.uid,
                     authorName: currentUserObj.name,
                     timeText: timeString,
-                    postYear: now.getFullYear(),
-                    postMonth: now.getMonth() + 1,
-                    postHour12: h12,
-                    postAmPm: ampm,
-                    postMinute: now.getMinutes(),
-                    postSecond: now.getSeconds(),
                     text: text,
                     image: imageUrl,
                     imageFileId: imageFileId,
@@ -4707,119 +4650,17 @@
             });
         }
 
-        function getPostDateParts(post) {
-            const d = post?.createdAt?.toDate
-                ? post.createdAt.toDate()
-                : (typeof post?.createdAt?.seconds === 'number'
-                    ? new Date(post.createdAt.seconds * 1000)
-                    : null);
-
-            const year = typeof post?.postYear === 'number' ? post.postYear : (d ? d.getFullYear() : null);
-            const month = typeof post?.postMonth === 'number' ? post.postMonth : (d ? (d.getMonth() + 1) : null);
-
-            let hour12 = typeof post?.postHour12 === 'number' ? post.postHour12 : null;
-            let ampm = post?.postAmPm || null;
-            if ((hour12 === null || !ampm) && d) {
-                const h24 = d.getHours();
-                ampm = h24 >= 12 ? "PM" : "AM";
-                hour12 = h24 % 12 === 0 ? 12 : h24 % 12;
-            }
-
-            const minute = typeof post?.postMinute === 'number' ? post.postMinute : (d ? d.getMinutes() : null);
-            const second = typeof post?.postSecond === 'number' ? post.postSecond : (d ? d.getSeconds() : null);
-
-            return { year, month, hour12, ampm, minute, second };
-        }
-
-        function populatePostTimeDropdowns(postsArray) {
-            const yearEl = document.getElementById('filter-year');
-            const monthEl = document.getElementById('filter-month');
-            const hourEl = document.getElementById('filter-hour');
-            const minEl = document.getElementById('filter-minute');
-            const secEl = document.getElementById('filter-second');
-            if (!yearEl || !monthEl || !hourEl || !minEl || !secEl) return;
-
-            const prevYear = yearEl.value || 'ALL';
-            const prevMonth = monthEl.value || 'ALL';
-            const prevHour = hourEl.value || 'ALL';
-            const prevMin = minEl.value || 'ALL';
-            const prevSec = secEl.value || 'ALL';
-
-            const years = new Set();
-            const months = new Set();
-            const hoursAmPm = new Set();
-            const minutes = new Set();
-            const seconds = new Set();
-
-            (postsArray || []).forEach(p => {
-                const parts = getPostDateParts(p);
-                if (parts.year !== null) years.add(String(parts.year));
-                if (parts.month !== null) months.add(String(parts.month).padStart(2, '0'));
-                if (parts.hour12 !== null && parts.ampm) {
-                    hoursAmPm.add(`${String(parts.hour12).padStart(2, '0')} ${parts.ampm}`);
-                }
-                if (parts.minute !== null) minutes.add(String(parts.minute).padStart(2, '0'));
-                if (parts.second !== null) seconds.add(String(parts.second).padStart(2, '0'));
-            });
-
-            function refillSelect(sel, values, prevVal, sortFn) {
-                const sorted = Array.from(values).sort(sortFn);
-                sel.innerHTML = `<option value="ALL">All</option>` + sorted.map(v => `<option value="${v}">${v}</option>`).join('');
-                sel.value = sorted.includes(prevVal) ? prevVal : 'ALL';
-            }
-
-            refillSelect(yearEl, years, prevYear, (a, b) => Number(b) - Number(a));
-            refillSelect(monthEl, months, prevMonth, (a, b) => Number(a) - Number(b));
-            refillSelect(hourEl, hoursAmPm, prevHour, (a, b) => {
-                const [ha, pa] = a.split(' ');
-                const [hb, pb] = b.split(' ');
-                if (pa !== pb) return pa === 'AM' ? -1 : 1;
-                return Number(ha) - Number(hb);
-            });
-            refillSelect(minEl, minutes, prevMin, (a, b) => Number(a) - Number(b));
-            refillSelect(secEl, seconds, prevSec, (a, b) => Number(a) - Number(b));
-        }
-
-        window.applyPostTimeFilters = function() {
-            renderPostsList(latestDocs);
-        };
-
         function renderPostsList(postsArray) {
             const t = translations[currentLang];
             const container = document.getElementById('posts-container');
-            const createCardEl = document.querySelector('#feed-section .create-post');
             container.innerHTML = '';
 
-            if (isAdminUser()) {
-                if (createCardEl) createCardEl.classList.add('hidden');
-                return;
-            }
-
-            if (createCardEl) createCardEl.classList.remove('hidden');
-            populatePostTimeDropdowns(postsArray);
-
-            const selYear = document.getElementById('filter-year')?.value || 'ALL';
-            const selMonth = document.getElementById('filter-month')?.value || 'ALL';
-            const selHour = document.getElementById('filter-hour')?.value || 'ALL';
-            const selMin = document.getElementById('filter-minute')?.value || 'ALL';
-            const selSec = document.getElementById('filter-second')?.value || 'ALL';
-
             const visiblePosts = postsArray.filter(post => {
+                if (isAdminUser()) return true;
                 const postPriv = post.privacy || 'public';
-                const canSeeByPrivacy = (post.authorId === currentUserObj.uid) || (postPriv === 'public') || myFriendsList.includes(post.authorId);
-                if (!canSeeByPrivacy) return false;
-
-                const parts = getPostDateParts(post);
-                if (selYear !== 'ALL' && String(parts.year) !== selYear) return false;
-                if (selMonth !== 'ALL' && String(parts.month).padStart(2, '0') !== selMonth) return false;
-                if (selHour !== 'ALL') {
-                    const hLabel = (parts.hour12 !== null && parts.ampm) ? `${String(parts.hour12).padStart(2, '0')} ${parts.ampm}` : '';
-                    if (hLabel !== selHour) return false;
-                }
-                if (selMin !== 'ALL' && String(parts.minute).padStart(2, '0') !== selMin) return false;
-                if (selSec !== 'ALL' && String(parts.second).padStart(2, '0') !== selSec) return false;
-
-                return true;
+                if (post.authorId === currentUserObj.uid) return true;
+                if (postPriv === 'public') return true;
+                return myFriendsList.includes(post.authorId);
             });
 
             if (visiblePosts.length === 0) {
