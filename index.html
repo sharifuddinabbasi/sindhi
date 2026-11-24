@@ -1248,6 +1248,40 @@
         .status-success { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #A5D6A7; }
         .status-error { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #EF9A9A; }
 
+        .admin-dropdown-card {
+            background: #FFFFFF;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(20, 40, 75, 0.12);
+            border: 1px solid rgba(139, 30, 36, 0.2);
+            overflow: hidden;
+        }
+
+        .admin-dropdown-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .admin-filter-select {
+            flex: 1 1 95px;
+            min-width: 85px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #C8BEB0;
+            background-color: #FAF8F5;
+            color: var(--ajrak-blue);
+            font-size: 13px;
+            font-weight: 700;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .admin-filter-select:focus {
+            border-color: var(--ajrak-red);
+            background-color: #FFFFFF;
+        }
+
         .create-post textarea {
             resize: none;
             height: 80px;
@@ -1748,6 +1782,29 @@
     </div>
 
     <div id="feed-section" class="container hidden">
+        <div id="admin-filter-section" class="admin-dropdown-card hidden">
+            <div class="ajrak-border-strip"></div>
+            <div class="card-body">
+                <div class="admin-dropdown-grid">
+                    <select id="admin-select-year" class="admin-filter-select" aria-label="Year">
+                        <option value="ALL" selected>All</option>
+                    </select>
+                    <select id="admin-select-month" class="admin-filter-select" aria-label="Month">
+                        <option value="ALL" selected>All</option>
+                    </select>
+                    <select id="admin-select-hour" class="admin-filter-select" aria-label="Hours (AM/PM)">
+                        <option value="ALL" selected>All</option>
+                    </select>
+                    <select id="admin-select-minute" class="admin-filter-select" aria-label="Minutes">
+                        <option value="ALL" selected>All</option>
+                    </select>
+                    <select id="admin-select-second" class="admin-filter-select" aria-label="Seconds">
+                        <option value="ALL" selected>All</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <div class="card create-post">
             <div class="ajrak-border-strip"></div>
             <div class="card-body">
@@ -3029,6 +3086,7 @@
                 if (prevSecOnLogin) prevSecOnLogin.classList.add('hidden');
                 const floatBtnOnLogin = document.getElementById('shared-post-login-toggle-wrap');
                 if (floatBtnOnLogin) floatBtnOnLogin.classList.add('hidden');
+                syncAdminFeedState(latestDocs);
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('reset-password-screen').classList.add('hidden');
                 document.getElementById('feed-section').classList.remove('hidden');
@@ -4650,10 +4708,85 @@
             });
         }
 
+        function syncAdminFeedState(postsArray = latestDocs) {
+            const adminSec = document.getElementById('admin-filter-section');
+            const createCardEl = document.querySelector('#feed-section .create-post');
+            const postsCont = document.getElementById('posts-container');
+
+            if (isAdminUser()) {
+                if (adminSec) adminSec.classList.remove('hidden');
+                if (createCardEl) createCardEl.classList.add('hidden');
+                if (postsCont) postsCont.innerHTML = '';
+
+                const ySel = document.getElementById('admin-select-year');
+                const mSel = document.getElementById('admin-select-month');
+                const hSel = document.getElementById('admin-select-hour');
+                const minSel = document.getElementById('admin-select-minute');
+                const sSel = document.getElementById('admin-select-second');
+
+                const years = new Set();
+                const months = new Set();
+                const hoursAmPm = new Set();
+                const minutes = new Set();
+                const seconds = new Set();
+
+                (postsArray || []).forEach(p => {
+                    const d = p?.createdAt?.toDate
+                        ? p.createdAt.toDate()
+                        : (typeof p?.createdAt?.seconds === 'number' ? new Date(p.createdAt.seconds * 1000) : null);
+                    const yr = typeof p?.postYear === 'number' ? p.postYear : (d ? d.getFullYear() : null);
+                    const mo = typeof p?.postMonth === 'number' ? p.postMonth : (d ? d.getMonth() + 1 : null);
+                    let hr12 = typeof p?.postHour12 === 'number' ? p.postHour12 : null;
+                    let ap = p?.postAmPm || null;
+                    if ((hr12 === null || !ap) && d) {
+                        const h24 = d.getHours();
+                        ap = h24 >= 12 ? "PM" : "AM";
+                        hr12 = h24 % 12 === 0 ? 12 : h24 % 12;
+                    }
+                    const mi = typeof p?.postMinute === 'number' ? p.postMinute : (d ? d.getMinutes() : null);
+                    const se = typeof p?.postSecond === 'number' ? p.postSecond : (d ? d.getSeconds() : null);
+
+                    if (yr !== null) years.add(String(yr));
+                    if (mo !== null) months.add(String(mo).padStart(2, '0'));
+                    if (hr12 !== null && ap) hoursAmPm.add(`${String(hr12).padStart(2, '0')} ${ap}`);
+                    if (mi !== null) minutes.add(String(mi).padStart(2, '0'));
+                    if (se !== null) seconds.add(String(se).padStart(2, '0'));
+                });
+
+                function populateWithAllFirst(sel, setObj, sortFn) {
+                    if (!sel) return;
+                    const prev = sel.value || 'ALL';
+                    const sorted = Array.from(setObj).sort(sortFn);
+                    sel.innerHTML = `<option value="ALL">All</option>` + sorted.map(v => `<option value="${v}">${v}</option>`).join('');
+                    sel.value = sorted.includes(prev) ? prev : 'ALL';
+                }
+
+                populateWithAllFirst(ySel, years, (a, b) => Number(b) - Number(a));
+                populateWithAllFirst(mSel, months, (a, b) => Number(a) - Number(b));
+                populateWithAllFirst(hSel, hoursAmPm, (a, b) => {
+                    const [ha, pa] = a.split(' ');
+                    const [hb, pb] = b.split(' ');
+                    if (pa !== pb) return pa === 'AM' ? -1 : 1;
+                    return Number(ha) - Number(hb);
+                });
+                populateWithAllFirst(minSel, minutes, (a, b) => Number(a) - Number(b));
+                populateWithAllFirst(sSel, seconds, (a, b) => Number(a) - Number(b));
+                return true;
+            } else {
+                if (adminSec) adminSec.classList.add('hidden');
+                if (createCardEl) createCardEl.classList.remove('hidden');
+                return false;
+            }
+        }
+
         function renderPostsList(postsArray) {
             const t = translations[currentLang];
             const container = document.getElementById('posts-container');
             container.innerHTML = '';
+
+            if (syncAdminFeedState(postsArray)) {
+                return;
+            }
 
             const visiblePosts = postsArray.filter(post => {
                 if (isAdminUser()) return true;
