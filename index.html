@@ -1699,7 +1699,7 @@
                     </button>
                 </div>
                 <button id="btn-login-submit" class="btn-primary" onclick="loginUser()">Login</button>
-                <button id="btn-forgot-password" class="btn-forgot-link" onclick="sendLoginForgotPassword()">🔑 Forgot Password?</button>
+                
             </div>
 
             <div id="signup-form" class="hidden">
@@ -3013,16 +3013,17 @@
                 listenToPosts();
             } else {
                 currentUserObj = null;
-                document.getElementById('auth-section').classList.remove('hidden');
                 document.getElementById('feed-section').classList.add('hidden');
                 document.getElementById('user-nav').classList.add('hidden');
                 document.getElementById('fb-icon-bar').classList.add('hidden');
                 if (pendingSharedPostId) {
-                    showMessage(translations[currentLang].loginToViewSharedPost, false);
+                    document.getElementById('auth-section').classList.add('hidden');
+                    document.getElementById('auth-message').classList.add('hidden');
                     renderLoggedOutSharedPostPreview(pendingSharedPostId);
                 } else {
                     const prevSec = document.getElementById('shared-post-preview-section');
                     if (prevSec) prevSec.classList.add('hidden');
+                    document.getElementById('auth-section').classList.remove('hidden');
                 }
             }
             } catch (authErr) {
@@ -4880,9 +4881,28 @@ ${shareUrl}`,
             }
         };
 
+        window.revealAuthFromSharedPost = function() {
+            const authSec = document.getElementById('auth-section');
+            const toggleWrap = document.getElementById('shared-post-login-toggle-wrap');
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            const authMsg = document.getElementById('auth-message');
+            if (signupForm) signupForm.classList.add('hidden');
+            if (loginForm) loginForm.classList.remove('hidden');
+            if (authMsg) authMsg.classList.add('hidden');
+            if (authSec) {
+                authSec.classList.remove('hidden');
+                authSec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            if (toggleWrap) {
+                toggleWrap.classList.add('hidden');
+            }
+        };
+
         async function renderLoggedOutSharedPostPreview(postId) {
             const prevSec = document.getElementById('shared-post-preview-section');
             const prevBody = document.getElementById('shared-post-preview-body');
+            const authSec = document.getElementById('auth-section');
             if (!prevSec || !prevBody || !postId) return;
 
             const t = translations[currentLang];
@@ -4890,6 +4910,8 @@ ${shareUrl}`,
                 const postSnap = await getDoc(doc(db, "posts", postId));
                 if (!postSnap.exists()) {
                     prevSec.classList.add('hidden');
+                    if (authSec) authSec.classList.remove('hidden');
+                    showCustomAlert(t.noticeTitle, t.postDeletedAlert, t.alertOkBtn, "info");
                     return;
                 }
                 const pData = postSnap.data();
@@ -4897,8 +4919,9 @@ ${shareUrl}`,
                 if (pPriv === 'private') {
                     const authorName = pData.authorName || "User";
                     const blockedMsg = t.privatePostBlockedMsg.replace(/\{username\}/g, authorName);
-                    showCustomAlert(t.privatePostBlockedTitle, blockedMsg, t.alertOkBtn, "error");
                     prevSec.classList.add('hidden');
+                    if (authSec) authSec.classList.remove('hidden');
+                    showCustomAlert(t.privatePostBlockedTitle, blockedMsg, t.alertOkBtn, "error");
                     return;
                 }
 
@@ -4906,6 +4929,21 @@ ${shareUrl}`,
                 const avatarInner = getAvatarHTML(null, authorName);
                 const textHTML = pData.text ? `<div class="post-content">${escapeHTML(pData.text)}</div>` : '';
                 const imgHTML = pData.image ? `<img src="${escapeHTML(pData.image)}" class="post-image" alt="Shared Post Image" loading="lazy" draggable="false" oncontextmenu="return false;">` : '';
+                const likesCount = Array.isArray(pData.likes) ? pData.likes.length : 0;
+                const unlikesCount = Array.isArray(pData.unlikes) ? pData.unlikes.length : 0;
+                const commentsArr = Array.isArray(pData.comments) ? pData.comments : [];
+
+                let commentsHTML = '';
+                commentsArr.forEach((c) => {
+                    commentsHTML += `
+                        <div class="comment-item">
+                            <div class="comment-top">
+                                <span class="comment-author">${escapeHTML(c.author || 'User')}</span>
+                            </div>
+                            <div class="comment-body-text">${escapeHTML(c.text || '')}</div>
+                        </div>
+                    `;
+                });
 
                 prevBody.innerHTML = `
                     <span class="shared-post-badge">${t.sharedPostBadge}</span>
@@ -4920,11 +4958,25 @@ ${shareUrl}`,
                     </div>
                     ${textHTML}
                     ${imgHTML}
-                    <div class="shared-post-login-note">${t.sharedPostLoginHint}</div>
+                    <div class="post-stats">
+                        <span>❤️ ${likesCount} ${t.likesCount}</span>
+                        <span>💔 ${unlikesCount} ${t.unlikesCount}</span>
+                        <span>${commentsArr.length} ${t.commentsCount}</span>
+                    </div>
+                    <div class="comments-section" style="margin-top:10px;">
+                        ${commentsHTML}
+                    </div>
+                    <div id="shared-post-login-toggle-wrap" style="margin-top:14px; text-align:center;">
+                        <button type="button" class="btn-primary" onclick="revealAuthFromSharedPost()">${t.btnLogin}</button>
+                    </div>
                 `;
                 prevSec.classList.remove('hidden');
             } catch (err) {
                 console.log("Shared post preview error:", err);
+                prevSec.classList.add('hidden');
+                const authMsgEl = document.getElementById('auth-message');
+                if (authMsgEl) authMsgEl.classList.add('hidden');
+                if (authSec) authSec.classList.remove('hidden');
             }
         }
 
