@@ -1,7 +1,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-const CACHE_NAME = "sindhi-world-book-v23";
+const CACHE_NAME = "sindhi-world-book-v24";
 const ASSETS = [
   "./",
   "./index.html",
@@ -77,7 +77,7 @@ async function clearAllMsgNotificationsAndBadge() {
   if ("clearAppBadge" in self.navigator) {
     await self.navigator.clearAppBadge().catch(() => {});
   }
-  const notifs = await self.registration.getNotifications({ tag: "sindhi-world-book-msg" });
+  const notifs = await self.registration.getNotifications();
   notifs.forEach((n) => n.close());
 }
 

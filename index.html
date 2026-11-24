@@ -2786,6 +2786,23 @@
             } catch (e) {}
         }
 
+        function clearAllSystemNotifications() {
+            if ("clearAppBadge" in navigator) {
+                navigator.clearAppBadge().catch(() => {});
+            }
+            if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.ready.then(async (reg) => {
+                    try {
+                        const notifs = await reg.getNotifications();
+                        notifs.forEach((n) => n.close());
+                    } catch (e) {}
+                    if (reg.active) {
+                        reg.active.postMessage({ type: "CLEAR_MSG_BADGE" });
+                    }
+                }).catch(() => {});
+            }
+        }
+
         function updateAppIconBadge(count, latestSenderName = "", latestText = "") {
             if ("setAppBadge" in navigator) {
                 if (count > 0) {
@@ -2796,16 +2813,17 @@
             }
             if ("serviceWorker" in navigator) {
                 navigator.serviceWorker.ready.then((reg) => {
-                    if (!reg.active) return;
                     if (count > 0 && "Notification" in window && Notification.permission === "granted") {
-                        reg.active.postMessage({
-                            type: "NEW_MSG_BADGE",
-                            count: count,
-                            sender: latestSenderName || "Sindhi World Book",
-                            text: latestText || (count + " new message(s)")
-                        });
+                        if (reg.active) {
+                            reg.active.postMessage({
+                                type: "NEW_MSG_BADGE",
+                                count: count,
+                                sender: latestSenderName || "Sindhi World Book",
+                                text: latestText || (count + " new message(s)")
+                            });
+                        }
                     } else if (count === 0) {
-                        reg.active.postMessage({ type: "CLEAR_MSG_BADGE" });
+                        clearAllSystemNotifications();
                     }
                 }).catch(() => {});
             }
@@ -2886,7 +2904,7 @@
                 m => m.receiverId === currentUserObj.uid && !m.read && m.senderId !== friendUid
             ).length;
             if (remainingUnread === 0) {
-                updateAppIconBadge(0);
+                clearAllSystemNotifications();
             }
         }
 
