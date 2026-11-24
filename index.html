@@ -1806,19 +1806,19 @@
                 <div class="admin-dropdown-row">
                     <div class="admin-dropdown-field">
                         <label class="admin-dropdown-label" for="admin-select-year">Year</label>
-                        <select id="admin-select-year" class="admin-filter-select">
+                        <select id="admin-select-year" class="admin-filter-select" onchange="renderAdminFilteredUsers()">
                             <option value="ALL" selected>All</option>
                         </select>
                     </div>
                     <div class="admin-dropdown-field">
                         <label class="admin-dropdown-label" for="admin-select-month">Month</label>
-                        <select id="admin-select-month" class="admin-filter-select">
+                        <select id="admin-select-month" class="admin-filter-select" onchange="renderAdminFilteredUsers()">
                             <option value="ALL" selected>All</option>
                         </select>
                     </div>
                     <div class="admin-dropdown-field">
                         <label class="admin-dropdown-label" for="admin-select-day">Day</label>
-                        <select id="admin-select-day" class="admin-filter-select">
+                        <select id="admin-select-day" class="admin-filter-select" onchange="renderAdminFilteredUsers()">
                             <option value="ALL" selected>All</option>
                         </select>
                     </div>
@@ -1826,13 +1826,13 @@
                 <div class="admin-dropdown-row">
                     <div class="admin-dropdown-field">
                         <label class="admin-dropdown-label" for="admin-select-hour">Hours (AM, PM)</label>
-                        <select id="admin-select-hour" class="admin-filter-select">
+                        <select id="admin-select-hour" class="admin-filter-select" onchange="renderAdminFilteredUsers()">
                             <option value="ALL" selected>All</option>
                         </select>
                     </div>
                     <div class="admin-dropdown-field">
                         <label class="admin-dropdown-label" for="admin-select-minute">Minutes</label>
-                        <select id="admin-select-minute" class="admin-filter-select">
+                        <select id="admin-select-minute" class="admin-filter-select" onchange="renderAdminFilteredUsers()">
                             <option value="ALL" selected>All</option>
                         </select>
                     </div>
@@ -4520,10 +4520,20 @@
                 const now = new Date();
                 const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " · " + now.toLocaleDateString();
 
+                const h24 = now.getHours();
+                const ampm = h24 >= 12 ? "PM" : "AM";
+                const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+
                 const docRef = await addDoc(collection(db, "posts"), {
                     authorId: currentUserObj.uid,
                     authorName: currentUserObj.name,
                     timeText: timeString,
+                    postYear: now.getFullYear(),
+                    postMonth: now.getMonth() + 1,
+                    postDay: now.getDate(),
+                    postHour12: h12,
+                    postAmPm: ampm,
+                    postMinute: now.getMinutes(),
                     text: text,
                     image: imageUrl,
                     imageFileId: imageFileId,
@@ -4754,15 +4764,170 @@
             "July", "August", "September", "October", "November", "December"
         ];
 
+        function extractItemDateParts(item, fallbackParts = null) {
+            const d = item?.createdAt?.toDate
+                ? item.createdAt.toDate()
+                : (typeof item?.createdAt?.seconds === 'number'
+                    ? new Date(item.createdAt.seconds * 1000)
+                    : (typeof item?.createdAtMs === 'number' ? new Date(item.createdAtMs) : null));
+
+            const yr = typeof item?.postYear === 'number'
+                ? item.postYear
+                : (typeof item?.commentYear === 'number'
+                    ? item.commentYear
+                    : (d ? d.getFullYear() : (fallbackParts?.year ?? null)));
+
+            const mo = typeof item?.postMonth === 'number'
+                ? item.postMonth
+                : (typeof item?.commentMonth === 'number'
+                    ? item.commentMonth
+                    : (d ? (d.getMonth() + 1) : (fallbackParts?.month ?? null)));
+
+            const dy = typeof item?.postDay === 'number'
+                ? item.postDay
+                : (typeof item?.commentDay === 'number'
+                    ? item.commentDay
+                    : (d ? d.getDate() : (fallbackParts?.day ?? null)));
+
+            let hr12 = typeof item?.postHour12 === 'number'
+                ? item.postHour12
+                : (typeof item?.commentHour12 === 'number' ? item.commentHour12 : null);
+            let ap = item?.postAmPm || item?.commentAmPm || null;
+
+            if ((hr12 === null || !ap) && d) {
+                const h24 = d.getHours();
+                ap = h24 >= 12 ? "PM" : "AM";
+                hr12 = h24 % 12 === 0 ? 12 : h24 % 12;
+            }
+            if ((hr12 === null || !ap) && fallbackParts) {
+                hr12 = fallbackParts.hour12 ?? null;
+                ap = fallbackParts.ampm ?? null;
+            }
+
+            const mi = typeof item?.postMinute === 'number'
+                ? item.postMinute
+                : (typeof item?.commentMinute === 'number'
+                    ? item.commentMinute
+                    : (d ? d.getMinutes() : (fallbackParts?.minute ?? null)));
+
+            return { year: yr, month: mo, day: dy, hour12: hr12, ampm: ap, minute: mi };
+        }
+
+        function matchesAdminTimeSelection(parts, selY, selM, selD, selH, selMin) {
+            if (selY !== 'ALL' && String(parts.year) !== selY) return false;
+            if (selM !== 'ALL' && String(parts.month) !== selM) return false;
+            if (selD !== 'ALL' && String(parts.day).padStart(2, '0') !== selD) return false;
+            if (selH !== 'ALL') {
+                const hLabel = (parts.hour12 !== null && parts.ampm)
+                    ? `${String(parts.hour12).padStart(2, '0')} ${parts.ampm}`
+                    : '';
+                if (hLabel !== selH) return false;
+            }
+            if (selMin !== 'ALL' && String(parts.minute).padStart(2, '0') !== selMin) return false;
+            return true;
+        }
+
+        window.renderAdminFilteredUsers = function(postsArray = latestDocs) {
+            if (!isAdminUser()) return;
+            const postsCont = document.getElementById('posts-container');
+            if (!postsCont) return;
+
+            const selY = document.getElementById('admin-select-year')?.value || 'ALL';
+            const selM = document.getElementById('admin-select-month')?.value || 'ALL';
+            const selD = document.getElementById('admin-select-day')?.value || 'ALL';
+            const selH = document.getElementById('admin-select-hour')?.value || 'ALL';
+            const selMin = document.getElementById('admin-select-minute')?.value || 'ALL';
+
+            const matchedUsersMap = new Map();
+
+            function addMatchedUser(uid, fallbackName, activityType) {
+                if (!uid || uid === currentUserObj?.uid) return;
+                const uObj = allUsersList.find(u => u.uid === uid);
+                const name = (uObj && uObj.name) ? uObj.name : (fallbackName || 'User');
+                const email = (uObj && uObj.email) ? uObj.email : '';
+                const photoUrl = (uObj && uObj.photoUrl) ? uObj.photoUrl : null;
+                const blocked = Boolean(uObj && uObj.blocked === true);
+
+                if (!matchedUsersMap.has(uid)) {
+                    matchedUsersMap.set(uid, {
+                        uid,
+                        name,
+                        email,
+                        photoUrl,
+                        blocked,
+                        postsCount: 0,
+                        commentsCount: 0
+                    });
+                }
+                const entry = matchedUsersMap.get(uid);
+                if (activityType === 'post') entry.postsCount += 1;
+                if (activityType === 'comment') entry.commentsCount += 1;
+            }
+
+            (postsArray || []).forEach(p => {
+                const pParts = extractItemDateParts(p, null);
+                if (matchesAdminTimeSelection(pParts, selY, selM, selD, selH, selMin)) {
+                    addMatchedUser(p.authorId, p.authorName, 'post');
+                }
+
+                (p.comments || []).forEach(c => {
+                    const cParts = extractItemDateParts(c, pParts);
+                    if (matchesAdminTimeSelection(cParts, selY, selM, selD, selH, selMin)) {
+                        addMatchedUser(c.authorId, c.author, 'comment');
+                    }
+                });
+            });
+
+            const matchedList = Array.from(matchedUsersMap.values());
+
+            if (matchedList.length === 0) {
+                postsCont.innerHTML = `
+                    <div class="card">
+                        <div class="card-body" style="text-align:center; color:#666; font-size:13.5px;">
+                            ${currentLang === 'sd' ? 'چونڊيل وقت ۾ ڪنهن به صارف پوسٽ يا تبصرو ناهي ڪيو.' : 'No users posted or commented in the selected time.'}
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            let cardsHTML = '';
+            matchedList.forEach(u => {
+                const avatarInner = getAvatarHTML(u.photoUrl, u.name);
+                const activitySummary = currentLang === 'sd'
+                    ? `پوسٽون: ${u.postsCount} · تبصرا: ${u.commentsCount}`
+                    : `Posts: ${u.postsCount} · Comments: ${u.commentsCount}`;
+                const blockedPill = u.blocked
+                    ? `<span class="blocked-status-pill">🚫 Blocked</span>`
+                    : '';
+
+                cardsHTML += `
+                    <div class="card" style="margin-bottom:10px; cursor:pointer;" onclick="adminOpenUserChat('${u.uid}')">
+                        <div class="ajrak-border-strip"></div>
+                        <div class="card-body" style="padding:11px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                            <div class="popup-user-info" style="flex:1; min-width:0;">
+                                <div class="mini-avatar">${avatarInner}</div>
+                                <div style="min-width:0; flex:1;">
+                                    <div class="popup-user-name">${escapeHTML(u.name)} ${blockedPill}</div>
+                                    <div style="font-size:12px; color:#555; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" dir="ltr">${escapeHTML(u.email || 'No email')}</div>
+                                    <div style="font-size:11px; color:var(--ajrak-red); font-weight:700; margin-top:2px;">${activitySummary}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            postsCont.innerHTML = cardsHTML;
+        };
+
         function syncAdminFeedState(postsArray = latestDocs) {
             const adminSec = document.getElementById('admin-filter-section');
             const createCardEl = document.querySelector('#feed-section .create-post');
-            const postsCont = document.getElementById('posts-container');
 
             if (isAdminUser()) {
                 if (adminSec) adminSec.classList.remove('hidden');
                 if (createCardEl) createCardEl.classList.add('hidden');
-                if (postsCont) postsCont.innerHTML = '';
 
                 const ySel = document.getElementById('admin-select-year');
                 const mSel = document.getElementById('admin-select-month');
@@ -4776,27 +4941,21 @@
                 const hoursAmPm = new Set();
                 const minutes = new Set();
 
-                (postsArray || []).forEach(p => {
-                    const d = p?.createdAt?.toDate
-                        ? p.createdAt.toDate()
-                        : (typeof p?.createdAt?.seconds === 'number' ? new Date(p.createdAt.seconds * 1000) : null);
-                    const yr = typeof p?.postYear === 'number' ? p.postYear : (d ? d.getFullYear() : null);
-                    const mo = typeof p?.postMonth === 'number' ? p.postMonth : (d ? d.getMonth() + 1 : null);
-                    const dy = typeof p?.postDay === 'number' ? p.postDay : (d ? d.getDate() : null);
-                    let hr12 = typeof p?.postHour12 === 'number' ? p.postHour12 : null;
-                    let ap = p?.postAmPm || null;
-                    if ((hr12 === null || !ap) && d) {
-                        const h24 = d.getHours();
-                        ap = h24 >= 12 ? "PM" : "AM";
-                        hr12 = h24 % 12 === 0 ? 12 : h24 % 12;
-                    }
-                    const mi = typeof p?.postMinute === 'number' ? p.postMinute : (d ? d.getMinutes() : null);
+                function collectParts(parts) {
+                    if (parts.year !== null) years.add(String(parts.year));
+                    if (parts.month !== null && parts.month >= 1 && parts.month <= 12) months.add(Number(parts.month));
+                    if (parts.day !== null) days.add(String(parts.day).padStart(2, '0'));
+                    if (parts.hour12 !== null && parts.ampm) hoursAmPm.add(`${String(parts.hour12).padStart(2, '0')} ${parts.ampm}`);
+                    if (parts.minute !== null) minutes.add(String(parts.minute).padStart(2, '0'));
+                }
 
-                    if (yr !== null) years.add(String(yr));
-                    if (mo !== null && mo >= 1 && mo <= 12) months.add(Number(mo));
-                    if (dy !== null) days.add(String(dy).padStart(2, '0'));
-                    if (hr12 !== null && ap) hoursAmPm.add(`${String(hr12).padStart(2, '0')} ${ap}`);
-                    if (mi !== null) minutes.add(String(mi).padStart(2, '0'));
+                (postsArray || []).forEach(p => {
+                    const pParts = extractItemDateParts(p, null);
+                    collectParts(pParts);
+                    (p.comments || []).forEach(c => {
+                        const cParts = extractItemDateParts(c, pParts);
+                        collectParts(cParts);
+                    });
                 });
 
                 function populateWithAllFirst(sel, setObj, sortFn, labelFn = (v) => v) {
@@ -4818,6 +4977,8 @@
                     return Number(ha) - Number(hb);
                 });
                 populateWithAllFirst(minSel, minutes, (a, b) => Number(a) - Number(b));
+
+                renderAdminFilteredUsers(postsArray);
                 return true;
             } else {
                 if (adminSec) adminSec.classList.add('hidden');
@@ -5133,12 +5294,24 @@ ${shareUrl}`,
             const commentText = input.value.trim();
             if (!commentText) return;
 
+            const cNow = new Date();
+            const cH24 = cNow.getHours();
+            const cAmPm = cH24 >= 12 ? "PM" : "AM";
+            const cH12 = cH24 % 12 === 0 ? 12 : cH24 % 12;
+
             const postRef = doc(db, "posts", postId);
             await updateDoc(postRef, {
                 comments: arrayUnion({
                     authorId: currentUserObj.uid,
                     author: currentUserObj.name,
                     text: commentText,
+                    createdAtMs: Date.now(),
+                    commentYear: cNow.getFullYear(),
+                    commentMonth: cNow.getMonth() + 1,
+                    commentDay: cNow.getDate(),
+                    commentHour12: cH12,
+                    commentAmPm: cAmPm,
+                    commentMinute: cNow.getMinutes(),
                     likes: [],
                     unlikes: [],
                     edited: false
