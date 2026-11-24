@@ -3106,6 +3106,7 @@
             if (unsubscribeMyProfile) unsubscribeMyProfile();
             if (unsubscribeNotifs) unsubscribeNotifs();
             if (unsubscribeHistory) unsubscribeHistory();
+            if (presenceHeartbeatTimer) { clearInterval(presenceHeartbeatTimer); presenceHeartbeatTimer = null; }
             if (unsubscribeMessages) unsubscribeMessages();
             closePopup();
             await signOut(auth);
@@ -3170,6 +3171,7 @@
                 document.getElementById('fb-icon-bar').classList.remove('hidden');
                 document.getElementById('current-user-display').innerText = currentUserObj.name;
 
+                startPresenceHeartbeat();
                 listenToMyProfile();
                 listenToAllUsers();
                 listenToNotifications();
@@ -4197,9 +4199,29 @@
             filtered.forEach(u => {
                 const isBlocked = u.blocked === true;
                 const avatarInner = getAvatarHTML(u.photoUrl, u.name);
-                const statusBadge = isBlocked
-                    ? `<span class="blocked-status-pill">🚫 ${t.blockedTag}</span>`
-                    : `<span style="font-size:10.5px; color:#1B5E20; font-weight:bold; margin-inline-start:5px;">● ${t.activeTag}</span>`;
+                let statusBadge = '';
+                if (isBlocked) {
+                    statusBadge = `<span class="blocked-status-pill">🚫 ${t.blockedTag}</span>`;
+                } else {
+                    const lastSeen = typeof u.lastSeenMs === 'number' ? u.lastSeenMs : (typeof u.activeSinceMs === 'number' ? u.activeSinceMs : 0);
+                    const activeSince = typeof u.activeSinceMs === 'number' ? u.activeSinceMs : lastSeen;
+                    const diffMs = lastSeen ? (Date.now() - lastSeen) : (5 * 60 * 1000 + 1);
+                    const isOffline = !lastSeen || (diffMs > 5 * 60 * 1000);
+
+                    if (isOffline) {
+                        const offTimeStr = lastSeen ? formatTimeOnly(lastSeen) : '';
+                        const offLabel = currentLang === 'sd'
+                            ? `آف لائن${offTimeStr ? ` · ${offTimeStr}` : ''}`
+                            : `Offline${offTimeStr ? ` · ${offTimeStr}` : ''}`;
+                        statusBadge = `<span style="font-size:10.5px; color:#8B1E24; font-weight:bold; margin-inline-start:5px;">● ${escapeHTML(offLabel)}</span>`;
+                    } else {
+                        const actTimeStr = activeSince ? formatTimeOnly(activeSince) : '';
+                        const actLabel = currentLang === 'sd'
+                            ? `فعال${actTimeStr ? ` · ${actTimeStr}` : ''}`
+                            : `Active${actTimeStr ? ` · ${actTimeStr}` : ''}`;
+                        statusBadge = `<span style="font-size:10.5px; color:#1B5E20; font-weight:bold; margin-inline-start:5px;">● ${escapeHTML(actLabel)}</span>`;
+                    }
+                }
 
                 const uPriv = (u.profilePrivacy || 'public') === 'private' ? 'private' : 'public';
                 const uPrivLabel = uPriv === 'private' ? t.privateLabel : t.publicLabel;
@@ -4209,8 +4231,13 @@
                     ? `<button class="btn-sm primary" style="background-color:#1E9E5A;" onclick="toggleBlockUser('${u.uid}', false)">${t.unblockUserBtn}</button>`
                     : `<button class="btn-sm danger" onclick="toggleBlockUser('${u.uid}', true)">${t.blockUserBtn}</button>`;
 
+                const isSelectedUser = adminHighlightedUserUid === u.uid;
+                const selectedStyle = isSelectedUser
+                    ? 'flex-direction:column; align-items:stretch; gap:10px; border:2px solid var(--ajrak-red); background:#FFF8E7;'
+                    : 'flex-direction:column; align-items:stretch; gap:10px;';
+
                 container.innerHTML += `
-                    <div class="admin-panel-card" style="flex-direction:column; align-items:stretch; gap:10px;">
+                    <div id="admin-cp-user-${u.uid}" class="admin-panel-card" style="${selectedStyle}">
                         <div class="popup-user-info" style="flex:1; cursor:pointer;" onclick="adminOpenUserChat('${u.uid}')">
                             <div class="mini-avatar">${avatarInner}</div>
                             <div style="min-width:0; flex:1;">
@@ -4880,15 +4907,74 @@
             return true;
         }
 
+        function formatTimeOnly(ms) {
+            if (!ms || typeof ms !== 'number') return '';
+            try {
+                return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } catch (e) {
+                return '';
+            }
+        }
+
+        let presenceHeartbeatTimer = null;
+
+        async function updateMyPresence(isNewSession = false) {
+            if (!currentUserObj || !currentUserObj.uid || !navigator.onLine) return;
+            const nowMs = Date.now();
+            try {
+                const userRef = doc(db, "users", currentUserObj.uid);
+                const snap = await getDoc(userRef);
+                const prevData = snap.exists() ? snap.data() : {};
+                const prevLastSeen = typeof prevData.lastSeenMs === 'number' ? prevData.lastSeenMs : 0;
+                const wasOfflineOver5Min = prevLastSeen > 0 && ((nowMs - prevLastSeen) > 5 * 60 * 1000);
+
+                let activeSince = typeof prevData.activeSinceMs === 'number' ? prevData.activeSinceMs : nowMs;
+                if (isNewSession || wasOfflineOver5Min || !prevData.activeSinceMs) {
+                    activeSince = nowMs;
+                }
+
+                await updateDoc(userRef, {
+                    activeSinceMs: activeSince,
+                    lastSeenMs: nowMs
+                }).catch(() => {});
+            } catch (e) {}
+        }
+
+        function startPresenceHeartbeat() {
+            if (presenceHeartbeatTimer) {
+                clearInterval(presenceHeartbeatTimer);
+            }
+            updateMyPresence(true);
+            presenceHeartbeatTimer = setInterval(() => {
+                if (document.visibilityState === "visible") {
+                    updateMyPresence(false);
+                }
+                if (!document.getElementById('popup-admin-users')?.classList.contains('hidden')) {
+                    renderAdminUsersPopup();
+                }
+            }, 30000);
+        }
+
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible" && currentUserObj) {
+                updateMyPresence(false);
+            }
+        });
+
+        let adminHighlightedUserUid = null;
+
         window.adminOpenUserControlPanel = function(targetUid) {
             if (!isAdminUser() || !targetUid) return;
-            const targetUser = allUsersList.find(u => u.uid === targetUid);
-            openPopup('admin_users');
+            adminHighlightedUserUid = targetUid;
             const searchInput = document.getElementById('admin-user-search-input');
-            if (searchInput && targetUser) {
-                searchInput.value = targetUser.email || targetUser.name || '';
-                renderAdminUsersPopup();
+            if (searchInput) {
+                searchInput.value = '';
             }
+            openPopup('admin_users');
+            setTimeout(() => {
+                const cardEl = document.getElementById(`admin-cp-user-${targetUid}`);
+                if (cardEl) cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 80);
         };
 
         window.adminToggleUserPrivacy = async function(targetUid) {
