@@ -1,7 +1,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-const CACHE_NAME = "sindhi-world-book-v51";
+const CACHE_NAME = "sindhi-world-book-v52";
 const ASSETS = [
   "./",
   "./index.html",
