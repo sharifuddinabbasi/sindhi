@@ -1,7 +1,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-const CACHE_NAME = "sindhi-world-book-v18";
+const CACHE_NAME = "sindhi-world-book-v23";
 const ASSETS = [
   "./",
   "./index.html",
@@ -36,8 +36,10 @@ messaging.onBackgroundMessage((payload) => {
     body: body,
     icon: "./icon.png",
     badge: "./icon2.png",
+    vibrate: [200, 100, 200],
     tag: "sindhi-world-book-msg",
     renotify: true,
+    requireInteraction: false,
     data: { url: "./index.html" }
   });
 });
@@ -92,6 +94,7 @@ self.addEventListener("message", (event) => {
         body: text,
         icon: "./icon.png",
         badge: "./icon2.png",
+        vibrate: [200, 100, 200],
         tag: "sindhi-world-book-msg",
         renotify: true,
         data: { url: "./index.html" }
