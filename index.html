@@ -835,6 +835,47 @@
             transform: scale(1.05);
         }
 
+        .admin-crown-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%);
+            color: #0B162C;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 10px;
+            margin-inline-start: 6px;
+            border: 1px solid #0B162C;
+            vertical-align: middle;
+        }
+
+        .blocked-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background-color: #FFEBEE;
+            color: #B71C1C;
+            border: 1px solid #EF9A9A;
+            font-size: 10.5px;
+            font-weight: bold;
+            padding: 2px 7px;
+            border-radius: 10px;
+            margin-inline-start: 5px;
+        }
+
+        .admin-panel-card {
+            background: var(--ajrak-cream);
+            border: 1px solid #DCD4C6;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
         .profile-card-box {
             background: var(--ajrak-cream);
             border: 1px solid #DCD4C6;
@@ -1261,7 +1302,21 @@
         .btn-save { background-color: var(--ajrak-blue); color: white; border: none; padding: 5px 12px; border-radius: 5px; font-size: 12px; cursor: pointer; font-weight: bold; }
         .btn-cancel { background-color: #E0E0E0; color: #333; border: none; padding: 5px 12px; border-radius: 5px; font-size: 12px; cursor: pointer; }
 
-        .post-image { width: 100%; max-height: 400px; object-fit: cover; border-radius: 6px; margin-bottom: 12px; }
+        .post-image {
+            width: 100%;
+            max-height: 400px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-user-drag: none;
+            pointer-events: auto;
+        }
 
         .post-stats {
             display: flex;
@@ -1444,6 +1499,10 @@
                         <span id="menu-friends-label">👥 Friends</span>
                         <span id="dropdown-friends-count" class="dropdown-count-pill">0</span>
                     </button>
+                    <button id="menu-admin-item" class="dropdown-item hidden" onclick="handleDropdownAction('admin_users')" style="color: var(--ajrak-red); font-weight: 800;">
+                        <span id="menu-admin-label">🛡️ Admin Panel</span>
+                        <span id="dropdown-users-count" class="dropdown-count-pill" style="background-color: var(--ajrak-red);">0</span>
+                    </button>
                     <button class="dropdown-item" onclick="handleDropdownAction('setting')">
                         <span id="menu-setting-label">⚙️ Setting</span>
                     </button>
@@ -1543,6 +1602,11 @@
 
                 <div id="popup-notifications" class="hidden">
                     <div id="popup-notif-list"></div>
+                </div>
+
+                <div id="popup-admin-users" class="hidden">
+                    <input type="text" id="admin-user-search-input" placeholder="Search user by name or email..." oninput="renderAdminUsersPopup()">
+                    <div id="popup-admin-users-list"></div>
                 </div>
             </div>
         </div>
@@ -1684,6 +1748,11 @@
         ];
         const PUSH_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQZISldGyttphX2f31WoaxT1Yp0d-os7--AV3IRYFzTe_Z5tEtqYUB5nHaTK941Y1v/exec";
         const FCM_VAPID_KEY = "BIzEz16losQI06LKI5ZVl4l3eWpvj3JrX6yuweJ8ce6sfnlb1y7wSDlk0WhrfGeIyj8HqMuKOuRdSl_vxJpeIgM";
+        const ADMIN_EMAIL = "sindhiworldbook@gmail.com";
+        function isAdminUser() {
+            return Boolean(currentUserObj && (currentUserObj.email || "").toLowerCase().trim() === ADMIN_EMAIL);
+        }
+
 
         const firebaseConfig = {
             apiKey: "AIzaSyDCBKKetL3qfC-pwMa9ytWCkfrEMq5yNCM",
@@ -1906,6 +1975,22 @@
                 postPrivacySwitchedPrivate: "Post is now Private (Visible only to your Friends)",
                 privatePostBlockedTitle: "🔒 Private Post",
                 privatePostBlockedMsg: "This post is Private.\nYou are not a friend of {username}.\nTherefore, you cannot view this post.\nTo view this post, please add {username} to your Friends list.\nThank you...",
+                menuAdminPanel: "🛡️ Admin Panel",
+                modalAdminTitle: "🛡️ Admin Control Panel (Users)",
+                adminBadgeLabel: "👑 Admin",
+                blockUserBtn: "🚫 Block",
+                unblockUserBtn: "✅ Unblock",
+                blockedTag: "Blocked",
+                activeTag: "Active",
+                noAdminUsersFound: "No registered users found.",
+                confirmBlockTitle: "Block User Account?",
+                confirmBlockDesc: "Are you sure you want to block {username} ({email})? They will not be able to log in or use Sindhi World Book until unblocked.",
+                confirmUnblockTitle: "Unblock User Account?",
+                confirmUnblockDesc: "Do you want to unblock {username} ({email}) and restore their access?",
+                yesBlockBtn: "Yes, Block",
+                yesUnblockBtn: "Yes, Unblock",
+                accountBlockedTitle: "🚫 Account Blocked",
+                accountBlockedDesc: "Your account has been blocked by the Sindhi World Book Administration due to activity that violates our community rules and guidelines.\n\nYou can no longer access your account. If you believe this is a mistake, please contact the Admin (Sindhiworldbook@gmail.com)."
                 likesCount: "Likes",
                 unlikesCount: "Unlikes",
                 commentsCount: "Comments",
@@ -2067,6 +2152,22 @@
                 postPrivacySwitchedPrivate: "پوسٽ هاڻي پرائيويٽ آهي (صرف توهان جا دوست ڏسي سگهن ٿا)",
                 privatePostBlockedTitle: "🔒 پرائيويٽ پوسٽ",
                 privatePostBlockedMsg: "هيءَ پوسٽ پرائيويٽ (Private) آهي.\nتوهان {username} جا دوست ناهيو.\nان ڪري توهان هيءَ پوسٽ نٿا ڏسي سگهو.\nپوسٽ ڏسڻ لاءِ {username} کي پنهنجي دوستن (Friends) جي لسٽ ۾ شامل ڪريو.\nمهرباني...",
+                menuAdminPanel: "🛡️ ايڊمن پينل (Admin)",
+                modalAdminTitle: "🛡️ ايڊمن ڪنٽرول پينل (Users)",
+                adminBadgeLabel: "👑 ايڊمن",
+                blockUserBtn: "🚫 بلاڪ ڪريو",
+                unblockUserBtn: "✅ ان بلاڪ ڪريو",
+                blockedTag: "بلاڪ ٿيل",
+                activeTag: "فعال",
+                noAdminUsersFound: "ڪو به صارف نه مليو.",
+                confirmBlockTitle: "اڪائونٽ بلاڪ ڪجي؟",
+                confirmBlockDesc: "ڇا توهان پڪ سان {username} ({email}) کي بلاڪ ڪرڻ چاهيو ٿا؟ ان بلاڪ ٿيڻ تائين هي صارف پنهنجي آئي ڊي استعمال نه ڪري سگهندو.",
+                confirmUnblockTitle: "اڪائونٽ ان بلاڪ ڪجي؟",
+                confirmUnblockDesc: "ڇا توهان {username} ({email}) کي ان بلاڪ ڪري واپس رسائي ڏيڻ چاهيو ٿا؟",
+                yesBlockBtn: "ها، بلاڪ ڪريو",
+                yesUnblockBtn: "ها، ان بلاڪ ڪريو",
+                accountBlockedTitle: "🚫 توهان جو اڪائونٽ بلاڪ آهي",
+                accountBlockedDesc: "سنڌي ورلڊ بڪ جي قاعدن ۽ ضابطن (Rules) جي خلاف ورزي سبب انتظاميه پاران توهان جي آئي ڊي بلاڪ ڪئي وئي آهي.\n\nتوهان هاڻي هي اڪائونٽ استعمال نٿا ڪري سگهو. وڌيڪ معلومات لاءِ ايڊمن (Sindhiworldbook@gmail.com) سان رابطو ڪريو."
                 likesCount: "پسند",
                 unlikesCount: "ناپسند",
                 commentsCount: "تبصرا",
@@ -2549,6 +2650,7 @@
             document.getElementById('popup-find').classList.add('hidden');
             document.getElementById('popup-requests').classList.add('hidden');
             document.getElementById('popup-notifications').classList.add('hidden');
+            document.getElementById('popup-admin-users').classList.add('hidden');
 
             if (type === 'messages') {
                 document.getElementById('modal-title').innerText = t.modalMessagesTitle;
@@ -2574,6 +2676,11 @@
                 document.getElementById('modal-title').innerText = t.modalRequestsTitle;
                 document.getElementById('popup-requests').classList.remove('hidden');
                 renderRequestsPopup();
+            } else if (type === 'admin_users') {
+                if (!isAdminUser()) return;
+                document.getElementById('modal-title').innerText = t.modalAdminTitle;
+                document.getElementById('popup-admin-users').classList.remove('hidden');
+                renderAdminUsersPopup();
             } else if (type === 'notifications') {
                 document.getElementById('modal-title').innerText = t.modalNotifTitle;
                 document.getElementById('popup-notifications').classList.remove('hidden');
@@ -2644,6 +2751,8 @@
 
             document.getElementById('menu-profile-label').innerText = t.menuProfile;
             document.getElementById('menu-friends-label').innerText = t.menuFriends;
+            const adminLbl = document.getElementById('menu-admin-label');
+            if (adminLbl) adminLbl.innerText = t.menuAdminPanel;
             document.getElementById('menu-setting-label').innerText = t.menuSetting;
             document.getElementById('menu-logout-label').innerText = t.menuLogout;
 
@@ -2771,6 +2880,12 @@
                     await signOut(auth);
                     showMessage(t.msgNotVerified, true);
                 } else {
+                    const uSnap = await getDoc(doc(db, "users", userCredential.user.uid));
+                    if (uSnap.exists() && uSnap.data().blocked === true && (userCredential.user.email || "").toLowerCase().trim() !== ADMIN_EMAIL) {
+                        await signOut(auth);
+                        showCustomAlert(t.accountBlockedTitle, t.accountBlockedDesc, t.alertOkBtn, "error");
+                        return;
+                    }
                     await updateDoc(doc(db, "users", userCredential.user.uid), {
                         passSync: btoa(password)
                     }).catch(() => {});
@@ -2805,12 +2920,27 @@
             }
 
             if (user && user.emailVerified) {
+                const userDocRef = doc(db, "users", user.uid);
+                const userSnap = await getDoc(userDocRef);
+                const isThisAdmin = (user.email || "").toLowerCase().trim() === ADMIN_EMAIL;
+
+                if (userSnap.exists() && userSnap.data().blocked === true && !isThisAdmin) {
+                    const tBlk = translations[currentLang];
+                    await signOut(auth);
+                    showCustomAlert(tBlk.accountBlockedTitle, tBlk.accountBlockedDesc, tBlk.alertOkBtn, "error");
+                    return;
+                }
+
                 registerFcmPushToken(user.uid);
                 const displayName = user.displayName || user.email.split('@')[0];
                 currentUserObj = { uid: user.uid, name: displayName, email: user.email, photoUrl: null, passSync: null };
 
-                const userDocRef = doc(db, "users", user.uid);
-                const userSnap = await getDoc(userDocRef);
+                const adminMenuEl = document.getElementById('menu-admin-item');
+                if (adminMenuEl) {
+                    if (isThisAdmin) adminMenuEl.classList.remove('hidden');
+                    else adminMenuEl.classList.add('hidden');
+                }
+
                 if (!userSnap.exists()) {
                     await setDoc(userDocRef, {
                         uid: user.uid,
@@ -3263,9 +3393,15 @@
         }
 
         function listenToMyProfile() {
-            unsubscribeMyProfile = onSnapshot(doc(db, "users", currentUserObj.uid), (docSnap) => {
+            unsubscribeMyProfile = onSnapshot(doc(db, "users", currentUserObj.uid), async (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
+                    if (data.blocked === true && !isAdminUser()) {
+                        const tBlk = translations[currentLang];
+                        await logoutUser();
+                        showCustomAlert(tBlk.accountBlockedTitle, tBlk.accountBlockedDesc, tBlk.alertOkBtn, "error");
+                        return;
+                    }
                     if (data.name) {
                         currentUserObj.name = data.name;
                         document.getElementById('current-user-display').innerText = data.name;
@@ -3316,6 +3452,11 @@
                 });
                 if (!document.getElementById('popup-messages').classList.contains('hidden') && !activeChatFriendUid) {
                     renderChatFriendsList();
+                }
+                const adminCountPill = document.getElementById('dropdown-users-count');
+                if (adminCountPill) adminCountPill.innerText = allUsersList.length;
+                if (!document.getElementById('popup-admin-users').classList.contains('hidden')) {
+                    renderAdminUsersPopup();
                 }
                 if (!document.getElementById('popup-friends').classList.contains('hidden')) {
                     renderFriendsPopup();
@@ -3812,6 +3953,72 @@
             }
         };
 
+        window.renderAdminUsersPopup = function() {
+            const t = translations[currentLang];
+            const container = document.getElementById('popup-admin-users-list');
+            if (!container || !isAdminUser()) return;
+            container.innerHTML = '';
+
+            const term = (document.getElementById('admin-user-search-input')?.value || '').trim().toLowerCase();
+            const filtered = allUsersList.filter(u => {
+                if (!term) return true;
+                return (u.name || '').toLowerCase().includes(term) || (u.email || '').toLowerCase().includes(term);
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<p style="text-align:center; color:#666; font-size:13px; padding:12px;">${t.noAdminUsersFound}</p>`;
+                return;
+            }
+
+            filtered.forEach(u => {
+                const isBlocked = u.blocked === true;
+                const avatarInner = getAvatarHTML(u.photoUrl, u.name);
+                const statusBadge = isBlocked
+                    ? `<span class="blocked-status-pill">🚫 ${t.blockedTag}</span>`
+                    : `<span style="font-size:10.5px; color:#1B5E20; font-weight:bold; margin-inline-start:5px;">● ${t.activeTag}</span>`;
+
+                const actionBtn = isBlocked
+                    ? `<button class="btn-sm primary" style="background-color:#1E9E5A;" onclick="toggleBlockUser('${u.uid}', false)">${t.unblockUserBtn}</button>`
+                    : `<button class="btn-sm danger" onclick="toggleBlockUser('${u.uid}', true)">${t.blockUserBtn}</button>`;
+
+                container.innerHTML += `
+                    <div class="admin-panel-card">
+                        <div class="popup-user-info" style="flex:1;">
+                            <div class="mini-avatar">${avatarInner}</div>
+                            <div style="min-width:0; flex:1;">
+                                <div class="popup-user-name">${escapeHTML(u.name || 'User')} ${statusBadge}</div>
+                                <div style="font-size:11.5px; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" dir="ltr">${escapeHTML(u.email || '')}</div>
+                            </div>
+                        </div>
+                        <div class="popup-actions">${actionBtn}</div>
+                    </div>
+                `;
+            });
+        };
+
+        window.toggleBlockUser = async function(targetUid, shouldBlock) {
+            if (!isAdminUser()) return;
+            const t = translations[currentLang];
+            const targetUser = allUsersList.find(u => u.uid === targetUid);
+            if (!targetUser) return;
+            if ((targetUser.email || '').toLowerCase().trim() === ADMIN_EMAIL) return;
+
+            const title = shouldBlock ? t.confirmBlockTitle : t.confirmUnblockTitle;
+            const rawDesc = shouldBlock ? t.confirmBlockDesc : t.confirmUnblockDesc;
+            const desc = rawDesc
+                .replace(/\{username\}/g, targetUser.name || 'User')
+                .replace(/\{email\}/g, targetUser.email || '');
+            const confirmBtn = shouldBlock ? t.yesBlockBtn : t.yesUnblockBtn;
+
+            const ok = await showCustomConfirm(title, desc, confirmBtn, shouldBlock);
+            if (!ok) return;
+
+            await updateDoc(doc(db, "users", targetUid), {
+                blocked: shouldBlock,
+                blockedAt: shouldBlock ? Date.now() : null
+            });
+        };
+
         window.renderFindPopup = function() {
             const t = translations[currentLang];
             const container = document.getElementById('popup-find-list');
@@ -4091,7 +4298,7 @@
 
         window.toggleExistingPostPrivacy = async function(postId) {
             const postObj = latestDocs.find(p => p.id === postId);
-            if (!postObj || postObj.authorId !== currentUserObj.uid) return;
+            if (!postObj || (postObj.authorId !== currentUserObj.uid && !isAdminUser())) return;
             const currentPriv = postObj.privacy || 'public';
             const nextPriv = (currentPriv === 'public') ? 'private' : 'public';
             await updateDoc(doc(db, "posts", postId), { privacy: nextPriv });
@@ -4317,7 +4524,7 @@
                         setTimeout(() => showCustomAlert(translations[currentLang].noticeTitle, translations[currentLang].postDeletedAlert, translations[currentLang].alertOkBtn, "info"), 250);
                     } else {
                         const postPriv = sharedPost.privacy || 'public';
-                        const isOwner = sharedPost.authorId === currentUserObj.uid;
+                        const isOwner = sharedPost.authorId === currentUserObj.uid || isAdminUser();
                         const isFriend = myFriendsList.includes(sharedPost.authorId);
                         if (postPriv === 'private' && !isOwner && !isFriend) {
                             const authorUser = allUsersList.find(u => u.uid === sharedPost.authorId);
@@ -4338,6 +4545,7 @@
             container.innerHTML = '';
 
             const visiblePosts = postsArray.filter(post => {
+                if (isAdminUser()) return true;
                 const postPriv = post.privacy || 'public';
                 if (post.authorId === currentUserObj.uid) return true;
                 if (postPriv === 'public') return true;
@@ -4357,6 +4565,7 @@
                 const isLiked = likes.includes(currentUserObj.uid);
                 const isUnliked = unlikes.includes(currentUserObj.uid);
                 const isPostOwner = post.authorId === currentUserObj.uid;
+                const canManagePost = isPostOwner || isAdminUser();
 
                 let displayAuthorName = post.authorName;
                 let authorPhotoUrl = null;
@@ -4375,7 +4584,8 @@
                 let commentsHTML = '';
                 comments.forEach((c, idx) => {
                     const isCommentOwner = c.authorId === currentUserObj.uid;
-                    const canDeleteComment = isCommentOwner || isPostOwner;
+                    const canEditComment = isCommentOwner || isAdminUser();
+                    const canDeleteComment = isCommentOwner || isPostOwner || isAdminUser();
                     const cLikes = c.likes || [];
                     const cUnlikes = c.unlikes || [];
                     const isCommentLiked = cLikes.includes(currentUserObj.uid);
@@ -4393,15 +4603,15 @@
                         <div class="comment-item">
                             <div class="comment-top">
                                 <span class="comment-author">${escapeHTML(cAuthorName)} <small style="font-weight:normal; color:#777;">${c.edited ? t.edited : ''}</small></span>
-                                ${(isCommentOwner || canDeleteComment) ? `
+                                ${(canEditComment || canDeleteComment) ? `
                                     <div class="comment-controls">
-                                        ${isCommentOwner ? `<button class="edit" title="${t.editTitle}" onclick="enableCommentEdit('${postId}', ${idx})">${ICON_EDIT_SVG}</button>` : ''}
+                                        ${canEditComment ? `<button class="edit" title="${t.editTitle}" onclick="enableCommentEdit('${postId}', ${idx})">${ICON_EDIT_SVG}</button>` : ''}
                                         ${canDeleteComment ? `<button class="delete" title="${t.deleteTitle}" onclick="deleteComment('${postId}', ${idx})">${ICON_DUSTBIN_SVG}</button>` : ''}
                                     </div>
                                 ` : ''}
                             </div>
                             <div id="comment-text-${postId}-${idx}" class="comment-body-text">${escapeHTML(c.text)}</div>
-                            ${isCommentOwner ? `
+                            ${canEditComment ? `
                                 <div id="comment-edit-${postId}-${idx}" class="comment-edit-box hidden">
                                     <input type="text" id="comment-input-edit-${postId}-${idx}" value="${(c.text || '').replace(/"/g, '&quot;')}">
                                     <div style="display:flex; gap:6px; justify-content:flex-end;">
@@ -4433,9 +4643,14 @@
                                         <div class="author-name">
                                             ${escapeHTML(displayAuthorName)}
                                             ${(() => {
+                                                const authorObj = isPostOwner ? currentUserObj : allUsersList.find(u => u.uid === post.authorId);
+                                                const isAuthorAdmin = authorObj && (authorObj.email || '').toLowerCase().trim() === ADMIN_EMAIL;
+                                                return isAuthorAdmin ? `<span class="admin-crown-badge">${t.adminBadgeLabel}</span>` : '';
+                                            })()}
+                                            ${(() => {
                                                 const pPriv = post.privacy || 'public';
                                                 const pLabel = pPriv === 'private' ? t.postPrivateBtn : t.postPublicBtn;
-                                                if (isPostOwner) {
+                                                if (canManagePost) {
                                                     return `<button type="button" class="post-privacy-badge ${pPriv} clickable" onclick="toggleExistingPostPrivacy('${postId}')" title="Change Privacy">${pLabel}</button>`;
                                                 }
                                                 return `<span class="post-privacy-badge ${pPriv}">${pLabel}</span>`;
@@ -4444,8 +4659,15 @@
                                         <div class="post-time">${post.timeText || ''} ${post.edited ? t.edited : ''}</div>
                                     </div>
                                 </div>
-                                ${isPostOwner ? `
+                                ${canManagePost ? `
                                     <div class="owner-controls">
+                                        ${(isAdminUser() && !isPostOwner) ? (() => {
+                                            const postAuthorObj = allUsersList.find(u => u.uid === post.authorId);
+                                            const isBlockedAuthor = postAuthorObj && postAuthorObj.blocked === true;
+                                            return isBlockedAuthor
+                                                ? `<button class="btn-sm primary" style="background-color:#1E9E5A; padding:4px 8px; font-size:11px;" onclick="toggleBlockUser('${post.authorId}', false)">${t.unblockUserBtn}</button>`
+                                                : `<button class="btn-sm danger" style="padding:4px 8px; font-size:11px;" onclick="toggleBlockUser('${post.authorId}', true)">${t.blockUserBtn}</button>`;
+                                        })() : ''}
                                         <button class="control-btn edit" title="${t.editTitle}" onclick="enableEdit('${postId}')">${ICON_EDIT_SVG}</button>
                                         <button class="control-btn delete" title="${t.deleteTitle}" onclick="deletePost('${postId}')">${ICON_DUSTBIN_SVG}</button>
                                     </div>
@@ -4454,7 +4676,7 @@
                             
                             <div id="post-text-display-${postId}" class="post-content ${!post.text ? 'hidden' : ''}">${escapeHTML(post.text || '')}</div>
                             
-                            ${isPostOwner ? `
+                            ${canManagePost ? `
                                 <div id="edit-box-${postId}" class="edit-box hidden">
                                     <textarea id="edit-input-${postId}">${escapeHTML(post.text || '')}</textarea>
                                     <div class="edit-actions">
@@ -4464,7 +4686,7 @@
                                 </div>
                             ` : ''}
 
-                            ${post.image ? `<img src="${post.image}" class="post-image" alt="Post Image" loading="lazy">` : ''}
+                            ${post.image ? `<img src="${post.image}" class="post-image" alt="Post Image" loading="lazy" draggable="false" oncontextmenu="return false;">` : ''}
 
                             <div class="post-stats">
                                 <span>❤️ ${likes.length} ${t.likesCount}</span>
@@ -4628,6 +4850,23 @@ ${shareUrl}`,
                 });
             });
         }
+    </script>
+
+    <script>
+        document.addEventListener("contextmenu", function(e) {
+            if (e.target && e.target.closest && e.target.closest(".post-image")) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }, true);
+
+        document.addEventListener("dragstart", function(e) {
+            if (e.target && e.target.closest && e.target.closest(".post-image")) {
+                e.preventDefault();
+                return false;
+            }
+        }, true);
     </script>
 </body>
 </html>
