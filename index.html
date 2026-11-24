@@ -2118,6 +2118,8 @@
                 notifReplyLike: "liked your reply",
                 notifReplyUnlike: "unliked your reply",
                 notifDeletePost: "deleted a post you interacted with",
+                notifAdminDeletePost: "Admin deleted your post",
+                notifAdminDeleteComment: "Admin deleted your comment",
                 notifDeleteComment: "deleted a reply on a post you interacted with",
                 notifDeleteCommentOwn: "deleted a reply on your post",
                 notifAccept: "accepted your friend request.",
@@ -2300,6 +2302,8 @@
                 notifReplyLike: "توهان جي جواب کي پسند ڪيو",
                 notifReplyUnlike: "توهان جي جواب کي ناپسند ڪيو",
                 notifDeletePost: "اها پوسٽ ڊليٽ ڪري ڇڏي جنهن تي توهان رايو ڏنو هو",
+                notifAdminDeletePost: "ايڊمن توهان جي پوسٽ ڊليٽ ڪئي",
+                notifAdminDeleteComment: "ايڊمن توهان جو تبصرو ڊليٽ ڪيو",
                 notifDeleteComment: "توهان جي پسند ڪيل پوسٽ تان هڪ جواب ڊليٽ ڪيو",
                 notifDeleteCommentOwn: "توهان جي پوسٽ تان هڪ جواب ڊليٽ ڪيو",
                 notifAccept: "توهان جي دوستيءَ جي درخواست قبول ڪئي.",
@@ -3253,6 +3257,10 @@
         }
 
         function listenToMessages() {
+            if (!currentUserObj || !currentUserObj.uid) return;
+            if (unsubscribeMessages) {
+                try { unsubscribeMessages(); } catch (e) {}
+            }
             const q = query(
                 collection(db, "messages"),
                 where("participants", "array-contains", currentUserObj.uid)
@@ -4193,12 +4201,16 @@
                     ? `<span class="blocked-status-pill">🚫 ${t.blockedTag}</span>`
                     : `<span style="font-size:10.5px; color:#1B5E20; font-weight:bold; margin-inline-start:5px;">● ${t.activeTag}</span>`;
 
+                const uPriv = (u.profilePrivacy || 'public') === 'private' ? 'private' : 'public';
+                const uPrivLabel = uPriv === 'private' ? t.privateLabel : t.publicLabel;
+                const privBtn = `<button type="button" class="privacy-toggle-btn ${uPriv}" style="padding:4px 8px; font-size:11px;" onclick="adminToggleUserPrivacy('${u.uid}')">${uPrivLabel}</button>`;
+
                 const actionBtn = isBlocked
                     ? `<button class="btn-sm primary" style="background-color:#1E9E5A;" onclick="toggleBlockUser('${u.uid}', false)">${t.unblockUserBtn}</button>`
                     : `<button class="btn-sm danger" onclick="toggleBlockUser('${u.uid}', true)">${t.blockUserBtn}</button>`;
 
                 container.innerHTML += `
-                    <div class="admin-panel-card">
+                    <div class="admin-panel-card" style="flex-direction:column; align-items:stretch; gap:10px;">
                         <div class="popup-user-info" style="flex:1; cursor:pointer;" onclick="adminOpenUserChat('${u.uid}')">
                             <div class="mini-avatar">${avatarInner}</div>
                             <div style="min-width:0; flex:1;">
@@ -4206,7 +4218,10 @@
                                 <div style="font-size:11.5px; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" dir="ltr">${escapeHTML(u.email || '')}</div>
                             </div>
                         </div>
-                        <div class="popup-actions">${actionBtn}</div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; width:100%; padding-top:6px; border-top:1px dashed #DCD4C6;">
+                            <div>${privBtn}</div>
+                            <div>${actionBtn}</div>
+                        </div>
                     </div>
                 `;
             });
@@ -4399,6 +4414,13 @@
                 } else if (n.type === 'delete_post') {
                     actionMsg = `${t.notifDeletePost}${snippet ? ':' : '.'}`;
                     if (snippet) previewHTML = `<span class="notif-preview-quote">"${escapeHTML(snippet)}..."</span>`;
+                } else if (n.type === 'admin_delete_post') {
+                    actionMsg = `${t.notifAdminDeletePost}${snippet ? ':' : '.'}`;
+                    if (snippet) previewHTML = `<span class="notif-preview-quote">"${escapeHTML(snippet)}..."</span>`;
+                } else if (n.type === 'admin_delete_comment') {
+                    const cQuote = n.replyText ? `"${escapeHTML(n.replyText)}"` : '';
+                    actionMsg = `${t.notifAdminDeleteComment}${cQuote ? `: ${cQuote}` : '.'}`;
+                    if (snippet) previewHTML = `<span class="notif-preview-quote">(${escapeHTML(snippet)}...)</span>`;
                 } else if (n.type === 'accept') {
                     actionMsg = t.notifAccept;
                 }
@@ -4869,6 +4891,115 @@
             }
         };
 
+        window.adminToggleUserPrivacy = async function(targetUid) {
+            if (!isAdminUser() || !targetUid) return;
+            const targetUser = allUsersList.find(u => u.uid === targetUid);
+            const currentPriv = (targetUser?.profilePrivacy || 'public') === 'private' ? 'private' : 'public';
+            const nextPriv = currentPriv === 'public' ? 'private' : 'public';
+            if (targetUser) targetUser.profilePrivacy = nextPriv;
+            renderAdminUsersPopup();
+            await updateDoc(doc(db, "users", targetUid), { profilePrivacy: nextPriv }).catch(() => {});
+        };
+
+        window.adminTogglePostPrivacy = async function(postId, activeTargetUid = null) {
+            if (!isAdminUser() || !postId) return;
+            const postObj = latestDocs.find(p => p.id === postId);
+            if (!postObj) return;
+            const currentPriv = (postObj.privacy || 'public') === 'private' ? 'private' : 'public';
+            const nextPriv = currentPriv === 'public' ? 'private' : 'public';
+            postObj.privacy = nextPriv;
+            await updateDoc(doc(db, "posts", postId), { privacy: nextPriv }).catch(() => {});
+            if (activeTargetUid) {
+                adminShowUserActivityPosts(activeTargetUid);
+            }
+        };
+
+        window.adminDeletePostWithNotice = async function(postId, activeTargetUid = null) {
+            if (!isAdminUser() || !postId) return;
+            const t = translations[currentLang];
+            const confirmed = await showCustomConfirm(t.deletePostConfirmTitle, t.confirmDelete, t.yesDeleteBtn, true);
+            if (!confirmed) return;
+
+            const postObj = latestDocs.find(p => p.id === postId);
+            if (!postObj) return;
+
+            const snippet = postObj.text ? postObj.text.substring(0, 45) : t.photoPostTag;
+            if (postObj.authorId && postObj.authorId !== currentUserObj.uid) {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " · " + now.toLocaleDateString();
+                await addDoc(collection(db, "notifications"), {
+                    toUid: postObj.authorId,
+                    fromName: "Admin",
+                    type: "admin_delete_post",
+                    isOwnPost: true,
+                    postId: null,
+                    postSnippet: snippet,
+                    replyText: "",
+                    timeText: timeStr,
+                    read: false,
+                    createdAt: serverTimestamp()
+                }).catch(() => {});
+            }
+
+            if (postObj.imageFileId) {
+                const idx = typeof postObj.driveIndex === "number" ? postObj.driveIndex : 0;
+                const targetDriveUrl = DRIVE_URLS[idx] || DRIVE_URLS[0];
+                if (targetDriveUrl) {
+                    fetch(targetDriveUrl, {
+                        method: "POST",
+                        redirect: "follow",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: "delete", fileId: postObj.imageFileId })
+                    }).catch(() => {});
+                }
+            }
+
+            await deleteDoc(doc(db, "posts", postId)).catch(() => {});
+            latestDocs = latestDocs.filter(p => p.id !== postId);
+            syncAdminFeedState(latestDocs);
+            if (activeTargetUid) {
+                adminShowUserActivityPosts(activeTargetUid);
+            }
+        };
+
+        window.adminDeleteCommentWithNotice = async function(postId, commentIndex, activeTargetUid = null) {
+            if (!isAdminUser() || !postId) return;
+            const t = translations[currentLang];
+            const confirmed = await showCustomConfirm(t.deleteReplyConfirmTitle, t.confirmDeleteComment, t.yesDeleteBtn, true);
+            if (!confirmed) return;
+
+            const postObj = latestDocs.find(p => p.id === postId);
+            if (!postObj || !Array.isArray(postObj.comments)) return;
+
+            const deletedComment = postObj.comments[commentIndex];
+            const snippet = postObj.text ? postObj.text.substring(0, 45) : t.photoPostTag;
+            const updatedComments = postObj.comments.filter((_, idx) => idx !== commentIndex);
+            postObj.comments = updatedComments;
+
+            await updateDoc(doc(db, "posts", postId), { comments: updatedComments }).catch(() => {});
+
+            if (deletedComment && deletedComment.authorId && deletedComment.authorId !== currentUserObj.uid) {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " · " + now.toLocaleDateString();
+                await addDoc(collection(db, "notifications"), {
+                    toUid: deletedComment.authorId,
+                    fromName: "Admin",
+                    type: "admin_delete_comment",
+                    isOwnPost: false,
+                    postId: postId,
+                    postSnippet: snippet,
+                    replyText: deletedComment.text || "",
+                    timeText: timeStr,
+                    read: false,
+                    createdAt: serverTimestamp()
+                }).catch(() => {});
+            }
+
+            if (activeTargetUid) {
+                adminShowUserActivityPosts(activeTargetUid);
+            }
+        };
+
         window.adminShowUserActivityPosts = function(targetUid) {
             if (!isAdminUser() || !targetUid) return;
             const postsCont = document.getElementById('posts-container');
@@ -4922,6 +5053,7 @@
                 return;
             }
 
+            const tAct = translations[currentLang];
             let html = '';
             relevantPosts.forEach(post => {
                 const postId = post.id;
@@ -4931,6 +5063,8 @@
                 const authorObj = allUsersList.find(u => u.uid === post.authorId);
                 const displayAuthorName = (authorObj && authorObj.name) ? authorObj.name : (post.authorName || 'User');
                 const avatarInner = getAvatarHTML(authorObj?.photoUrl || null, displayAuthorName);
+                const pPriv = (post.privacy || 'public') === 'private' ? 'private' : 'public';
+                const pPrivLabel = pPriv === 'private' ? tAct.postPrivateBtn : tAct.postPublicBtn;
 
                 let commentsHTML = '';
                 comments.forEach((c, idx) => {
@@ -4939,6 +5073,9 @@
                         <div id="admin-comment-${postId}-${idx}" class="comment-item ${isHighlighted ? 'highlight-comment' : ''}">
                             <div class="comment-top">
                                 <span class="comment-author">${escapeHTML(c.author || 'User')}</span>
+                                <div class="comment-controls">
+                                    <button type="button" class="delete" title="${tAct.deleteTitle}" onclick="adminDeleteCommentWithNotice('${postId}', ${idx}, '${targetUid}')">${ICON_DUSTBIN_SVG}</button>
+                                </div>
                             </div>
                             <div class="comment-body-text">${escapeHTML(c.text || '')}</div>
                         </div>
@@ -4956,6 +5093,10 @@
                                         <div class="author-name">${escapeHTML(displayAuthorName)}</div>
                                         <div class="post-time">${escapeHTML(post.timeText || '')}</div>
                                     </div>
+                                </div>
+                                <div class="owner-controls">
+                                    <button type="button" class="post-privacy-badge ${pPriv} clickable" onclick="adminTogglePostPrivacy('${postId}', '${targetUid}')" title="Change Post Privacy">${pPrivLabel}</button>
+                                    <button type="button" class="control-btn delete" title="${tAct.deleteTitle}" onclick="adminDeletePostWithNotice('${postId}', '${targetUid}')">${ICON_DUSTBIN_SVG}</button>
                                 </div>
                             </div>
                             ${post.text ? `<div class="post-content">${escapeHTML(post.text)}</div>` : ''}
@@ -5651,5 +5792,21 @@ ${shareUrl}`,
             }
         }, true);
     </script>
+
+    <script>
+        function syncChatViewOnReturn() {
+            if (document.visibilityState !== "visible") return;
+            const convView = document.getElementById("chat-conversation-view");
+            const popupMsg = document.getElementById("popup-messages");
+            if (convView && !convView.classList.contains("hidden") && typeof window.renderActiveChatMessages === "function") {
+                window.renderActiveChatMessages();
+            } else if (popupMsg && !popupMsg.classList.contains("hidden") && typeof window.renderChatFriendsList === "function") {
+                window.renderChatFriendsList();
+            }
+        }
+        document.addEventListener("visibilitychange", syncChatViewOnReturn);
+        window.addEventListener("focus", syncChatViewOnReturn);
+    </script>
+
 </body>
 </html>
