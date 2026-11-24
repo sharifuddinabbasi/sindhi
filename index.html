@@ -4069,10 +4069,10 @@
 
                 container.innerHTML += `
                     <div class="admin-panel-card">
-                        <div class="popup-user-info" style="flex:1;">
+                        <div class="popup-user-info" style="flex:1; cursor:pointer;" onclick="adminOpenUserChat('${u.uid}')">
                             <div class="mini-avatar">${avatarInner}</div>
                             <div style="min-width:0; flex:1;">
-                                <div class="popup-user-name">${escapeHTML(u.name || 'User')} ${statusBadge}</div>
+                                <div class="popup-user-name" style="text-decoration:underline;">${escapeHTML(u.name || 'User')} ${statusBadge}</div>
                                 <div style="font-size:11.5px; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" dir="ltr">${escapeHTML(u.email || '')}</div>
                             </div>
                         </div>
@@ -4103,6 +4103,31 @@
                 blocked: shouldBlock,
                 blockedAt: shouldBlock ? Date.now() : null
             });
+        };
+
+        window.adminOpenUserChat = async function(targetUid) {
+            if (!isAdminUser() || !targetUid) return;
+            const targetUser = allUsersList.find(u => u.uid === targetUid);
+            if (!targetUser) return;
+
+            const t = translations[currentLang];
+            document.getElementById('popup-admin-users').classList.add('hidden');
+            document.getElementById('modal-header-extra').innerHTML = '';
+            document.getElementById('modal-title').innerText = t.modalMessagesTitle;
+            document.getElementById('popup-messages').classList.remove('hidden');
+
+            activeChatFriendUid = targetUid;
+            document.getElementById('chat-friends-view').classList.add('hidden');
+            document.getElementById('chat-conversation-view').classList.remove('hidden');
+            document.getElementById('wa-active-friend-name').innerText = targetUser.name || 'User';
+            document.getElementById('wa-active-friend-avatar').innerHTML = getAvatarHTML(targetUser.photoUrl, targetUser.name);
+
+            renderActiveChatMessages();
+            await markFriendMessagesAsRead(targetUid);
+            setTimeout(() => {
+                const input = document.getElementById('wa-chat-input');
+                if (input) input.focus();
+            }, 100);
         };
 
         window.renderFindPopup = function() {
