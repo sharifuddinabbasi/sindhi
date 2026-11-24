@@ -1093,7 +1093,37 @@
 
         .card-body { padding: 14px; }
 
-        #auth-section, #reset-password-screen { max-width: 420px; margin: 24px auto 30px; text-align: center; }
+        .shared-post-preview-card {
+            max-width: 420px;
+            margin: 16px auto 0;
+            text-align: start;
+        }
+
+        .shared-post-badge {
+            display: inline-block;
+            background: rgba(139, 30, 36, 0.1);
+            color: var(--ajrak-red);
+            border: 1px solid rgba(139, 30, 36, 0.25);
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+
+        .shared-post-login-note {
+            margin-top: 10px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: #FFF8E7;
+            border: 1px solid #F0DFB0;
+            color: var(--ajrak-blue);
+            font-size: 12.5px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        #auth-section, #reset-password-screen { max-width: 420px; margin: 14px auto 30px; text-align: center; }
         #auth-section h2, #reset-password-screen h2 { color: var(--ajrak-red); margin-bottom: 6px; font-size: 24px; }
         #auth-section p.subtitle, #reset-password-screen p.subtitle { color: var(--ajrak-blue); margin-bottom: 16px; font-size: 14px; }
 
@@ -1644,6 +1674,11 @@
         <div style="color:#14284B; font-weight:bold; font-size:15px;">Sindhi World Book...</div>
     </div>
     <style>@keyframes spinBoot { to { transform: rotate(360deg); } }</style>
+    <div id="shared-post-preview-section" class="card shared-post-preview-card hidden">
+        <div class="ajrak-border-strip"></div>
+        <div id="shared-post-preview-body" class="card-body"></div>
+    </div>
+
     <div id="auth-section" class="card hidden">
         <div class="ajrak-border-strip"></div>
         <div class="card-body">
@@ -1969,6 +2004,8 @@
                 copyLinkBtn: "📋 Copy Post Link",
                 linkCopiedMsg: "Post link copied! You can paste and share it anywhere.",
                 loginToViewSharedPost: "Please log in to view this shared post on Sindhi World Book.",
+                sharedPostBadge: "🔗 Shared Post",
+                sharedPostLoginHint: "Log in above to like, reply, or interact with this post.",
                 postPublicBtn: "🌐 Public",
                 postPrivateBtn: "🔒 Private",
                 postPrivacySwitchedPublic: "Post is now Public (Visible to everyone & via share link)",
@@ -2146,6 +2183,8 @@
                 copyLinkBtn: "📋 پوسٽ لنڪ ڪاپي ڪريو",
                 linkCopiedMsg: "پوسٽ جي لنڪ ڪاپي ٿي وئي آهي! هاڻي توهان جتي چاهيو پيسٽ ڪري موڪلي سگهو ٿا.",
                 loginToViewSharedPost: "مهرباني ڪري هيءَ شيئر ڪيل پوسٽ ڏسڻ لاءِ پهرين لاگ ان ڪريو.",
+                sharedPostBadge: "🔗 شيئر ڪيل پوسٽ",
+                sharedPostLoginHint: "هن پوسٽ تي لائڪ يا جواب ڏيڻ لاءِ مٿي لاگ ان ڪريو.",
                 postPublicBtn: "🌐 پبلڪ (Public)",
                 postPrivateBtn: "🔒 پرائيويٽ (Private)",
                 postPrivacySwitchedPublic: "پوسٽ هاڻي پبلڪ آهي (هر ڪو ۽ شيئر لنڪ ذريعي ڏسي سگهي ٿو)",
@@ -2957,6 +2996,8 @@
                     });
                 }
 
+                const prevSecOnLogin = document.getElementById('shared-post-preview-section');
+                if (prevSecOnLogin) prevSecOnLogin.classList.add('hidden');
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('reset-password-screen').classList.add('hidden');
                 document.getElementById('feed-section').classList.remove('hidden');
@@ -2978,6 +3019,10 @@
                 document.getElementById('fb-icon-bar').classList.add('hidden');
                 if (pendingSharedPostId) {
                     showMessage(translations[currentLang].loginToViewSharedPost, false);
+                    renderLoggedOutSharedPostPreview(pendingSharedPostId);
+                } else {
+                    const prevSec = document.getElementById('shared-post-preview-section');
+                    if (prevSec) prevSec.classList.add('hidden');
                 }
             }
             } catch (authErr) {
@@ -4834,6 +4879,54 @@ ${shareUrl}`,
                 await notifyPostParticipants(targetPost, 'comment', snippet, commentText, true);
             }
         };
+
+        async function renderLoggedOutSharedPostPreview(postId) {
+            const prevSec = document.getElementById('shared-post-preview-section');
+            const prevBody = document.getElementById('shared-post-preview-body');
+            if (!prevSec || !prevBody || !postId) return;
+
+            const t = translations[currentLang];
+            try {
+                const postSnap = await getDoc(doc(db, "posts", postId));
+                if (!postSnap.exists()) {
+                    prevSec.classList.add('hidden');
+                    return;
+                }
+                const pData = postSnap.data();
+                const pPriv = pData.privacy || 'public';
+                if (pPriv === 'private') {
+                    const authorName = pData.authorName || "User";
+                    const blockedMsg = t.privatePostBlockedMsg.replace(/\{username\}/g, authorName);
+                    showCustomAlert(t.privatePostBlockedTitle, blockedMsg, t.alertOkBtn, "error");
+                    prevSec.classList.add('hidden');
+                    return;
+                }
+
+                const authorName = pData.authorName || "Sindhi World Book";
+                const avatarInner = getAvatarHTML(null, authorName);
+                const textHTML = pData.text ? `<div class="post-content">${escapeHTML(pData.text)}</div>` : '';
+                const imgHTML = pData.image ? `<img src="${escapeHTML(pData.image)}" class="post-image" alt="Shared Post Image" loading="lazy" draggable="false" oncontextmenu="return false;">` : '';
+
+                prevBody.innerHTML = `
+                    <span class="shared-post-badge">${t.sharedPostBadge}</span>
+                    <div class="post-header">
+                        <div class="author-info">
+                            <div class="avatar">${avatarInner}</div>
+                            <div>
+                                <div class="author-name">${escapeHTML(authorName)} <span class="post-privacy-badge public">${t.postPublicBtn}</span></div>
+                                <div class="post-time">${escapeHTML(pData.timeText || '')}</div>
+                            </div>
+                        </div>
+                    </div>
+                    ${textHTML}
+                    ${imgHTML}
+                    <div class="shared-post-login-note">${t.sharedPostLoginHint}</div>
+                `;
+                prevSec.classList.remove('hidden');
+            } catch (err) {
+                console.log("Shared post preview error:", err);
+            }
+        }
 
         setLanguage(currentLang);
     </script>
