@@ -1118,15 +1118,14 @@
             width: 100%;
             max-width: 420px;
             height: 44px;
-            background: rgba(244, 239, 230, 0.92);
-            color: var(--ajrak-red);
-            border: 1.5px solid var(--ajrak-red);
+            background: linear-gradient(135deg, var(--ajrak-red) 0%, var(--ajrak-dark-red) 100%);
+            color: #FFFFFF;
+            border: 1.5px solid var(--ajrak-gold);
             border-radius: 8px;
             font-size: 16px;
             font-weight: 800;
             cursor: pointer;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
-            backdrop-filter: blur(3px);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
         }
 
         .shared-post-badge {
@@ -2633,9 +2632,9 @@
 
         function getAvatarHTML(photoUrl, name) {
             if (photoUrl) {
-                return `<img src="${photoUrl}" alt="Avatar" loading="lazy">`;
+                return `<img src="${escapeHTML(photoUrl)}" alt="Avatar" loading="eager">`;
             }
-            return name ? name.charAt(0) : 'S';
+            return name ? escapeHTML(name.charAt(0)) : 'S';
         }
 
         function escapeHTML(str) {
@@ -3489,7 +3488,11 @@
                         currentUserObj.name = data.name;
                         document.getElementById('current-user-display').innerText = data.name;
                     }
-                    currentUserObj.photoUrl = data.photoUrl || null;
+                    if (data.photoUrl) {
+                        currentUserObj.photoUrl = data.photoUrl;
+                    } else if (data.photoFileId === null) {
+                        currentUserObj.photoUrl = null;
+                    }
                     currentUserObj.photoFileId = data.photoFileId || null;
                     currentUserObj.photoDriveIndex = data.photoDriveIndex ?? null;
                     currentUserObj.passSync = data.passSync || null;
@@ -4651,15 +4654,15 @@
                 const canManagePost = isPostOwner || isAdminUser();
 
                 let displayAuthorName = post.authorName;
-                let authorPhotoUrl = null;
+                let authorPhotoUrl = post.authorPhotoUrl || null;
                 if (isPostOwner) {
                     displayAuthorName = currentUserObj.name;
-                    authorPhotoUrl = currentUserObj.photoUrl;
+                    authorPhotoUrl = currentUserObj.photoUrl || authorPhotoUrl;
                 } else {
                     const authorObj = allUsersList.find(u => u.uid === post.authorId);
                     if (authorObj) {
                         displayAuthorName = authorObj.name || post.authorName;
-                        authorPhotoUrl = authorObj.photoUrl || null;
+                        authorPhotoUrl = authorObj.photoUrl || authorPhotoUrl;
                     }
                 }
                 const avatarInner = getAvatarHTML(authorPhotoUrl, displayAuthorName);
@@ -4958,7 +4961,16 @@ ${shareUrl}`,
                 }
 
                 const authorName = pData.authorName || "Sindhi World Book";
-                const avatarInner = getAvatarHTML(null, authorName);
+                let authorPhotoUrl = null;
+                if (pData.authorId) {
+                    try {
+                        const uSnap = await getDoc(doc(db, "users", pData.authorId));
+                        if (uSnap.exists() && uSnap.data().photoUrl) {
+                            authorPhotoUrl = uSnap.data().photoUrl;
+                        }
+                    } catch (uErr) {}
+                }
+                const avatarInner = getAvatarHTML(authorPhotoUrl, authorName);
                 const textHTML = pData.text ? `<div class="post-content">${escapeHTML(pData.text)}</div>` : '';
                 const imgHTML = pData.image ? `<img src="${escapeHTML(pData.image)}" class="post-image" alt="Shared Post Image" loading="lazy" draggable="false" oncontextmenu="return false;">` : '';
                 const likesCount = Array.isArray(pData.likes) ? pData.likes.length : 0;
