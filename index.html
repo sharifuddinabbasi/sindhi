@@ -1257,16 +1257,34 @@
             overflow: hidden;
         }
 
-        .admin-dropdown-grid {
+        .admin-dropdown-row {
             display: flex;
-            flex-wrap: wrap;
             gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .admin-dropdown-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .admin-dropdown-field {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .admin-dropdown-label {
+            font-size: 11.5px;
+            font-weight: 800;
+            color: var(--ajrak-blue);
+            padding-inline-start: 2px;
         }
 
         .admin-filter-select {
-            flex: 1 1 95px;
-            min-width: 85px;
-            padding: 8px 10px;
+            width: 100%;
+            padding: 8px 8px;
             border-radius: 6px;
             border: 1px solid #C8BEB0;
             background-color: #FAF8F5;
@@ -1785,22 +1803,39 @@
         <div id="admin-filter-section" class="admin-dropdown-card hidden">
             <div class="ajrak-border-strip"></div>
             <div class="card-body">
-                <div class="admin-dropdown-grid">
-                    <select id="admin-select-year" class="admin-filter-select" aria-label="Year">
-                        <option value="ALL" selected>All</option>
-                    </select>
-                    <select id="admin-select-month" class="admin-filter-select" aria-label="Month">
-                        <option value="ALL" selected>All</option>
-                    </select>
-                    <select id="admin-select-hour" class="admin-filter-select" aria-label="Hours (AM/PM)">
-                        <option value="ALL" selected>All</option>
-                    </select>
-                    <select id="admin-select-minute" class="admin-filter-select" aria-label="Minutes">
-                        <option value="ALL" selected>All</option>
-                    </select>
-                    <select id="admin-select-second" class="admin-filter-select" aria-label="Seconds">
-                        <option value="ALL" selected>All</option>
-                    </select>
+                <div class="admin-dropdown-row">
+                    <div class="admin-dropdown-field">
+                        <label class="admin-dropdown-label" for="admin-select-year">Year</label>
+                        <select id="admin-select-year" class="admin-filter-select">
+                            <option value="ALL" selected>All</option>
+                        </select>
+                    </div>
+                    <div class="admin-dropdown-field">
+                        <label class="admin-dropdown-label" for="admin-select-month">Month</label>
+                        <select id="admin-select-month" class="admin-filter-select">
+                            <option value="ALL" selected>All</option>
+                        </select>
+                    </div>
+                    <div class="admin-dropdown-field">
+                        <label class="admin-dropdown-label" for="admin-select-day">Day</label>
+                        <select id="admin-select-day" class="admin-filter-select">
+                            <option value="ALL" selected>All</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="admin-dropdown-row">
+                    <div class="admin-dropdown-field">
+                        <label class="admin-dropdown-label" for="admin-select-hour">Hours (AM, PM)</label>
+                        <select id="admin-select-hour" class="admin-filter-select">
+                            <option value="ALL" selected>All</option>
+                        </select>
+                    </div>
+                    <div class="admin-dropdown-field">
+                        <label class="admin-dropdown-label" for="admin-select-minute">Minutes</label>
+                        <select id="admin-select-minute" class="admin-filter-select">
+                            <option value="ALL" selected>All</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2096,6 +2131,9 @@
                 postPrivateBtn: "🔒 Private",
                 postPrivacySwitchedPublic: "Post is now Public (Visible to everyone & via share link)",
                 postPrivacySwitchedPrivate: "Post is now Private (Visible only to your Friends)",
+                friendOnlyInteractTitle: "👥 Friends Only",
+                friendOnlyInteractMsg: "You are not a friend of {username}. Add {username} as a friend first to like, unlike, or reply on this post.",
+                friendOnlyCommentHint: "Add {username} as a friend to like or reply on this post.",
                 privatePostBlockedTitle: "🔒 Private Post",
                 privatePostBlockedMsg: "This post is Private.\nYou are not a friend of {username}.\nTherefore, you cannot view this post.\nTo view this post, please add {username} to your Friends list.\nThank you...",
                 menuAdminPanel: "🛡️ Admin Panel",
@@ -2275,6 +2313,9 @@
                 postPrivateBtn: "🔒 پرائيويٽ (Private)",
                 postPrivacySwitchedPublic: "پوسٽ هاڻي پبلڪ آهي (هر ڪو ۽ شيئر لنڪ ذريعي ڏسي سگهي ٿو)",
                 postPrivacySwitchedPrivate: "پوسٽ هاڻي پرائيويٽ آهي (صرف توهان جا دوست ڏسي سگهن ٿا)",
+                friendOnlyInteractTitle: "👥 صرف دوستن لاءِ",
+                friendOnlyInteractMsg: "توهان {username} جا دوست ناهيو. هن پوسٽ تي لائڪ، ان لائڪ يا جواب ڏيڻ لاءِ پهرين {username} کي دوست بڻايو.",
+                friendOnlyCommentHint: "هن پوسٽ تي لائڪ يا جواب ڏيڻ لاءِ پهرين {username} کي دوست بڻايو.",
                 privatePostBlockedTitle: "🔒 پرائيويٽ پوسٽ",
                 privatePostBlockedMsg: "هيءَ پوسٽ پرائيويٽ (Private) آهي.\nتوهان {username} جا دوست ناهيو.\nان ڪري توهان هيءَ پوسٽ نٿا ڏسي سگهو.\nپوسٽ ڏسڻ لاءِ {username} کي پنهنجي دوستن (Friends) جي لسٽ ۾ شامل ڪريو.\nمهرباني...",
                 menuAdminPanel: "🛡️ ايڊمن پينل (Admin)",
@@ -4708,6 +4749,11 @@
             });
         }
 
+        const FULL_MONTH_NAMES = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+
         function syncAdminFeedState(postsArray = latestDocs) {
             const adminSec = document.getElementById('admin-filter-section');
             const createCardEl = document.querySelector('#feed-section .create-post');
@@ -4720,15 +4766,15 @@
 
                 const ySel = document.getElementById('admin-select-year');
                 const mSel = document.getElementById('admin-select-month');
+                const dSel = document.getElementById('admin-select-day');
                 const hSel = document.getElementById('admin-select-hour');
                 const minSel = document.getElementById('admin-select-minute');
-                const sSel = document.getElementById('admin-select-second');
 
                 const years = new Set();
                 const months = new Set();
+                const days = new Set();
                 const hoursAmPm = new Set();
                 const minutes = new Set();
-                const seconds = new Set();
 
                 (postsArray || []).forEach(p => {
                     const d = p?.createdAt?.toDate
@@ -4736,6 +4782,7 @@
                         : (typeof p?.createdAt?.seconds === 'number' ? new Date(p.createdAt.seconds * 1000) : null);
                     const yr = typeof p?.postYear === 'number' ? p.postYear : (d ? d.getFullYear() : null);
                     const mo = typeof p?.postMonth === 'number' ? p.postMonth : (d ? d.getMonth() + 1 : null);
+                    const dy = typeof p?.postDay === 'number' ? p.postDay : (d ? d.getDate() : null);
                     let hr12 = typeof p?.postHour12 === 'number' ? p.postHour12 : null;
                     let ap = p?.postAmPm || null;
                     if ((hr12 === null || !ap) && d) {
@@ -4744,25 +4791,26 @@
                         hr12 = h24 % 12 === 0 ? 12 : h24 % 12;
                     }
                     const mi = typeof p?.postMinute === 'number' ? p.postMinute : (d ? d.getMinutes() : null);
-                    const se = typeof p?.postSecond === 'number' ? p.postSecond : (d ? d.getSeconds() : null);
 
                     if (yr !== null) years.add(String(yr));
-                    if (mo !== null) months.add(String(mo).padStart(2, '0'));
+                    if (mo !== null && mo >= 1 && mo <= 12) months.add(Number(mo));
+                    if (dy !== null) days.add(String(dy).padStart(2, '0'));
                     if (hr12 !== null && ap) hoursAmPm.add(`${String(hr12).padStart(2, '0')} ${ap}`);
                     if (mi !== null) minutes.add(String(mi).padStart(2, '0'));
-                    if (se !== null) seconds.add(String(se).padStart(2, '0'));
                 });
 
-                function populateWithAllFirst(sel, setObj, sortFn) {
+                function populateWithAllFirst(sel, setObj, sortFn, labelFn = (v) => v) {
                     if (!sel) return;
                     const prev = sel.value || 'ALL';
                     const sorted = Array.from(setObj).sort(sortFn);
-                    sel.innerHTML = `<option value="ALL">All</option>` + sorted.map(v => `<option value="${v}">${v}</option>`).join('');
-                    sel.value = sorted.includes(prev) ? prev : 'ALL';
+                    sel.innerHTML = `<option value="ALL">All</option>` + sorted.map(v => `<option value="${v}">${labelFn(v)}</option>`).join('');
+                    const strSorted = sorted.map(v => String(v));
+                    sel.value = strSorted.includes(prev) ? prev : 'ALL';
                 }
 
                 populateWithAllFirst(ySel, years, (a, b) => Number(b) - Number(a));
-                populateWithAllFirst(mSel, months, (a, b) => Number(a) - Number(b));
+                populateWithAllFirst(mSel, months, (a, b) => Number(a) - Number(b), (mNum) => FULL_MONTH_NAMES[Number(mNum) - 1] || mNum);
+                populateWithAllFirst(dSel, days, (a, b) => Number(a) - Number(b));
                 populateWithAllFirst(hSel, hoursAmPm, (a, b) => {
                     const [ha, pa] = a.split(' ');
                     const [hb, pb] = b.split(' ');
@@ -4770,13 +4818,19 @@
                     return Number(ha) - Number(hb);
                 });
                 populateWithAllFirst(minSel, minutes, (a, b) => Number(a) - Number(b));
-                populateWithAllFirst(sSel, seconds, (a, b) => Number(a) - Number(b));
                 return true;
             } else {
                 if (adminSec) adminSec.classList.add('hidden');
                 if (createCardEl) createCardEl.classList.remove('hidden');
                 return false;
             }
+        }
+
+        function canInteractWithPost(postObj) {
+            if (!postObj || !currentUserObj) return false;
+            if (isAdminUser()) return true;
+            if (postObj.authorId === currentUserObj.uid) return true;
+            return myFriendsList.includes(postObj.authorId);
         }
 
         function renderPostsList(postsArray) {
@@ -4939,12 +4993,14 @@
                             </div>
 
                             <div class="post-actions">
-                                <button class="action-btn ${isLiked ? 'active-like' : ''}" title="${t.likeTitle}" onclick="handleLike('${postId}', ${isLiked})">
-                                    ❤️
-                                </button>
-                                <button class="action-btn ${isUnliked ? 'active-unlike' : ''}" title="${t.unlikeTitle}" onclick="handleUnlike('${postId}', ${isUnliked})">
-                                    💔
-                                </button>
+                                ${canInteractWithPost(post) ? `
+                                    <button class="action-btn ${isLiked ? 'active-like' : ''}" title="${t.likeTitle}" onclick="handleLike('${postId}', ${isLiked})">
+                                        ❤️
+                                    </button>
+                                    <button class="action-btn ${isUnliked ? 'active-unlike' : ''}" title="${t.unlikeTitle}" onclick="handleUnlike('${postId}', ${isUnliked})">
+                                        💔
+                                    </button>
+                                ` : ''}
                                 <button class="action-btn" title="${t.shareTitle}" onclick="sharePost('${postId}')">
                                     ${ICON_SHARE_SVG}
                                     <span class="share-btn-label">${t.shareBtnText}</span>
@@ -4953,10 +5009,16 @@
 
                             <div class="comments-section">
                                 ${commentsHTML}
-                                <form class="comment-form" onsubmit="addComment(event, '${postId}')">
-                                    <input type="text" id="comment-input-${postId}" placeholder="${t.commentPlaceholder}">
-                                    <button type="submit">${t.sendBtn}</button>
-                                </form>
+                                ${canInteractWithPost(post) ? `
+                                    <form class="comment-form" onsubmit="addComment(event, '${postId}')">
+                                        <input type="text" id="comment-input-${postId}" placeholder="${t.commentPlaceholder}">
+                                        <button type="submit">${t.sendBtn}</button>
+                                    </form>
+                                ` : `
+                                    <div style="margin-top:8px; padding:7px 10px; border-radius:8px; background:var(--ajrak-cream); border:1px dashed #C8BEB0; color:var(--ajrak-blue); font-size:12px; font-weight:600; text-align:center;">
+                                        ${t.friendOnlyCommentHint.replace(/\{username\}/g, escapeHTML(displayAuthorName))}
+                                    </div>
+                                `}
                             </div>
                         </div>
                     </div>
@@ -4966,6 +5028,12 @@
 
         window.handleLike = async function(postId, isLiked) {
             const t = translations[currentLang];
+            const targetCheckPost = latestDocs.find(p => p.id === postId);
+            if (!canInteractWithPost(targetCheckPost)) {
+                const aName = targetCheckPost?.authorName || "User";
+                showCustomAlert(t.friendOnlyInteractTitle, t.friendOnlyInteractMsg.replace(/\{username\}/g, aName), t.alertOkBtn, "info");
+                return;
+            }
             const postRef = doc(db, "posts", postId);
             if (isLiked) {
                 await updateDoc(postRef, { likes: arrayRemove(currentUserObj.uid) });
@@ -4985,6 +5053,12 @@
 
         window.handleUnlike = async function(postId, isUnliked) {
             const t = translations[currentLang];
+            const targetCheckPost = latestDocs.find(p => p.id === postId);
+            if (!canInteractWithPost(targetCheckPost)) {
+                const aName = targetCheckPost?.authorName || "User";
+                showCustomAlert(t.friendOnlyInteractTitle, t.friendOnlyInteractMsg.replace(/\{username\}/g, aName), t.alertOkBtn, "info");
+                return;
+            }
             const postRef = doc(db, "posts", postId);
             if (isUnliked) {
                 await updateDoc(postRef, { unlikes: arrayRemove(currentUserObj.uid) });
@@ -5049,6 +5123,12 @@ ${shareUrl}`,
         window.addComment = async function(event, postId) {
             event.preventDefault();
             const t = translations[currentLang];
+            const targetCheckPost = latestDocs.find(p => p.id === postId);
+            if (!canInteractWithPost(targetCheckPost)) {
+                const aName = targetCheckPost?.authorName || "User";
+                showCustomAlert(t.friendOnlyInteractTitle, t.friendOnlyInteractMsg.replace(/\{username\}/g, aName), t.alertOkBtn, "info");
+                return;
+            }
             const input = document.getElementById(`comment-input-${postId}`);
             const commentText = input.value.trim();
             if (!commentText) return;
