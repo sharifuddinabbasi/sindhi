@@ -1094,9 +1094,36 @@
         .card-body { padding: 14px; }
 
         .shared-post-preview-card {
+            position: relative;
             max-width: 420px;
             margin: 16px auto 0;
             text-align: start;
+        }
+
+        .shared-post-floating-login-wrap {
+            position: sticky;
+            top: 98px;
+            z-index: 85;
+            padding: 8px 14px;
+            background: rgba(244, 239, 230, 0.90);
+            backdrop-filter: blur(4px);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.55);
+            display: flex;
+            justify-content: center;
+        }
+
+        .shared-post-floating-login-btn {
+            width: 100%;
+            max-width: 390px;
+            background: linear-gradient(135deg, var(--ajrak-red) 0%, var(--ajrak-dark-red) 100%);
+            color: #FFFFFF;
+            border: 1.5px solid var(--ajrak-gold);
+            padding: 9px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(11, 22, 44, 0.25);
         }
 
         .shared-post-badge {
@@ -4946,6 +4973,9 @@ ${shareUrl}`,
                 });
 
                 prevBody.innerHTML = `
+                    <div id="shared-post-login-toggle-wrap" class="shared-post-floating-login-wrap">
+                        <button type="button" class="shared-post-floating-login-btn" onclick="revealAuthFromSharedPost()">${t.btnLogin}</button>
+                    </div>
                     <span class="shared-post-badge">${t.sharedPostBadge}</span>
                     <div class="post-header">
                         <div class="author-info">
@@ -4965,9 +4995,6 @@ ${shareUrl}`,
                     </div>
                     <div class="comments-section" style="margin-top:10px;">
                         ${commentsHTML}
-                    </div>
-                    <div id="shared-post-login-toggle-wrap" style="margin-top:14px; text-align:center;">
-                        <button type="button" class="btn-primary" onclick="revealAuthFromSharedPost()">${t.btnLogin}</button>
                     </div>
                 `;
                 prevSec.classList.remove('hidden');
