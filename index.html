@@ -1101,29 +1101,26 @@
         }
 
         .shared-post-floating-login-wrap {
-            position: sticky;
-            top: 98px;
-            z-index: 85;
-            padding: 8px 14px;
-            background: rgba(244, 239, 230, 0.90);
-            backdrop-filter: blur(4px);
-            border-bottom: 1px solid rgba(212, 175, 55, 0.55);
-            display: flex;
-            justify-content: center;
+            position: fixed;
+            top: 112px;
+            right: 22px;
+            z-index: 250;
+            background: transparent;
+            padding: 0;
+            border: none;
+            box-shadow: none;
         }
 
         .shared-post-floating-login-btn {
-            width: 100%;
-            max-width: 390px;
             background: linear-gradient(135deg, var(--ajrak-red) 0%, var(--ajrak-dark-red) 100%);
             color: #FFFFFF;
             border: 1.5px solid var(--ajrak-gold);
-            padding: 9px 16px;
-            border-radius: 8px;
-            font-size: 14px;
+            padding: 7px 16px;
+            border-radius: 20px;
+            font-size: 13px;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(11, 22, 44, 0.25);
+            box-shadow: 0 4px 12px rgba(11, 22, 44, 0.35);
         }
 
         .shared-post-badge {
@@ -3025,6 +3022,8 @@
 
                 const prevSecOnLogin = document.getElementById('shared-post-preview-section');
                 if (prevSecOnLogin) prevSecOnLogin.classList.add('hidden');
+                const floatBtnOnLogin = document.getElementById('shared-post-login-toggle-wrap');
+                if (floatBtnOnLogin) floatBtnOnLogin.classList.add('hidden');
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('reset-password-screen').classList.add('hidden');
                 document.getElementById('feed-section').classList.remove('hidden');
