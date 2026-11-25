@@ -6380,16 +6380,18 @@
 
         function buildAbusivePostAlertText(matchedList) {
             const wordsStr = matchedList.join(", ");
-            return `Ap ne post mai ye glat ayr nazeba alfaz likhay hain (${wordsStr}), is leye ap ki post ko post nhi kia ja skta.
-
-You wrote inappropriate/abusive words (${wordsStr}) in your post, so your post cannot be published.`;
+            if (currentLang === 'sd') {
+                return `توهان پوسٽ ۾ اهي غلط ۽ نازيبا لفظ لکيا آهن (${wordsStr})، ان ڪري توهان جي پوسٽ شايع نٿي ڪري سگهجي.`;
+            }
+            return `You wrote inappropriate/abusive words (${wordsStr}) in your post, so your post cannot be published.`;
         }
 
         function buildAbusiveCommentAlertText(matchedList) {
             const wordsStr = matchedList.join(", ");
-            return `Ap ne comment mai ye glat ayr nazeba alfaz likhay hain (${wordsStr}), is leye ap ka comment post nhi kia ja skta.
-
-You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your comment cannot be posted.`;
+            if (currentLang === 'sd') {
+                return `توهان تبصري (Comment) ۾ اهي غلط ۽ نازيبا لفظ لکيا آهن (${wordsStr})، ان ڪري توهان جو تبصرو شايع نٿو ڪري سگهجي.`;
+            }
+            return `You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your comment cannot be posted.`;
         }
 
         window.createPost = async function() {
