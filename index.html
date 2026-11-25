@@ -1992,6 +1992,7 @@
             updatePassword,
             EmailAuthProvider,
             reauthenticateWithCredential,
+            deleteUser,
             signOut, 
             onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -2192,6 +2193,15 @@
                 passShortError: "New password must be at least 6 characters.",
                 passCurrentEmptyError: "Please enter your current password.",
                 passChangedSuccess: "Password changed successfully!",
+                settingOptDeleteAccount: "🗑️ Delete Account",
+                modalDeleteAccountTitle: "🗑️ Delete Account",
+                deleteAccountWarningDesc: "Warning: Deleting your account is permanent and will remove your profile, posts, and account access. Please enter your account password to confirm:",
+                deleteAccountPassPlaceholder: "Enter your account password",
+                deleteAccountBtn: "Delete My Account",
+                deletingAccountStatus: "Deleting account...",
+                deleteAccountEmptyPassError: "Please enter your account password.",
+                deleteAccountWrongPassError: "Incorrect password. Please check your password and try again.",
+                deleteAccountSuccessMsg: "Your account has been permanently deleted.",
                 searchFriendPlaceholder: "Search by name or email...",
                 typeToSearch: "Type a name or email above to find friends.",
                 addFriend: "+ Add Friend",
@@ -2397,6 +2407,15 @@
                 passShortError: "نئون پاسورڊ گهٽ ۾ گهٽ 6 اکرن جو هجڻ گهرجي.",
                 passCurrentEmptyError: "مهرباني ڪري پنهنجو موجوده پاسورڊ لکو.",
                 passChangedSuccess: "پاسورڊ ڪاميابيءَ سان تبديل ٿي ويو!",
+                settingOptDeleteAccount: "🗑️ اڪائونٽ ڊليٽ ڪريو (Delete Account)",
+                modalDeleteAccountTitle: "🗑️ اڪائونٽ ڊليٽ ڪريو",
+                deleteAccountWarningDesc: "خبردار: اڪائونٽ ڊليٽ ڪرڻ سان توهان جي پروفائيل، پوسٽون ۽ اڪائونٽ هميشه لاءِ ختم ٿي ويندا. تصديق لاءِ پنهنجو پاسورڊ لکو:",
+                deleteAccountPassPlaceholder: "پنهنجو اڪائونٽ پاسورڊ لکو",
+                deleteAccountBtn: "اڪائونٽ ڊليٽ ڪريو",
+                deletingAccountStatus: "اڪائونٽ ڊليٽ ٿي رهيو آهي...",
+                deleteAccountEmptyPassError: "مهرباني ڪري پنهنجو اڪائونٽ پاسورڊ لکو.",
+                deleteAccountWrongPassError: "غلط پاسورڊ! مهرباني ڪري صحيح پاسورڊ لکو.",
+                deleteAccountSuccessMsg: "توهان جو اڪائونٽ ڪاميابيءَ سان ڊليٽ ٿي ويو آهي.",
                 searchFriendPlaceholder: "نالو يا اي ميل لکي ڳوليو...",
                 typeToSearch: "دوست ڳولڻ لاءِ مٿي نالو يا اي ميل لکو.",
                 addFriend: "+ دوست بڻايو",
@@ -4906,6 +4925,10 @@
                     <span>${t.settingOptResetPass}</span>
                     <span>›</span>
                 </button>
+                <button class="setting-menu-btn" style="border-color:#EF9A9A; color:var(--ajrak-red); background:#FFF5F5;" onclick="openSettingSubView('delete_account')">
+                    <span>${t.settingOptDeleteAccount}</span>
+                    <span>›</span>
+                </button>
             `;
         };
 
@@ -4985,6 +5008,121 @@
                     <button id="btn-send-reset-mail" class="btn-primary" onclick="triggerCustomResetEmail()">${t.sendResetMailBtn}</button>
                     <div id="reset-mail-status-msg" class="status-msg hidden"></div>
                 `;
+
+            } else if (view === 'delete_account') {
+                document.getElementById('modal-title').innerText = t.modalDeleteAccountTitle;
+                container.innerHTML = `
+                    <div style="margin-bottom:10px;"><button class="btn-sm neutral" onclick="renderSettingMenu()">${t.backBtn}</button></div>
+                    <p style="font-size:13px; color:var(--ajrak-red); font-weight:600; margin-bottom:12px; line-height:1.55; background:#FFEBEE; padding:10px 12px; border-radius:8px; border:1px solid #EF9A9A;">
+                        ${t.deleteAccountWarningDesc}
+                    </p>
+                    <div class="password-field-wrapper">
+                        <input type="password" id="setting-delete-acc-pass" placeholder="${t.deleteAccountPassPlaceholder}" dir="ltr">
+                        <button type="button" class="eye-toggle-btn" onclick="togglePassVisibility('setting-delete-acc-pass', this)">
+                            ${ICON_EYE_OPEN}
+                        </button>
+                    </div>
+                    <button id="btn-confirm-delete-account" class="btn-primary" style="background:linear-gradient(135deg,#B71C1C 0%,#5E1116 100%);" onclick="deleteUserAccount()">${t.deleteAccountBtn}</button>
+                    <div id="delete-account-status-msg" class="status-msg hidden"></div>
+                `;
+            }
+        };
+
+        window.deleteUserAccount = async function() {
+            const t = translations[currentLang];
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
+            const passInput = document.getElementById('setting-delete-acc-pass');
+            const enteredPass = passInput ? passInput.value : '';
+            const msgBox = document.getElementById('delete-account-status-msg');
+            const btn = document.getElementById('btn-confirm-delete-account');
+            const authUser = auth.currentUser;
+
+            if (msgBox) msgBox.classList.add('hidden');
+
+            if (!enteredPass) {
+                if (msgBox) {
+                    msgBox.innerText = t.deleteAccountEmptyPassError;
+                    msgBox.className = "status-msg status-error";
+                    msgBox.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (!authUser || !authUser.email) return;
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = t.deletingAccountStatus;
+            }
+
+            try {
+                const credential = EmailAuthProvider.credential(authUser.email, enteredPass);
+                await reauthenticateWithCredential(authUser, credential);
+
+                const uidToDelete = authUser.uid;
+
+                // Delete user's posts
+                try {
+                    const postsSnap = await getDocs(query(collection(db, "posts"), where("authorId", "==", uidToDelete)));
+                    for (const pDoc of postsSnap.docs) {
+                        await deleteDoc(doc(db, "posts", pDoc.id)).catch(() => {});
+                    }
+                } catch (e) {}
+
+                // Delete user's history & notifications
+                try {
+                    const histSnap = await getDocs(query(collection(db, "history"), where("uid", "==", uidToDelete)));
+                    for (const hDoc of histSnap.docs) {
+                        await deleteDoc(doc(db, "history", hDoc.id)).catch(() => {});
+                    }
+                } catch (e) {}
+
+                try {
+                    const notifSnap = await getDocs(query(collection(db, "notifications"), where("toUid", "==", uidToDelete)));
+                    for (const nDoc of notifSnap.docs) {
+                        await deleteDoc(doc(db, "notifications", nDoc.id)).catch(() => {});
+                    }
+                } catch (e) {}
+
+                // Delete user profile document
+                await deleteDoc(doc(db, "users", uidToDelete)).catch(() => {});
+
+                // Delete Firebase Auth account
+                await deleteUser(authUser);
+
+                if (unsubscribePosts) unsubscribePosts();
+                if (unsubscribeUsers) unsubscribeUsers();
+                if (unsubscribeMyProfile) unsubscribeMyProfile();
+                if (unsubscribeNotifs) unsubscribeNotifs();
+                if (unsubscribeHistory) unsubscribeHistory();
+                if (presenceHeartbeatTimer) { clearInterval(presenceHeartbeatTimer); presenceHeartbeatTimer = null; }
+                if (unsubscribeMessages) unsubscribeMessages();
+
+                closePopup();
+                currentUserObj = null;
+                document.getElementById('feed-section').classList.add('hidden');
+                document.getElementById('user-nav').classList.add('hidden');
+                document.getElementById('fb-icon-bar').classList.add('hidden');
+                document.getElementById('auth-section').classList.remove('hidden');
+                showMessage(t.deleteAccountSuccessMsg, false);
+            } catch (err) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = t.deleteAccountBtn;
+                }
+                if (isNetworkError(err)) {
+                    showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                } else if (msgBox) {
+                    const errCode = (err?.code || '').toLowerCase();
+                    msgBox.innerText = (errCode.includes('wrong-password') || errCode.includes('invalid-credential'))
+                        ? t.deleteAccountWrongPassError
+                        : (err.message || t.deleteAccountWrongPassError);
+                    msgBox.className = "status-msg status-error";
+                    msgBox.classList.remove('hidden');
+                }
             }
         };
 
