@@ -1608,6 +1608,12 @@
         }
         .comment-form button { background: var(--ajrak-red); color: white; border: none; padding: 0 14px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; flex-shrink: 0; }
 
+        #announcement-banner-container {
+            position: sticky;
+            top: var(--sticky-ann-top, 90px);
+            z-index: 90;
+        }
+
         .announcement-banner-card {
             background: linear-gradient(135deg, var(--ajrak-dark-blue) 0%, var(--ajrak-blue) 60%, var(--ajrak-dark-red) 100%);
             border: 2px solid var(--ajrak-gold);
@@ -3110,6 +3116,20 @@
             return Math.max(0, newWin.expiresAtMs - nowMs);
         }
 
+
+        function updateStickyAnnouncementTop() {
+            const hdr = document.querySelector('header');
+            const banner = document.getElementById('announcement-banner-container');
+            if (hdr && banner) {
+                const hRect = hdr.getBoundingClientRect();
+                if (hRect.height > 0) {
+                    banner.style.setProperty('--sticky-ann-top', Math.round(hRect.height) + 'px');
+                }
+            }
+        }
+        window.addEventListener('resize', updateStickyAnnouncementTop);
+        window.addEventListener('load', updateStickyAnnouncementTop);
+
         function renderActiveAnnouncementBanner() {
             const bannerEl = document.getElementById('announcement-banner-container');
             if (!bannerEl) return;
@@ -3152,6 +3172,7 @@
             });
 
             bannerEl.innerHTML = cardsHtml;
+            updateStickyAnnouncementTop();
             bannerEl.classList.remove('hidden');
         }
 
@@ -6024,9 +6045,7 @@
 
             document.getElementById('popup-admin-users').classList.add('hidden');
             document.getElementById('popup-admin-user-details').classList.remove('hidden');
-            document.getElementById('modal-header-extra').innerHTML = `
-                <button type="button" class="btn-sm neutral" onclick="openPopup('admin_users')">${t.backBtn}</button>
-            `;
+            document.getElementById('modal-header-extra').innerHTML = '';
             document.getElementById('modal-title').innerText = t.adminUserDetailsTitle;
             renderAdminUserDetailsView();
         };
