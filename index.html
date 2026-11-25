@@ -1872,6 +1872,19 @@
         <div style="width:44px; height:44px; border:4px solid #DCD4C6; border-top-color:#8B1E24; border-radius:50%; margin:0 auto 14px; animation:spinBoot 0.8s linear infinite;"></div>
         <div style="color:#14284B; font-weight:bold; font-size:15px;">Sindhi World Book...</div>
     </div>
+    <script>
+        setTimeout(function() {
+            var bl = document.getElementById('app-boot-loader');
+            if (bl && !bl.classList.contains('hidden')) {
+                bl.classList.add('hidden');
+                var authSec = document.getElementById('auth-section');
+                var feedSec = document.getElementById('feed-section');
+                if (authSec && feedSec && feedSec.classList.contains('hidden')) {
+                    authSec.classList.remove('hidden');
+                }
+            }
+        }, 4500);
+    </script>
     <style>@keyframes spinBoot { to { transform: rotate(360deg); } }</style>
     <div id="shared-post-preview-section" class="card shared-post-preview-card hidden">
         <div class="ajrak-border-strip"></div>
@@ -2751,12 +2764,6 @@
 
             if (!text && !file) {
                 showCustomAlert(t.noticeTitle, t.alertEmptyPost, t.alertOkBtn, "error");
-                return;
-            }
-
-            const abusivePostWords = findAbusiveContent(text);
-            if (abusivePostWords.length > 0) {
-                showCustomAlert(t.noticeTitle, buildAbusivePostAlertText(abusivePostWords), t.alertOkBtn, "error");
                 return;
             }
 
