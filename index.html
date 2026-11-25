@@ -6265,6 +6265,12 @@
                 return;
             }
 
+            const abusiveReshareWords = findAbusiveContent(customText);
+            if (abusiveReshareWords.length > 0) {
+                showCustomAlert(t.noticeTitle, buildAbusivePostAlertText(abusiveReshareWords), t.alertOkBtn, "error");
+                return;
+            }
+
             if (btn) btn.disabled = true;
 
             try {
@@ -6342,6 +6348,14 @@
             const text = String(rawText || "").trim();
             if (!text) return [];
             const lower = text.toLowerCase();
+            const normalizedLetters = lower
+                .replace(/[@4]/g, "a")
+                .replace(/3/g, "e")
+                .replace(/[!1|]/g, "i")
+                .replace(/0/g, "o")
+                .replace(/[$5]/g, "s")
+                .replace(/7/g, "t")
+                .replace(/[^a-z\u0600-\u06FF]/g, "");
             const found = [];
 
             for (const term of ABUSIVE_TERMS) {
@@ -6351,7 +6365,8 @@
                 if (isAsciiWord) {
                     const escaped = tLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
                     const re = new RegExp(`(^|[^a-z0-9])${escaped}(?=[^a-z0-9]|$)`, "i");
-                    if (re.test(lower)) {
+                    const compactTerm = tLower.replace(/\s+/g, "");
+                    if (re.test(lower) || (compactTerm.length >= 4 && normalizedLetters.includes(compactTerm))) {
                         found.push(term);
                     }
                 } else {
@@ -6390,6 +6405,12 @@ You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your com
 
             if (!text && !file) {
                 showCustomAlert(t.noticeTitle, t.alertEmptyPost, t.alertOkBtn, "error");
+                return;
+            }
+
+            const abusiveNewPostWords = findAbusiveContent(text);
+            if (abusiveNewPostWords.length > 0) {
+                showCustomAlert(t.noticeTitle, buildAbusivePostAlertText(abusiveNewPostWords), t.alertOkBtn, "error");
                 return;
             }
 
@@ -6451,6 +6472,11 @@ You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your com
 
         async function saveToFirestore(text, imageUrl, imageFileId = null, driveIndex = null) {
             const t = translations[currentLang];
+            const abusiveFsWords = findAbusiveContent(text);
+            if (abusiveFsWords.length > 0) {
+                showCustomAlert(t.noticeTitle, buildAbusivePostAlertText(abusiveFsWords), t.alertOkBtn, "error");
+                return;
+            }
             try {
                 const now = new Date();
                 const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " · " + now.toLocaleDateString();
