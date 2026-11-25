@@ -5866,9 +5866,12 @@
 
                     if (isOffline) {
                         const offStamp = lastSeen ? formatDateTime12h(lastSeen) : '';
+                        const unverifiedHint = !lastSeen
+                            ? (currentLang === 'sd' ? ' (تصديق / لاگ ان ناهي)' : ' (Not verified / No login yet)')
+                            : '';
                         const offLineText = currentLang === 'sd'
-                            ? `آف لائن${offStamp ? ` ${offStamp}` : ''}`
-                            : `Offline${offStamp ? ` ${offStamp}` : ''}`;
+                            ? `آف لائن${offStamp ? ` ${offStamp}` : unverifiedHint}`
+                            : `Offline${offStamp ? ` ${offStamp}` : unverifiedHint}`;
                         presenceSubLine = `<div style="font-size:11.5px; color:#8B1E24; font-weight:700; margin-top:2px;" dir="ltr">${escapeHTML(offLineText)}</div>`;
                     } else {
                         const actStamp = activeSince ? formatDateTime12h(activeSince) : '';
@@ -7928,7 +7931,7 @@
                                                 }
                                                 const isAlreadyFriend = myFriendsList.includes(post.authorId);
                                                 if (isAlreadyFriend) {
-                                                    return `<span class="post-privacy-badge ${pPriv}">${pLabel}</span>`;
+                                                    return '';
                                                 }
                                                 const authorUserObj = allUsersList.find(u => u.uid === post.authorId);
                                                 const reqSent = Array.isArray(authorUserObj?.friendRequests) && authorUserObj.friendRequests.includes(currentUserObj.uid);
