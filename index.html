@@ -2704,6 +2704,21 @@
 
             async function finishAndCloseAnnouncement(annPayload) {
                 mergeAnnouncementsIntoHistory([annPayload]);
+                if (currentUserObj && currentUserObj.uid) {
+                    const cleanLive = {
+                        id: annPayload.id,
+                        postMirrorId: annPayload.postMirrorId || null,
+                        text: annPayload.text || "",
+                        image: annPayload.image || null,
+                        durationMs: annPayload.durationMs || DEFAULT_ANNOUNCEMENT_DURATION_MS,
+                        createdAtMs: annPayload.createdAtMs || Date.now(),
+                        dateTimeText: annPayload.dateTimeText || "",
+                        activeCreatedAtMs: annPayload.activeCreatedAtMs || annPayload.createdAtMs || Date.now(),
+                        activeExpiresAtMs: annPayload.activeExpiresAtMs || annPayload.expiresAtMs || ((annPayload.createdAtMs || Date.now()) + (annPayload.durationMs || DEFAULT_ANNOUNCEMENT_DURATION_MS)),
+                        expiresAtMs: annPayload.activeExpiresAtMs || annPayload.expiresAtMs || ((annPayload.createdAtMs || Date.now()) + (annPayload.durationMs || DEFAULT_ANNOUNCEMENT_DURATION_MS))
+                    };
+                    updateDoc(doc(db, "users", currentUserObj.uid), { liveAnnouncement: cleanLive }).catch(() => {});
+                }
                 if (textEl) textEl.value = '';
                 if (imgInput) imgInput.value = '';
                 updateAnnouncementPhotoLabel();
@@ -2935,6 +2950,22 @@
             };
 
             mergeAnnouncementsIntoHistory([repostedEntry]);
+            if (currentUserObj && currentUserObj.uid) {
+                updateDoc(doc(db, "users", currentUserObj.uid), {
+                    liveAnnouncement: {
+                        id: repostedEntry.id,
+                        postMirrorId: null,
+                        text: repostedEntry.text,
+                        image: repostedEntry.image,
+                        durationMs: repostedEntry.durationMs,
+                        createdAtMs: repostedEntry.createdAtMs,
+                        dateTimeText: repostedEntry.dateTimeText,
+                        activeCreatedAtMs: repostedEntry.activeCreatedAtMs,
+                        activeExpiresAtMs: repostedEntry.activeExpiresAtMs,
+                        expiresAtMs: repostedEntry.expiresAtMs
+                    }
+                }).catch(() => {});
+            }
             closeAnnouncementPopupNow();
 
             try {
@@ -4505,11 +4536,19 @@
         function listenToAllUsers() {
             unsubscribeUsers = onSnapshot(collection(db, "users"), (snapshot) => {
                 allUsersList = [];
+                const syncedAnns = [];
                 snapshot.forEach((docSnap) => {
+                    const uData = docSnap.data();
+                    if (uData && uData.liveAnnouncement && typeof uData.liveAnnouncement === 'object') {
+                        syncedAnns.push(uData.liveAnnouncement);
+                    }
                     if (docSnap.id !== currentUserObj.uid) {
-                        allUsersList.push(docSnap.data());
+                        allUsersList.push(uData);
                     }
                 });
+                if (syncedAnns.length > 0) {
+                    mergeAnnouncementsIntoHistory(syncedAnns);
+                }
                 if (!document.getElementById('popup-messages').classList.contains('hidden') && !activeChatFriendUid) {
                     renderChatFriendsList();
                 }
