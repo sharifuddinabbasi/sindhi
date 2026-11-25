@@ -3443,7 +3443,7 @@
                 verifyUrl = `${baseUrl}?verifyEmail=${encodeURIComponent(pack)}`;
             }
 
-            await fetch(DRIVE_URLS[0], {
+            const response = await fetch(DRIVE_URLS[0], {
                 method: "POST",
                 redirect: "follow",
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -3454,6 +3454,17 @@
                     verifyUrl: verifyUrl
                 })
             });
+
+            const resText = await response.text();
+            let resJson = null;
+            try {
+                resJson = JSON.parse(resText);
+            } catch (parseErr) {
+                throw new Error("Apps Script returned non-JSON response. Please re-deploy Code.gs as a New Version.");
+            }
+            if (!resJson || resJson.status !== "sent") {
+                throw new Error((resJson && resJson.message) ? resJson.message : "Failed to send verification email from Apps Script.");
+            }
         }
 
         async function markUserAsCustomVerified(uidVal, emailVal) {
@@ -4094,10 +4105,15 @@
 
             try {
                 const cred = await signInWithEmailAndPassword(auth, emailStr, passwordStr);
-                await sendStyledVerificationEmail(emailStr, cred.user.displayName || emailStr.split('@')[0], cred.user.uid);
-                recordVerificationSent(emailStr);
-                await signOut(auth);
-                showUnverifiedLoginNotice(t.resendVerifySentOk, emailStr, passwordStr, false);
+                try {
+                    await sendStyledVerificationEmail(emailStr, cred.user.displayName || emailStr.split('@')[0], cred.user.uid);
+                    recordVerificationSent(emailStr);
+                    await signOut(auth);
+                    showUnverifiedLoginNotice(t.resendVerifySentOk, emailStr, passwordStr, false);
+                } catch (mailErr) {
+                    await signOut(auth).catch(() => {});
+                    showUnverifiedLoginNotice("Email Error: " + (mailErr.message || "Apps Script error"), emailStr, passwordStr, true);
+                }
             } catch (err) {
                 if (isNetworkError(err)) {
                     showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
@@ -4151,12 +4167,21 @@
                     friendRequests: []
                 }).catch(() => {});
 
-                await sendStyledVerificationEmail(email, name, userCredential.user.uid).catch(() => {});
+                let emailSendErr = null;
+                try {
+                    await sendStyledVerificationEmail(email, name, userCredential.user.uid);
+                } catch (eSend) {
+                    emailSendErr = eSend;
+                }
                 recordVerificationSent(email);
                 await signOut(auth);
 
                 switchTab('login');
-                showUnverifiedLoginNotice(t.msgSignupSuccess, email, password, false);
+                if (emailSendErr) {
+                    showUnverifiedLoginNotice("Account created, but email failed: " + (emailSendErr.message || "Apps Script error"), email, password, true);
+                } else {
+                    showUnverifiedLoginNotice(t.msgSignupSuccess, email, password, false);
+                }
             } catch (error) {
                 if (isNetworkError(error)) {
                     showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
