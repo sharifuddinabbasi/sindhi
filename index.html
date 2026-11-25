@@ -2186,6 +2186,14 @@
                 friendListLockedMsg: "🔒 This user's friends list is Private.",
                 friendListEmptyOther: "No friends to show.",
                 uploadingAvatar: "Updating profile photo...",
+                deletePhotoBtn: "🗑️ Delete Photo",
+                zoomInOutLabel: "Zoom In / Out",
+                cropSavePhotoBtn: "Save Photo",
+                editUserPhotoBtn: "🔍 Zoom / Change Photo",
+                editUserNameLabel: "Edit User Name",
+                saveUserNameBtn: "Save Name",
+                userNameUpdatedMsg: "User name updated successfully!",
+                profilePhotoDeletedMsg: "Profile photo deleted!",
                 currentPassPlaceholder: "Current Password",
                 confirmPassPlaceholder: "Repeat New Password",
                 changePassBtn: "Change Password",
@@ -2313,6 +2321,7 @@
                 commentPlaceholder: "Write a reply...",
                 sendBtn: "Send",
                 msgSignupInvalid: "Please enter your full name, a valid email, and a password of at least 6 characters.",
+                msgSignupAdminReserved: "You cannot create an account with the name 'Admin'.",
                 msgEmailAlreadyRegistered: "Your account is already created! Please open your email Inbox (or Spam folder) and click the verification link to verify your account.",
                 msgSignupSuccess: "Account created! A verification link has been sent to your email. Please check your Inbox or Spam folder, click the link, and then log in.",
                 msgLoginEmpty: "Please enter both email and password.",
@@ -2407,6 +2416,14 @@
                 friendListLockedMsg: "🔒 هن صارف جي دوستن جي لسٽ پرائيويٽ آهي.",
                 friendListEmptyOther: "ڏيکارڻ لاءِ ڪو به دوست ناهي.",
                 uploadingAvatar: "پروفائيل تصوير اپلوڊ ٿي رهي آهي...",
+                deletePhotoBtn: "🗑️ تصوير ڊليٽ ڪريو",
+                zoomInOutLabel: "زوم ان / آئوٽ (Zoom)",
+                cropSavePhotoBtn: "تصوير محفوظ ڪريو",
+                editUserPhotoBtn: "🔍 زوم / تصوير تبديل",
+                editUserNameLabel: "صارف جو نالو تبديل ڪريو",
+                saveUserNameBtn: "نالو محفوظ ڪريو",
+                userNameUpdatedMsg: "صارف جو نالو تبديل ٿي ويو!",
+                profilePhotoDeletedMsg: "پروفائيل تصوير ڊليٽ ٿي وئي!",
                 currentPassPlaceholder: "موجوده پاسورڊ (Current Password)",
                 confirmPassPlaceholder: "ٻيهر نئون پاسورڊ لکو (Repeat Password)",
                 changePassBtn: "پاسورڊ تبديل ڪريو",
@@ -2534,6 +2551,7 @@
                 commentPlaceholder: "پنهنجو جواب لکو...",
                 sendBtn: "موڪليو",
                 msgSignupInvalid: "مهرباني ڪري پورو نالو، صحيح اي ميل ۽ گهٽ ۾ گهٽ 6 اکرن جو پاسورڊ لکو.",
+                msgSignupAdminReserved: "توهان 'Admin' نالي سان اڪائونٽ نٿا ٺاهي سگهو.",
                 msgEmailAlreadyRegistered: "توهان جو اڪائونٽ اڳ ئي ٺهي چڪو آهي! مهرباني ڪري پنهنجي اي ميل جو Inbox (يا Spam) کوليو ۽ اڪائونٽ تصديق ڪرڻ لاءِ لنڪ تي ڪلڪ ڪريو.",
                 msgSignupSuccess: "اڪائونٽ ٺهي ويو آهي! توهان جي اي ميل تي تصديقي لنڪ موڪليو ويو آهي. مهرباني ڪري انباڪس يا Spam چيڪ ڪري لنڪ تي ڪلڪ ڪريو ۽ پوءِ لاگ ان ڪريو.",
                 msgLoginEmpty: "مهرباني ڪري اي ميل ۽ پاسورڊ ٻئي لکو.",
@@ -2733,6 +2751,12 @@
 
             if (!text && !file) {
                 showCustomAlert(t.noticeTitle, t.alertEmptyPost, t.alertOkBtn, "error");
+                return;
+            }
+
+            const abusivePostWords = findAbusiveContent(text);
+            if (abusivePostWords.length > 0) {
+                showCustomAlert(t.noticeTitle, buildAbusivePostAlertText(abusivePostWords), t.alertOkBtn, "error");
                 return;
             }
 
@@ -4153,6 +4177,11 @@
                 return;
             }
 
+            if (/\badmin\b/i.test(name)) {
+                showMessage(t.msgSignupAdminReserved, true);
+                return;
+            }
+
             try {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 await updateProfile(userCredential.user, { displayName: name });
@@ -4906,6 +4935,9 @@
             });
         }
 
+        let myCropSrcUrl = null;
+        let myCropZoom = 1.2;
+
         window.renderProfilePopup = function() {
             const t = translations[currentLang];
             const container = document.getElementById('popup-profile-content');
@@ -4914,6 +4946,30 @@
             const avatarInner = getAvatarHTML(currentUserObj.photoUrl, currentUserObj.name);
             const myPostsCount = latestDocs.filter(p => p.authorId === currentUserObj.uid).length;
             const isPublic = myProfilePrivacy === 'public';
+            const hasPhoto = Boolean(currentUserObj.photoUrl || currentUserObj.photoFileId);
+
+            const cropEditorHTML = myCropSrcUrl ? `
+                <div id="my-avatar-crop-box" style="background:#FFFFFF; border:1.5px solid var(--ajrak-gold); border-radius:10px; padding:12px; margin-bottom:12px; text-align:center;">
+                    <div style="font-size:13px; font-weight:800; color:var(--ajrak-blue); margin-bottom:8px;">${t.zoomInOutLabel}</div>
+                    <div style="width:160px; height:160px; margin:0 auto 10px; border-radius:50%; overflow:hidden; border:3px solid var(--ajrak-gold); background:#EAE2D3; display:flex; align-items:center; justify-content:center;">
+                        <img id="my-crop-preview-img" src="${escapeHTML(myCropSrcUrl)}" style="width:100%; height:100%; object-fit:cover; transform:scale(${myCropZoom}); transition:transform 0.1s ease;" alt="Zoom Preview">
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px;" dir="ltr">
+                        <button type="button" class="btn-sm neutral" onclick="adjustMyCropZoom(-0.15)">➖</button>
+                        <input id="my-crop-zoom-slider" type="range" min="1" max="3" step="0.05" value="${myCropZoom}" oninput="setMyCropZoom(this.value)" style="width:140px; margin-bottom:0; cursor:pointer;">
+                        <button type="button" class="btn-sm neutral" onclick="adjustMyCropZoom(0.15)">➕</button>
+                        <span id="my-crop-zoom-val" style="font-size:11.5px; font-weight:800; color:var(--ajrak-blue); min-width:38px;">${Math.round(myCropZoom * 100)}%</span>
+                    </div>
+                    <div style="display:flex; gap:8px; justify-content:center;">
+                        <button type="button" class="btn-cancel" onclick="cancelMyCropEditor()">${t.cancel}</button>
+                        <button type="button" id="btn-save-cropped-avatar" class="btn-save" onclick="saveCroppedMyAvatar()">${t.cropSavePhotoBtn}</button>
+                    </div>
+                </div>
+            ` : '';
+
+            const deletePhotoBtnHTML = hasPhoto
+                ? `<div style="margin-top:8px;"><button type="button" class="btn-sm danger" onclick="deleteMyProfilePhoto()">${t.deletePhotoBtn}</button></div>`
+                : '';
 
             container.innerHTML = `
                 <div class="profile-card-box">
@@ -4924,7 +4980,10 @@
                     <input type="file" id="profile-pic-input" accept="image/*" class="hidden" onchange="uploadProfilePhoto(this)">
                     <div id="profile-upload-status" style="font-size:12px; color:var(--ajrak-blue); margin-bottom:6px; font-weight:bold;" class="hidden"></div>
 
-                    <div id="profile-name-view" class="profile-name-row">
+                    ${cropEditorHTML}
+                    ${deletePhotoBtnHTML}
+
+                    <div id="profile-name-view" class="profile-name-row" style="margin-top:10px;">
                         <h3 style="color: var(--ajrak-blue); font-size: 18px;">${escapeHTML(currentUserObj.name)}</h3>
                         <button class="profile-edit-icon-btn" onclick="enableProfileNameEdit()" title="${t.editTitle}">
                             ${ICON_EDIT_SVG}
@@ -4996,71 +5055,154 @@
             }
         };
 
-        window.uploadProfilePhoto = function(input) {
-            const t = translations[currentLang];
-            const file = input.files[0];
-            if (!file) return;
+        function buildZoomedSquareDataUrl(srcUrl, zoomVal, outSize = 320) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = function() {
+                    const iw = img.naturalWidth || img.width;
+                    const ih = img.naturalHeight || img.height;
+                    if (!iw || !ih) {
+                        reject(new Error("Invalid image"));
+                        return;
+                    }
+                    const z = Math.max(1, Math.min(3, Number(zoomVal) || 1));
+                    const baseSide = Math.min(iw, ih);
+                    const cropSide = baseSide / z;
+                    const sx = Math.max(0, (iw - cropSide) / 2);
+                    const sy = Math.max(0, (ih - cropSide) / 2);
 
+                    const canvas = document.createElement('canvas');
+                    canvas.width = outSize;
+                    canvas.height = outSize;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, sx, sy, cropSide, cropSide, 0, 0, outSize, outSize);
+                    resolve(canvas.toDataURL('image/jpeg', 0.85));
+                };
+                img.onerror = function() {
+                    reject(new Error("Image load failed"));
+                };
+                img.src = srcUrl;
+            });
+        }
+
+        window.setMyCropZoom = function(val) {
+            myCropZoom = Math.max(1, Math.min(3, parseFloat(val) || 1));
+            const imgEl = document.getElementById('my-crop-preview-img');
+            const valEl = document.getElementById('my-crop-zoom-val');
+            if (imgEl) imgEl.style.transform = `scale(${myCropZoom})`;
+            if (valEl) valEl.innerText = `${Math.round(myCropZoom * 100)}%`;
+        };
+
+        window.adjustMyCropZoom = function(delta) {
+            const nextZ = Math.max(1, Math.min(3, Number((myCropZoom + delta).toFixed(2))));
+            const slider = document.getElementById('my-crop-zoom-slider');
+            if (slider) slider.value = nextZ;
+            setMyCropZoom(nextZ);
+        };
+
+        window.cancelMyCropEditor = function() {
+            myCropSrcUrl = null;
+            myCropZoom = 1.2;
+            const inp = document.getElementById('profile-pic-input');
+            if (inp) inp.value = '';
+            renderProfilePopup();
+        };
+
+        window.saveCroppedMyAvatar = async function() {
+            const t = translations[currentLang];
+            if (!myCropSrcUrl || !currentUserObj) return;
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
+            const btn = document.getElementById('btn-save-cropped-avatar');
             const statusEl = document.getElementById('profile-upload-status');
+            if (btn) btn.disabled = true;
             if (statusEl) {
                 statusEl.innerText = t.uploadingAvatar;
                 statusEl.classList.remove('hidden');
             }
+            try {
+                const croppedData = await buildZoomedSquareDataUrl(myCropSrcUrl, myCropZoom, 320);
+                const uploadResult = await uploadToAvailableDrive(
+                    croppedData,
+                    "avatar_" + currentUserObj.uid + "_" + Date.now() + ".jpg"
+                );
+                if (currentUserObj.photoFileId) {
+                    const oldIdx = typeof currentUserObj.photoDriveIndex === "number" ? currentUserObj.photoDriveIndex : 0;
+                    const oldUrl = DRIVE_URLS[oldIdx] || DRIVE_URLS[0];
+                    if (oldUrl) {
+                        fetch(oldUrl, {
+                            method: "POST",
+                            redirect: "follow",
+                            headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify({ action: "delete", fileId: currentUserObj.photoFileId })
+                        }).catch(() => {});
+                    }
+                }
+                await updateDoc(doc(db, "users", currentUserObj.uid), {
+                    photoUrl: uploadResult.url,
+                    photoFileId: uploadResult.fileId,
+                    photoDriveIndex: uploadResult.driveIndex
+                });
+                currentUserObj.photoUrl = uploadResult.url;
+                currentUserObj.photoFileId = uploadResult.fileId;
+                currentUserObj.photoDriveIndex = uploadResult.driveIndex;
+                myCropSrcUrl = null;
+                myCropZoom = 1.2;
+                renderProfilePopup();
+            } catch (err) {
+                if (isNetworkError(err)) {
+                    showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                } else {
+                    showCustomAlert(t.avatarUploadErrTitle, t.avatarUploadErrDesc, t.alertOkBtn, "error");
+                }
+                if (btn) btn.disabled = false;
+            } finally {
+                if (statusEl) statusEl.classList.add('hidden');
+            }
+        };
+
+        window.deleteMyProfilePhoto = async function() {
+            const t = translations[currentLang];
+            if (!currentUserObj) return;
+            const confirmed = await showCustomConfirm(t.deletePhotoBtn, t.confirmDelete, t.yesDeleteBtn, true);
+            if (!confirmed) return;
+
+            if (currentUserObj.photoFileId) {
+                const oldIdx = typeof currentUserObj.photoDriveIndex === "number" ? currentUserObj.photoDriveIndex : 0;
+                const oldUrl = DRIVE_URLS[oldIdx] || DRIVE_URLS[0];
+                if (oldUrl) {
+                    fetch(oldUrl, {
+                        method: "POST",
+                        redirect: "follow",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: "delete", fileId: currentUserObj.photoFileId })
+                    }).catch(() => {});
+                }
+            }
+            await updateDoc(doc(db, "users", currentUserObj.uid), {
+                photoUrl: null,
+                photoFileId: null,
+                photoDriveIndex: null
+            }).catch(() => {});
+            currentUserObj.photoUrl = null;
+            currentUserObj.photoFileId = null;
+            currentUserObj.photoDriveIndex = null;
+            myCropSrcUrl = null;
+            renderProfilePopup();
+        };
+
+        window.uploadProfilePhoto = function(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
 
             const reader = new FileReader();
             reader.onload = function(event) {
-                const img = new Image();
-                img.onload = async function() {
-                    const canvas = document.createElement('canvas');
-                    const maxSize = 320;
-                    const scale = maxSize / Math.max(img.width, img.height);
-                    canvas.width = img.width > maxSize ? img.width * scale : img.width;
-                    canvas.height = img.height > maxSize ? img.height * scale : img.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    const compressedAvatar = canvas.toDataURL('image/jpeg', 0.8);
-
-                    try {
-                        const uploadResult = await uploadToAvailableDrive(
-                            compressedAvatar,
-                            "avatar_" + currentUserObj.uid + "_" + Date.now() + ".jpg"
-                        );
-
-                        if (currentUserObj.photoFileId) {
-                            const oldIdx = typeof currentUserObj.photoDriveIndex === "number" ? currentUserObj.photoDriveIndex : 0;
-                            const oldUrl = DRIVE_URLS[oldIdx] || DRIVE_URLS[0];
-                            if (oldUrl) {
-                                fetch(oldUrl, {
-                                    method: "POST",
-                                    redirect: "follow",
-                                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                                    body: JSON.stringify({ action: "delete", fileId: currentUserObj.photoFileId })
-                                }).catch(() => {});
-                            }
-                        }
-
-                        await updateDoc(doc(db, "users", currentUserObj.uid), {
-                            photoUrl: uploadResult.url,
-                            photoFileId: uploadResult.fileId,
-                            photoDriveIndex: uploadResult.driveIndex
-                        });
-
-                        currentUserObj.photoUrl = uploadResult.url;
-                        currentUserObj.photoFileId = uploadResult.fileId;
-                        currentUserObj.photoDriveIndex = uploadResult.driveIndex;
-                        renderProfilePopup();
-                    } catch (err) {
-                        const tErr = translations[currentLang];
-                        if (isNetworkError(err)) {
-                            showCustomAlert(tErr.noInternetTitle, tErr.noInternetDesc, tErr.alertOkBtn, "network");
-                        } else {
-                            showCustomAlert(tErr.avatarUploadErrTitle, tErr.avatarUploadErrDesc, tErr.alertOkBtn, "error");
-                        }
-                    } finally {
-                        if (statusEl) statusEl.classList.add('hidden');
-                    }
-                };
-                img.src = event.target.result;
+                myCropSrcUrl = event.target.result;
+                myCropZoom = 1.25;
+                renderProfilePopup();
             };
             reader.readAsDataURL(file);
         };
@@ -5118,7 +5260,15 @@
                 });
             }
 
-            const myFriendsData = allUsersList.filter(u => myFriendsList.includes(u.uid));
+            const activeFriendsList = myFriendsList.filter(fUid =>
+                allUsersList.some(u => u.uid === fUid && u.deleted !== true)
+            );
+            if (activeFriendsList.length !== myFriendsList.length && currentUserObj?.uid) {
+                myFriendsList = activeFriendsList;
+                document.getElementById('dropdown-friends-count').innerText = myFriendsList.length;
+                updateDoc(doc(db, "users", currentUserObj.uid), { friends: activeFriendsList }).catch(() => {});
+            }
+            const myFriendsData = allUsersList.filter(u => activeFriendsList.includes(u.uid));
 
             if (sentRequestsData.length > 0) {
                 container.innerHTML += `
@@ -5394,6 +5544,23 @@
                     const notifSnap = await getDocs(query(collection(db, "notifications"), where("toUid", "==", uidToDelete)));
                     for (const nDoc of notifSnap.docs) {
                         await deleteDoc(doc(db, "notifications", nDoc.id)).catch(() => {});
+                    }
+                } catch (e) {}
+
+                // Remove deleted user from other users' friends & friendRequests arrays
+                try {
+                    const allUsersSnap = await getDocs(collection(db, "users"));
+                    for (const otherDoc of allUsersSnap.docs) {
+                        if (otherDoc.id === uidToDelete) continue;
+                        const oData = otherDoc.data() || {};
+                        const hasFriend = Array.isArray(oData.friends) && oData.friends.includes(uidToDelete);
+                        const hasReq = Array.isArray(oData.friendRequests) && oData.friendRequests.includes(uidToDelete);
+                        if (hasFriend || hasReq) {
+                            const patch = {};
+                            if (hasFriend) patch.friends = arrayRemove(uidToDelete);
+                            if (hasReq) patch.friendRequests = arrayRemove(uidToDelete);
+                            await updateDoc(doc(db, "users", otherDoc.id), patch).catch(() => {});
+                        }
                     }
                 } catch (e) {}
 
@@ -6012,6 +6179,64 @@
             }
         };
 
+        const ABUSIVE_TERMS = [
+            // English profanity & abusive terms
+            "fuck", "fucking", "fucker", "motherfucker", "bitch", "bastard", "asshole",
+            "dick", "cock", "pussy", "slut", "whore", "idiot", "stupid", "dumb", "moron",
+            "crap", "bullshit", "damn", "hell", "jerk", "loser", "scum", "trash", "wanker",
+            // Roman Urdu / Sindhi / Punjabi abusive & indecent words/phrases
+            "gali", "gaali", "bakwas", "harami", "haraami", "kutta", "kutti", "kamina",
+            "kameena", "kanjar", "kanjri", "bhadwa", "bhadwe", "randi", "lund", "lauda",
+            "chutiya", "chootiya", "beghairat", "ghatiya", "zalil", "zaleel", "ullu",
+            "gadha", "gadhi", "khota", "khoti", "madarchod", "madhar chod", "madarchood",
+            "bhosdike", "bhosri", "behenchod", "bhenchod", "behan chod", "terima", "teri maa",
+            "teri bahen", "teri behan", "sala", "saala", "suar", "sooar", "nalayak",
+            // Urdu / Sindhi / Arabic script abusive & indecent words
+            "گالی", "بکواس", "حرامی", "کتا", "کتی", "کمینہ", "کنجر", "بھڑوا", "رنڈی",
+            "لنڈ", "چوتیا", "بےغیرت", "گھٹیا", "ذلیل", "الو", "گدھا", "گدھی", "کھوتا",
+            "کھوتی", "مادرچود", "بہن چود", "سور", "نالائق", "ڳالھ", "بڪواس", "حرامي",
+            "ڪتو", "ڪتي", "ڪمينو", "بيغيرت", "گهٽيا", "ذليل", "الو", "ڳڏهه", "سوئر"
+        ];
+
+        function findAbusiveContent(rawText) {
+            const text = String(rawText || "").trim();
+            if (!text) return [];
+            const lower = text.toLowerCase();
+            const found = [];
+
+            for (const term of ABUSIVE_TERMS) {
+                const tLower = term.toLowerCase();
+                if (!tLower) continue;
+                const isAsciiWord = /^[a-z0-9\s]+$/.test(tLower);
+                if (isAsciiWord) {
+                    const escaped = tLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+                    const re = new RegExp(`(^|[^a-z0-9])${escaped}(?=[^a-z0-9]|$)`, "i");
+                    if (re.test(lower)) {
+                        found.push(term);
+                    }
+                } else {
+                    if (lower.includes(tLower)) {
+                        found.push(term);
+                    }
+                }
+            }
+            return Array.from(new Set(found));
+        }
+
+        function buildAbusivePostAlertText(matchedList) {
+            const wordsStr = matchedList.join(", ");
+            return `Ap ne post mai ye glat ayr nazeba alfaz likhay hain (${wordsStr}), is leye ap ki post ko post nhi kia ja skta.
+
+You wrote inappropriate/abusive words (${wordsStr}) in your post, so your post cannot be published.`;
+        }
+
+        function buildAbusiveCommentAlertText(matchedList) {
+            const wordsStr = matchedList.join(", ");
+            return `Ap ne comment mai ye glat ayr nazeba alfaz likhay hain (${wordsStr}), is leye ap ka comment post nhi kia ja skta.
+
+You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your comment cannot be posted.`;
+        }
+
         window.createPost = async function() {
             const t = translations[currentLang];
             if (!navigator.onLine) {
@@ -6144,6 +6369,11 @@
                 showCustomAlert(t.noticeTitle, t.alertEmptyEdit, t.alertOkBtn, "error");
                 return;
             }
+            const abusiveEditWords = findAbusiveContent(newText);
+            if (abusiveEditWords.length > 0) {
+                showCustomAlert(t.noticeTitle, buildAbusivePostAlertText(abusiveEditWords), t.alertOkBtn, "error");
+                return;
+            }
             await updateDoc(doc(db, "posts", postId), { text: newText, edited: true });
         };
 
@@ -6162,6 +6392,11 @@
             const newText = document.getElementById(`comment-input-edit-${postId}-${commentIndex}`).value.trim();
             if (!newText) {
                 showCustomAlert(t.noticeTitle, t.alertEmptyEdit, t.alertOkBtn, "error");
+                return;
+            }
+            const abusiveCEditWords = findAbusiveContent(newText);
+            if (abusiveCEditWords.length > 0) {
+                showCustomAlert(t.noticeTitle, buildAbusiveCommentAlertText(abusiveCEditWords), t.alertOkBtn, "error");
                 return;
             }
             const postObj = latestDocs.find(p => p.id === postId);
@@ -6513,6 +6748,154 @@
             renderAdminUserDetailsView();
         };
 
+        let adminCropSrcUrl = null;
+        let adminCropZoom = 1.2;
+
+        window.adminOpenUserPhotoCropper = function(targetUid, useExisting = true) {
+            const targetUser = findAnyUserByUid(targetUid);
+            if (!targetUser) return;
+            if (useExisting && targetUser.photoUrl) {
+                adminCropSrcUrl = targetUser.photoUrl;
+                adminCropZoom = 1.2;
+                renderAdminUserDetailsView();
+            } else {
+                const fileInp = document.getElementById(`admin-user-photo-input-${targetUid}`);
+                if (fileInp) fileInp.click();
+            }
+        };
+
+        window.adminOnPhotoFileSelected = function(targetUid, inputEl) {
+            const file = inputEl.files && inputEl.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                adminCropSrcUrl = ev.target.result;
+                adminCropZoom = 1.25;
+                renderAdminUserDetailsView();
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.setAdminCropZoom = function(val) {
+            adminCropZoom = Math.max(1, Math.min(3, parseFloat(val) || 1));
+            const imgEl = document.getElementById('admin-crop-preview-img');
+            const valEl = document.getElementById('admin-crop-zoom-val');
+            if (imgEl) imgEl.style.transform = `scale(${adminCropZoom})`;
+            if (valEl) valEl.innerText = `${Math.round(adminCropZoom * 100)}%`;
+        };
+
+        window.adjustAdminCropZoom = function(delta) {
+            const nextZ = Math.max(1, Math.min(3, Number((adminCropZoom + delta).toFixed(2))));
+            const slider = document.getElementById('admin-crop-zoom-slider');
+            if (slider) slider.value = nextZ;
+            setAdminCropZoom(nextZ);
+        };
+
+        window.cancelAdminCropEditor = function() {
+            adminCropSrcUrl = null;
+            adminCropZoom = 1.2;
+            renderAdminUserDetailsView();
+        };
+
+        window.adminSaveCroppedUserPhoto = async function(targetUid) {
+            const t = translations[currentLang];
+            const targetUser = findAnyUserByUid(targetUid);
+            if (!isAdminUser() || !targetUser || !adminCropSrcUrl) return;
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
+            const btn = document.getElementById('btn-admin-save-cropped-photo');
+            if (btn) btn.disabled = true;
+            try {
+                const croppedData = await buildZoomedSquareDataUrl(adminCropSrcUrl, adminCropZoom, 320);
+                const uploadResult = await uploadToAvailableDrive(
+                    croppedData,
+                    "admin_avatar_" + targetUid + "_" + Date.now() + ".jpg"
+                );
+                if (targetUser.photoFileId) {
+                    const oldIdx = typeof targetUser.photoDriveIndex === "number" ? targetUser.photoDriveIndex : 0;
+                    const oldUrl = DRIVE_URLS[oldIdx] || DRIVE_URLS[0];
+                    if (oldUrl) {
+                        fetch(oldUrl, {
+                            method: "POST",
+                            redirect: "follow",
+                            headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify({ action: "delete", fileId: targetUser.photoFileId })
+                        }).catch(() => {});
+                    }
+                }
+                await updateDoc(doc(db, "users", targetUid), {
+                    photoUrl: uploadResult.url,
+                    photoFileId: uploadResult.fileId,
+                    photoDriveIndex: uploadResult.driveIndex
+                }).catch(() => {});
+                targetUser.photoUrl = uploadResult.url;
+                targetUser.photoFileId = uploadResult.fileId;
+                targetUser.photoDriveIndex = uploadResult.driveIndex;
+                adminCropSrcUrl = null;
+                adminCropZoom = 1.2;
+                renderAdminUserDetailsView();
+                renderAdminUsersPopup();
+            } catch (err) {
+                if (isNetworkError(err)) {
+                    showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                } else {
+                    showCustomAlert(t.avatarUploadErrTitle, t.avatarUploadErrDesc, t.alertOkBtn, "error");
+                }
+                if (btn) btn.disabled = false;
+            }
+        };
+
+        window.adminDeleteUserPhoto = async function(targetUid) {
+            const t = translations[currentLang];
+            const targetUser = findAnyUserByUid(targetUid);
+            if (!isAdminUser() || !targetUser) return;
+            const confirmed = await showCustomConfirm(t.deletePhotoBtn, t.confirmDelete, t.yesDeleteBtn, true);
+            if (!confirmed) return;
+
+            if (targetUser.photoFileId) {
+                const oldIdx = typeof targetUser.photoDriveIndex === "number" ? targetUser.photoDriveIndex : 0;
+                const oldUrl = DRIVE_URLS[oldIdx] || DRIVE_URLS[0];
+                if (oldUrl) {
+                    fetch(oldUrl, {
+                        method: "POST",
+                        redirect: "follow",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: "delete", fileId: targetUser.photoFileId })
+                    }).catch(() => {});
+                }
+            }
+            await updateDoc(doc(db, "users", targetUid), {
+                photoUrl: null,
+                photoFileId: null,
+                photoDriveIndex: null
+            }).catch(() => {});
+            targetUser.photoUrl = null;
+            targetUser.photoFileId = null;
+            targetUser.photoDriveIndex = null;
+            adminCropSrcUrl = null;
+            renderAdminUserDetailsView();
+            renderAdminUsersPopup();
+        };
+
+        window.adminSaveUserName = async function(targetUid) {
+            const t = translations[currentLang];
+            const targetUser = findAnyUserByUid(targetUid);
+            if (!isAdminUser() || !targetUser) return;
+            const inp = document.getElementById(`admin-edit-username-input-${targetUid}`);
+            const newName = (inp?.value || '').trim();
+            if (!newName) {
+                showCustomAlert(t.noticeTitle, t.alertEmptyEdit, t.alertOkBtn, "error");
+                return;
+            }
+            await updateDoc(doc(db, "users", targetUid), { name: newName }).catch(() => {});
+            targetUser.name = newName;
+            renderAdminUserDetailsView();
+            renderAdminUsersPopup();
+            showCustomAlert(t.noticeTitle, t.userNameUpdatedMsg, t.alertOkBtn, "info");
+        };
+
         window.renderAdminUserDetailsView = function() {
             const t = translations[currentLang];
             const container = document.getElementById('popup-admin-user-details-content');
@@ -6526,7 +6909,27 @@
 
             const avatarInner = getAvatarHTML(targetUser.photoUrl, targetUser.name);
             const ringCls = getOnlineRingClass(targetUser);
+            const hasPhoto = Boolean(targetUser.photoUrl || targetUser.photoFileId);
             const friendUids = Array.isArray(targetUser.friends) ? targetUser.friends : [];
+
+            const adminCropBoxHTML = adminCropSrcUrl ? `
+                <div style="background:#FFFFFF; border:1.5px solid var(--ajrak-gold); border-radius:10px; padding:12px; margin-top:12px; text-align:center;">
+                    <div style="font-size:13px; font-weight:800; color:var(--ajrak-blue); margin-bottom:8px;">${t.zoomInOutLabel}</div>
+                    <div style="width:150px; height:150px; margin:0 auto 10px; border-radius:50%; overflow:hidden; border:3px solid var(--ajrak-gold); background:#EAE2D3;">
+                        <img id="admin-crop-preview-img" src="${escapeHTML(adminCropSrcUrl)}" style="width:100%; height:100%; object-fit:cover; transform:scale(${adminCropZoom}); transition:transform 0.1s ease;" alt="Admin Zoom Preview">
+                    </div>
+                    <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px;" dir="ltr">
+                        <button type="button" class="btn-sm neutral" onclick="adjustAdminCropZoom(-0.15)">➖</button>
+                        <input id="admin-crop-zoom-slider" type="range" min="1" max="3" step="0.05" value="${adminCropZoom}" oninput="setAdminCropZoom(this.value)" style="width:130px; margin-bottom:0; cursor:pointer;">
+                        <button type="button" class="btn-sm neutral" onclick="adjustAdminCropZoom(0.15)">➕</button>
+                        <span id="admin-crop-zoom-val" style="font-size:11.5px; font-weight:800; color:var(--ajrak-blue); min-width:38px;">${Math.round(adminCropZoom * 100)}%</span>
+                    </div>
+                    <div style="display:flex; gap:8px; justify-content:center;">
+                        <button type="button" class="btn-cancel" onclick="cancelAdminCropEditor()">${t.cancel}</button>
+                        <button type="button" id="btn-admin-save-cropped-photo" class="btn-save" onclick="adminSaveCroppedUserPhoto('${targetUser.uid}')">${t.cropSavePhotoBtn}</button>
+                    </div>
+                </div>
+            ` : '';
 
             let friendsListHTML = '';
             if (friendUids.length === 0) {
@@ -6556,11 +6959,29 @@
 
             container.innerHTML = `
                 <div class="profile-card-box" style="margin-bottom:14px;">
-                    <div class="profile-avatar-wrapper" style="cursor:default;">
+                    <div class="profile-avatar-wrapper" style="cursor:pointer;" onclick="adminOpenUserPhotoCropper('${targetUser.uid}', true)">
                         <div class="profile-big-avatar ${ringCls}">${avatarInner}</div>
+                        <div class="avatar-cam-badge">📷</div>
                     </div>
+                    <input type="file" id="admin-user-photo-input-${targetUser.uid}" accept="image/*" class="hidden" onchange="adminOnPhotoFileSelected('${targetUser.uid}', this)">
                     <h3 style="color:var(--ajrak-blue); font-size:18px; margin-bottom:2px;">${escapeHTML(targetUser.name || 'User')}</h3>
-                    <p style="color:#666; font-size:12px;" dir="ltr">${escapeHTML(targetUser.email || '')}</p>
+                    <p style="color:#666; font-size:12px; margin-bottom:10px;" dir="ltr">${escapeHTML(targetUser.email || '')}</p>
+
+                    <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:10px;">
+                        ${targetUser.photoUrl ? `<button type="button" class="btn-sm primary" onclick="adminOpenUserPhotoCropper('${targetUser.uid}', true)">${t.editUserPhotoBtn}</button>` : ''}
+                        <button type="button" class="btn-sm neutral" onclick="adminOpenUserPhotoCropper('${targetUser.uid}', false)">📷 ${t.addPhoto}</button>
+                        ${hasPhoto ? `<button type="button" class="btn-sm danger" onclick="adminDeleteUserPhoto('${targetUser.uid}')">${t.deletePhotoBtn}</button>` : ''}
+                    </div>
+
+                    ${adminCropBoxHTML}
+
+                    <div style="margin-top:12px; padding-top:12px; border-top:1px solid #DCD4C6; text-align:start;">
+                        <label style="display:block; font-size:12px; font-weight:800; color:var(--ajrak-blue); margin-bottom:5px;">${t.editUserNameLabel}</label>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <input type="text" id="admin-edit-username-input-${targetUser.uid}" value="${(targetUser.name || '').replace(/"/g, '&quot;')}" style="margin-bottom:0; flex:1; background:#FFFFFF;">
+                            <button type="button" class="btn-sm primary" onclick="adminSaveUserName('${targetUser.uid}')">${t.saveUserNameBtn}</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div style="font-size:13px; font-weight:800; color:var(--ajrak-blue); margin-bottom:8px;">
@@ -7527,6 +7948,12 @@ ${shareUrl}`,
             const input = document.getElementById(`comment-input-${postId}`);
             const commentText = input.value.trim();
             if (!commentText) return;
+
+            const abusiveCommentWords = findAbusiveContent(commentText);
+            if (abusiveCommentWords.length > 0) {
+                showCustomAlert(t.noticeTitle, buildAbusiveCommentAlertText(abusiveCommentWords), t.alertOkBtn, "error");
+                return;
+            }
 
             const cNow = new Date();
             const cH24 = cNow.getHours();
