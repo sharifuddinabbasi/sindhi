@@ -1608,6 +1608,50 @@
         }
         .comment-form button { background: var(--ajrak-red); color: white; border: none; padding: 0 14px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; flex-shrink: 0; }
 
+        .announcement-banner-card {
+            background: linear-gradient(135deg, var(--ajrak-dark-blue) 0%, var(--ajrak-blue) 60%, var(--ajrak-dark-red) 100%);
+            border: 2px solid var(--ajrak-gold);
+            border-radius: 10px;
+            margin-bottom: 14px;
+            box-shadow: 0 4px 16px rgba(212, 175, 55, 0.32);
+            overflow: hidden;
+        }
+
+        .announcement-banner-body {
+            padding: 14px 16px;
+        }
+
+        .announcement-banner-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--ajrak-gold);
+            letter-spacing: 0.3px;
+        }
+
+        .announcement-golden-text {
+            color: #F7D774;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+            font-size: 15.5px;
+            font-weight: 700;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .announcement-banner-img {
+            width: 100%;
+            max-height: 260px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid var(--ajrak-gold);
+            margin-top: 10px;
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -1645,9 +1689,12 @@
                     <button class="dropdown-item" onclick="handleDropdownAction('profile')">
                         <span id="menu-profile-label">👤 Profile</span>
                     </button>
-                    <button class="dropdown-item" onclick="handleDropdownAction('friends')">
+                    <button id="menu-friends-item" class="dropdown-item" onclick="handleDropdownAction('friends')">
                         <span id="menu-friends-label">👥 Friends</span>
                         <span id="dropdown-friends-count" class="dropdown-count-pill">0</span>
+                    </button>
+                    <button id="menu-announcement-item" class="dropdown-item hidden" onclick="handleDropdownAction('announcement')" style="color: var(--ajrak-red); font-weight: 800;">
+                        <span id="menu-announcement-label">📢 Announcement</span>
                     </button>
                     <button id="menu-find-item" class="dropdown-item" onclick="handleDropdownAction('find')">
                         <span id="menu-find-label">🔍 Friend Search</span>
@@ -1757,8 +1804,25 @@
                     <div id="popup-notif-list"></div>
                 </div>
 
+                <div id="popup-announcement" class="hidden">
+                    <div class="create-post">
+                        <textarea id="announcement-text" placeholder="Write an announcement for all users..."></textarea>
+                        <div class="post-options">
+                            <label for="announcement-image" class="custom-file-label">
+                                📷 <span id="announcement-photo-label-text">Add Photo</span>
+                            </label>
+                            <input type="file" id="announcement-image" accept="image/*" style="display:none;" onchange="updateAnnouncementPhotoLabel()">
+                            <button id="announcement-submit-btn" class="btn-post" onclick="createAnnouncement()">Post</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="popup-reshare" class="hidden">
                     <div id="popup-reshare-content"></div>
+                </div>
+
+                <div id="popup-admin-user-details" class="hidden">
+                    <div id="popup-admin-user-details-content"></div>
                 </div>
 
                 <div id="popup-admin-users" class="hidden">
@@ -1900,6 +1964,8 @@
                 </div>
             </div>
         </div>
+
+        <div id="announcement-banner-container" class="hidden"></div>
 
         <div id="posts-container"></div>
     </div>
@@ -2057,6 +2123,10 @@
                 btnSignup: "Sign Up & Send Verification Email",
                 menuProfile: "👤 Profile",
                 menuFriends: "👥 Friends",
+                menuAnnouncement: "📢 Announcement",
+                announcementModalTitle: "📢 Announcement",
+                announcementPlaceholder: "Write an announcement for all users...",
+                announcementBannerTag: "📢 ANNOUNCEMENT",
                 menuFind: "🔍 Friend Search",
                 menuSetting: "⚙️ Setting",
                 menuLogout: "🚪 Logout",
@@ -2195,6 +2265,15 @@
                 menuAdminPanel: "🛡️ Admin Panel",
                 modalAdminTitle: "🛡️ Admin Control Panel (Users)",
                 adminBadgeLabel: "👑 Admin",
+                adminDetailsBtn: "Details",
+                adminUserDetailsTitle: "👤 User Details",
+                adminChatBtn: "💬 Chat",
+                adminModifyChatTitle: "✏️ Chat & Modify",
+                adminNoFriendsForUser: "This user has no friends yet.",
+                adminUnfriendDone: "Friend removed.",
+                adminMsgUpdated: "Message updated.",
+                adminMsgDeleted: "Message deleted.",
+                adminNoMessagesPair: "No messages between these two users.",
                 blockUserBtn: "🚫 Block",
                 unblockUserBtn: "✅ Unblock",
                 blockedTag: "Blocked",
@@ -2249,6 +2328,10 @@
                 btnSignup: "اڪائونٽ ٺاهيو ۽ تصديقي اي ميل موڪليو",
                 menuProfile: "👤 پروفائيل (Profile)",
                 menuFriends: "👥 دوست (Friends)",
+                menuAnnouncement: "📢 اعلان (Announcement)",
+                announcementModalTitle: "📢 اعلان (Announcement)",
+                announcementPlaceholder: "سڀني صارفين لاءِ اعلان لکو...",
+                announcementBannerTag: "📢 اعلان",
                 menuFind: "🔍 دوست ڳوليو (Friend Search)",
                 menuSetting: "⚙️ سيٽنگ (Setting)",
                 menuLogout: "🚪 لاگ آئوٽ (Logout)",
@@ -2387,6 +2470,15 @@
                 menuAdminPanel: "🛡️ ايڊمن پينل (Admin)",
                 modalAdminTitle: "🛡️ ايڊمن ڪنٽرول پينل (Users)",
                 adminBadgeLabel: "👑 ايڊمن",
+                adminDetailsBtn: "تفصيل (Details)",
+                adminUserDetailsTitle: "👤 صارف جا تفصيل",
+                adminChatBtn: "💬 چيٽ (Chat)",
+                adminModifyChatTitle: "✏️ چيٽ ۽ تبديلي",
+                adminNoFriendsForUser: "هن صارف جو ڪو به دوست ناهي.",
+                adminUnfriendDone: "دوست ختم ڪيو ويو.",
+                adminMsgUpdated: "پيغام تبديل ٿي ويو.",
+                adminMsgDeleted: "پيغام ڊليٽ ٿي ويو.",
+                adminNoMessagesPair: "انهن ٻنهي صارفن وچ ۾ ڪو پيغام ناهي.",
                 blockUserBtn: "🚫 بلاڪ ڪريو",
                 unblockUserBtn: "✅ ان بلاڪ ڪريو",
                 blockedTag: "بلاڪ ٿيل",
@@ -2436,6 +2528,176 @@
         let unsubscribeNotifs = null;
         let unsubscribeHistory = null;
         let unsubscribeMessages = null;
+
+        const ANNOUNCEMENT_DURATION_MS = 5 * 60 * 1000;
+        let latestAnnouncementObj = null;
+        let announcementTimerInterval = null;
+        let appOpenSessionMs = Date.now();
+        let unsubscribeAnnouncements = null;
+
+        window.updateAnnouncementPhotoLabel = function() {
+            const t = translations[currentLang];
+            const inp = document.getElementById('announcement-image');
+            const lbl = document.getElementById('announcement-photo-label-text');
+            if (!inp || !lbl) return;
+            lbl.innerText = (inp.files && inp.files.length > 0) ? t.photoSelected : t.addPhoto;
+        };
+
+        window.createAnnouncement = async function() {
+            const t = translations[currentLang];
+            if (!isAdminUser()) return;
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
+            const textEl = document.getElementById('announcement-text');
+            const imgInput = document.getElementById('announcement-image');
+            const btn = document.getElementById('announcement-submit-btn');
+            const text = (textEl?.value || '').trim();
+            const file = imgInput?.files?.[0] || null;
+
+            if (!text && !file) {
+                showCustomAlert(t.noticeTitle, t.alertEmptyPost, t.alertOkBtn, "error");
+                return;
+            }
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = file ? t.uploadingPhoto : t.posting;
+            }
+
+            async function saveAnnouncementDoc(imgUrl, fileId, driveIdx) {
+                const nowMs = Date.now();
+                await addDoc(collection(db, "announcements"), {
+                    text: text,
+                    image: imgUrl || null,
+                    imageFileId: fileId || null,
+                    driveIndex: driveIdx ?? null,
+                    authorName: currentUserObj?.name || "Admin",
+                    createdAtMs: nowMs,
+                    createdAt: serverTimestamp()
+                });
+                if (textEl) textEl.value = '';
+                if (imgInput) imgInput.value = '';
+                updateAnnouncementPhotoLabel();
+                closePopup();
+            }
+
+            try {
+                if (file) {
+                    compressImage(file, async (compressedData) => {
+                        try {
+                            const upRes = await uploadToAvailableDrive(compressedData, "ann_" + Date.now() + ".jpg");
+                            await saveAnnouncementDoc(upRes.url, upRes.fileId, upRes.driveIndex);
+                        } catch (err) {
+                            showCustomAlert(t.postPhotoErrTitle, t.postPhotoErrDesc, t.alertOkBtn, "error");
+                        } finally {
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.innerText = translations[currentLang].btnPost;
+                            }
+                        }
+                    });
+                } else {
+                    await saveAnnouncementDoc(null, null, null);
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerText = translations[currentLang].btnPost;
+                    }
+                }
+            } catch (e) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = translations[currentLang].btnPost;
+                }
+            }
+        };
+
+        function getAnnouncementRemainingMs(annObj) {
+            if (!annObj || typeof annObj.createdAtMs !== 'number') return 0;
+            const annExpiresAt = annObj.createdAtMs + ANNOUNCEMENT_DURATION_MS;
+            const remainingFromPost = annExpiresAt - Date.now();
+            if (remainingFromPost <= 0) return 0;
+
+            const openKey = `sb_ann_open_${annObj.id}`;
+            let firstOpenMs = Number(localStorage.getItem(openKey) || 0);
+            if (!firstOpenMs || firstOpenMs < annObj.createdAtMs) {
+                firstOpenMs = Math.max(appOpenSessionMs, annObj.createdAtMs);
+                localStorage.setItem(openKey, String(firstOpenMs));
+            }
+            const remainingFromOpen = (firstOpenMs + ANNOUNCEMENT_DURATION_MS) - Date.now();
+            return Math.max(0, Math.min(remainingFromPost, remainingFromOpen));
+        }
+
+        function renderActiveAnnouncementBanner() {
+            const bannerEl = document.getElementById('announcement-banner-container');
+            if (!bannerEl) return;
+
+            if (!latestAnnouncementObj) {
+                bannerEl.classList.add('hidden');
+                bannerEl.innerHTML = '';
+                return;
+            }
+
+            const remMs = getAnnouncementRemainingMs(latestAnnouncementObj);
+            if (remMs <= 0) {
+                bannerEl.classList.add('hidden');
+                bannerEl.innerHTML = '';
+                return;
+            }
+
+            const t = translations[currentLang];
+            const remSec = Math.ceil(remMs / 1000);
+            const mins = Math.floor(remSec / 60);
+            const secs = String(remSec % 60).padStart(2, '0');
+            const timerLabel = `${mins}:${secs}`;
+
+            const textPart = latestAnnouncementObj.text
+                ? `<div class="announcement-golden-text">${escapeHTML(latestAnnouncementObj.text)}</div>`
+                : '';
+            const imgPart = latestAnnouncementObj.image
+                ? `<img src="${escapeHTML(latestAnnouncementObj.image)}" class="announcement-banner-img" alt="Announcement">`
+                : '';
+
+            bannerEl.innerHTML = `
+                <div class="announcement-banner-card">
+                    <div class="ajrak-border-strip"></div>
+                    <div class="announcement-banner-body">
+                        <div class="announcement-banner-header">
+                            <span>${t.announcementBannerTag}</span>
+                            <span>${timerLabel}</span>
+                        </div>
+                        ${textPart}
+                        ${imgPart}
+                    </div>
+                </div>
+            `;
+            bannerEl.classList.remove('hidden');
+        }
+
+        function listenToAnnouncements() {
+            if (unsubscribeAnnouncements) {
+                try { unsubscribeAnnouncements(); } catch (e) {}
+            }
+            const q = query(collection(db, "announcements"), orderBy("createdAtMs", "desc"));
+            unsubscribeAnnouncements = onSnapshot(q, (snapshot) => {
+                let newest = null;
+                snapshot.forEach((docSnap) => {
+                    if (!newest) {
+                        newest = { id: docSnap.id, ...docSnap.data() };
+                    }
+                });
+                latestAnnouncementObj = newest;
+                renderActiveAnnouncementBanner();
+
+                if (announcementTimerInterval) {
+                    clearInterval(announcementTimerInterval);
+                }
+                announcementTimerInterval = setInterval(() => {
+                    renderActiveAnnouncementBanner();
+                }, 1000);
+            });
+        }
 
         let customConfirmResolver = null;
 
@@ -2882,7 +3144,10 @@
             document.getElementById('popup-find').classList.add('hidden');
             document.getElementById('popup-requests').classList.add('hidden');
             document.getElementById('popup-notifications').classList.add('hidden');
+            document.getElementById('popup-admin-user-details').classList.add('hidden');
             document.getElementById('popup-admin-users').classList.add('hidden');
+            const pAnnEl = document.getElementById('popup-announcement');
+            if (pAnnEl) pAnnEl.classList.add('hidden');
 
             if (type === 'messages') {
                 document.getElementById('modal-title').innerText = t.modalMessagesTitle;
@@ -2914,6 +3179,14 @@
                 document.getElementById('modal-title').innerText = t.modalAdminTitle;
                 document.getElementById('popup-admin-users').classList.remove('hidden');
                 renderAdminUsersPopup();
+            } else if (type === 'admin_user_details') {
+                if (!isAdminUser()) return;
+                document.getElementById('modal-title').innerText = t.adminUserDetailsTitle;
+                document.getElementById('popup-admin-user-details').classList.remove('hidden');
+            } else if (type === 'announcement') {
+                if (!isAdminUser()) return;
+                document.getElementById('modal-title').innerText = t.announcementModalTitle;
+                document.getElementById('popup-announcement').classList.remove('hidden');
             } else if (type === 'reshare') {
                 document.getElementById('modal-title').innerText = t.reshareModalTitle;
                 document.getElementById('popup-reshare').classList.remove('hidden');
@@ -2930,6 +3203,28 @@
         };
 
         window.closePopup = function() {
+            const detailsEl = document.getElementById('popup-admin-user-details');
+            const isDetailsVisible = detailsEl && !detailsEl.classList.contains('hidden');
+            if (isDetailsVisible && typeof isAdminUser === 'function' && isAdminUser() && adminDetailsTargetUid) {
+                if (adminChatPairUserA && adminChatPairUserB) {
+                    adminOpenUserDetailsPopup(adminDetailsTargetUid);
+                    return;
+                }
+                adminDetailsTargetUid = null;
+                if (unsubscribeAdminPairMsgs) {
+                    try { unsubscribeAdminPairMsgs(); } catch (e) {}
+                    unsubscribeAdminPairMsgs = null;
+                }
+                openPopup('admin_users');
+                return;
+            }
+            adminDetailsTargetUid = null;
+            adminChatPairUserA = null;
+            adminChatPairUserB = null;
+            if (unsubscribeAdminPairMsgs) {
+                try { unsubscribeAdminPairMsgs(); } catch (e) {}
+                unsubscribeAdminPairMsgs = null;
+            }
             activeChatFriendUid = null;
             document.getElementById('popup-overlay').classList.add('hidden');
         };
@@ -2991,6 +3286,10 @@
             if (findLbl) findLbl.innerText = t.menuFind;
             const adminLbl = document.getElementById('menu-admin-label');
             if (adminLbl) adminLbl.innerText = t.menuAdminPanel;
+            const annLbl = document.getElementById('menu-announcement-label');
+            if (annLbl) annLbl.innerText = t.menuAnnouncement;
+            const annTxt = document.getElementById('announcement-text');
+            if (annTxt) annTxt.placeholder = t.announcementPlaceholder;
             document.getElementById('menu-setting-label').innerText = t.menuSetting;
             document.getElementById('menu-logout-label').innerText = t.menuLogout;
 
@@ -3180,6 +3479,16 @@
                     if (isThisAdmin) adminMenuEl.classList.remove('hidden');
                     else adminMenuEl.classList.add('hidden');
                 }
+                const friendsMenuEl = document.getElementById('menu-friends-item');
+                if (friendsMenuEl) {
+                    if (isThisAdmin) friendsMenuEl.classList.add('hidden');
+                    else friendsMenuEl.classList.remove('hidden');
+                }
+                const annMenuEl = document.getElementById('menu-announcement-item');
+                if (annMenuEl) {
+                    if (isThisAdmin) annMenuEl.classList.remove('hidden');
+                    else annMenuEl.classList.add('hidden');
+                }
                 const findMenuEl = document.getElementById('menu-find-item');
                 if (findMenuEl) {
                     if (isThisAdmin) findMenuEl.classList.add('hidden');
@@ -3220,6 +3529,7 @@
                 listenToHistory();
                 listenToMessages();
                 listenToPosts();
+                listenToAnnouncements();
             } else {
                 currentUserObj = null;
                 document.getElementById('feed-section').classList.add('hidden');
@@ -4246,6 +4556,7 @@
                 const avatarInner = getAvatarHTML(u.photoUrl, u.name);
                 const onlineRingCls = getOnlineRingClass(u);
                 let statusBadge = '';
+                let presenceSubLine = '';
                 if (isBlocked) {
                     statusBadge = `<span class="blocked-status-pill">🚫 ${t.blockedTag}</span>`;
                 } else {
@@ -4255,17 +4566,17 @@
                     const isOffline = !lastSeen || (diffMs > 5 * 60 * 1000);
 
                     if (isOffline) {
-                        const offTimeStr = lastSeen ? formatTimeOnly(lastSeen) : '';
-                        const offLabel = currentLang === 'sd'
-                            ? `آف لائن${offTimeStr ? ` · ${offTimeStr}` : ''}`
-                            : `Offline${offTimeStr ? ` · ${offTimeStr}` : ''}`;
-                        statusBadge = `<span style="font-size:10.5px; color:#8B1E24; font-weight:bold; margin-inline-start:5px;">● ${escapeHTML(offLabel)}</span>`;
+                        const offStamp = lastSeen ? formatDateTime12h(lastSeen) : '';
+                        const offLineText = currentLang === 'sd'
+                            ? `آف لائن${offStamp ? ` ${offStamp}` : ''}`
+                            : `Offline${offStamp ? ` ${offStamp}` : ''}`;
+                        presenceSubLine = `<div style="font-size:11.5px; color:#8B1E24; font-weight:700; margin-top:2px;" dir="ltr">${escapeHTML(offLineText)}</div>`;
                     } else {
-                        const actTimeStr = activeSince ? formatTimeOnly(activeSince) : '';
-                        const actLabel = currentLang === 'sd'
-                            ? `فعال${actTimeStr ? ` · ${actTimeStr}` : ''}`
-                            : `Active${actTimeStr ? ` · ${actTimeStr}` : ''}`;
-                        statusBadge = `<span style="font-size:10.5px; color:#1B5E20; font-weight:bold; margin-inline-start:5px;">● ${escapeHTML(actLabel)}</span>`;
+                        const actStamp = activeSince ? formatDateTime12h(activeSince) : '';
+                        const actLineText = currentLang === 'sd'
+                            ? `فعال${actStamp ? ` ${actStamp}` : ''}`
+                            : `Active${actStamp ? ` ${actStamp}` : ''}`;
+                        presenceSubLine = `<div style="font-size:11.5px; color:#1B5E20; font-weight:700; margin-top:2px;" dir="ltr">${escapeHTML(actLineText)}</div>`;
                     }
                 }
 
@@ -4289,10 +4600,12 @@
                             <div style="min-width:0; flex:1;">
                                 <div class="popup-user-name" style="text-decoration:underline;">${escapeHTML(u.name || 'User')} ${statusBadge}</div>
                                 <div style="font-size:11.5px; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" dir="ltr">${escapeHTML(u.email || '')}</div>
+                                ${presenceSubLine}
                             </div>
                         </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; width:100%; padding-top:6px; border-top:1px dashed #DCD4C6;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; padding-top:6px; border-top:1px dashed #DCD4C6;">
                             <div>${privBtn}</div>
+                            <div><button type="button" class="btn-sm primary" style="padding:5px 14px; font-size:12px;" onclick="adminOpenUserDetailsPopup('${u.uid}')">${t.adminDetailsBtn}</button></div>
                             <div>${actionBtn}</div>
                         </div>
                     </div>
@@ -5092,6 +5405,23 @@
             return isUserCurrentlyOnline(userObj) ? 'online-golden-ring' : '';
         }
 
+        function formatDateTime12h(ms) {
+            if (!ms || typeof ms !== 'number') return '';
+            try {
+                const dt = new Date(ms);
+                const h24 = dt.getHours();
+                const ampm = h24 >= 12 ? 'PM' : 'AM';
+                const h12 = String(h24 % 12 === 0 ? 12 : h24 % 12).padStart(2, '0');
+                const min = String(dt.getMinutes()).padStart(2, '0');
+                const day = String(dt.getDate()).padStart(2, '0');
+                const month = String(dt.getMonth() + 1).padStart(2, '0');
+                const year = dt.getFullYear();
+                return `${h12}:${min} ${ampm}, ${day}-${month}-${year}`;
+            } catch (e) {
+                return '';
+            }
+        }
+
         function formatTimeOnly(ms) {
             if (!ms || typeof ms !== 'number') return '';
             try {
@@ -5145,6 +5475,237 @@
                 updateMyPresence(false);
             }
         });
+
+        let adminDetailsTargetUid = null;
+        let adminChatPairUserA = null;
+        let adminChatPairUserB = null;
+        let adminPairMessagesList = [];
+        let unsubscribeAdminPairMsgs = null;
+
+        function findAnyUserByUid(uid) {
+            if (!uid) return null;
+            if (currentUserObj && currentUserObj.uid === uid) return currentUserObj;
+            return allUsersList.find(u => u.uid === uid) || null;
+        }
+
+        window.adminOpenUserDetailsPopup = function(targetUid) {
+            if (!isAdminUser() || !targetUid) return;
+            const t = translations[currentLang];
+            adminDetailsTargetUid = targetUid;
+            adminChatPairUserA = null;
+            adminChatPairUserB = null;
+            if (unsubscribeAdminPairMsgs) {
+                try { unsubscribeAdminPairMsgs(); } catch (e) {}
+                unsubscribeAdminPairMsgs = null;
+            }
+
+            document.getElementById('popup-admin-users').classList.add('hidden');
+            document.getElementById('popup-admin-user-details').classList.remove('hidden');
+            document.getElementById('modal-header-extra').innerHTML = `
+                <button type="button" class="btn-sm neutral" onclick="openPopup('admin_users')">${t.backBtn}</button>
+            `;
+            document.getElementById('modal-title').innerText = t.adminUserDetailsTitle;
+            renderAdminUserDetailsView();
+        };
+
+        window.renderAdminUserDetailsView = function() {
+            const t = translations[currentLang];
+            const container = document.getElementById('popup-admin-user-details-content');
+            if (!container || !isAdminUser() || !adminDetailsTargetUid) return;
+
+            const targetUser = findAnyUserByUid(adminDetailsTargetUid);
+            if (!targetUser) {
+                container.innerHTML = `<p style="text-align:center; color:#666; font-size:13px;">${t.noAdminUsersFound}</p>`;
+                return;
+            }
+
+            const avatarInner = getAvatarHTML(targetUser.photoUrl, targetUser.name);
+            const ringCls = getOnlineRingClass(targetUser);
+            const friendUids = Array.isArray(targetUser.friends) ? targetUser.friends : [];
+
+            let friendsListHTML = '';
+            if (friendUids.length === 0) {
+                friendsListHTML = `<p style="text-align:center; color:#666; font-size:13px; padding:12px;">${t.adminNoFriendsForUser}</p>`;
+            } else {
+                friendUids.forEach(fUid => {
+                    const fUser = findAnyUserByUid(fUid) || { uid: fUid, name: 'User', email: '', photoUrl: null };
+                    const fAvatar = getAvatarHTML(fUser.photoUrl, fUser.name);
+                    const fRing = getOnlineRingClass(fUser);
+                    friendsListHTML += `
+                        <div class="popup-list-item">
+                            <div class="popup-user-info">
+                                <div class="mini-avatar ${fRing}">${fAvatar}</div>
+                                <div style="min-width:0;">
+                                    <div class="popup-user-name">${escapeHTML(fUser.name || 'User')}</div>
+                                    ${fUser.email ? `<div style="font-size:11px; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" dir="ltr">${escapeHTML(fUser.email)}</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="popup-actions">
+                                <button type="button" class="btn-sm primary" onclick="adminOpenPairChatEditor('${targetUser.uid}', '${fUid}')">${t.adminChatBtn}</button>
+                                <button type="button" class="btn-sm danger" onclick="adminUnfriendPair('${targetUser.uid}', '${fUid}')">${t.unfriendBtn}</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            container.innerHTML = `
+                <div class="profile-card-box" style="margin-bottom:14px;">
+                    <div class="profile-avatar-wrapper" style="cursor:default;">
+                        <div class="profile-big-avatar ${ringCls}">${avatarInner}</div>
+                    </div>
+                    <h3 style="color:var(--ajrak-blue); font-size:18px; margin-bottom:2px;">${escapeHTML(targetUser.name || 'User')}</h3>
+                    <p style="color:#666; font-size:12px;" dir="ltr">${escapeHTML(targetUser.email || '')}</p>
+                </div>
+
+                <div style="font-size:13px; font-weight:800; color:var(--ajrak-blue); margin-bottom:8px;">
+                    ${t.profileFriendsCount} (${friendUids.length})
+                </div>
+                <div>${friendsListHTML}</div>
+            `;
+        };
+
+        window.adminUnfriendPair = async function(userAUid, userBUid) {
+            if (!isAdminUser() || !userAUid || !userBUid) return;
+            const t = translations[currentLang];
+            const confirmed = await showCustomConfirm(t.unfriendConfirmTitle, t.confirmUnfriend, t.yesRemoveBtn, true);
+            if (!confirmed) return;
+
+            await updateDoc(doc(db, "users", userAUid), { friends: arrayRemove(userBUid) }).catch(() => {});
+            await updateDoc(doc(db, "users", userBUid), { friends: arrayRemove(userAUid) }).catch(() => {});
+
+            const userA = findAnyUserByUid(userAUid);
+            const userB = findAnyUserByUid(userBUid);
+            if (userA && Array.isArray(userA.friends)) {
+                userA.friends = userA.friends.filter(id => id !== userBUid);
+            }
+            if (userB && Array.isArray(userB.friends)) {
+                userB.friends = userB.friends.filter(id => id !== userAUid);
+            }
+
+            renderAdminUserDetailsView();
+        };
+
+        window.adminOpenPairChatEditor = function(userAUid, userBUid) {
+            if (!isAdminUser() || !userAUid || !userBUid) return;
+            const t = translations[currentLang];
+            adminChatPairUserA = userAUid;
+            adminChatPairUserB = userBUid;
+
+            document.getElementById('modal-title').innerText = t.adminModifyChatTitle;
+            document.getElementById('modal-header-extra').innerHTML = `
+                <button type="button" class="btn-sm neutral" onclick="adminOpenUserDetailsPopup('${userAUid}')">${t.backBtn}</button>
+            `;
+
+            if (unsubscribeAdminPairMsgs) {
+                try { unsubscribeAdminPairMsgs(); } catch (e) {}
+                unsubscribeAdminPairMsgs = null;
+            }
+
+            const q = query(
+                collection(db, "messages"),
+                where("participants", "array-contains", userAUid)
+            );
+
+            unsubscribeAdminPairMsgs = onSnapshot(q, (snapshot) => {
+                const msgs = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const parts = Array.isArray(data.participants) ? data.participants : [];
+                    if (parts.includes(userBUid) || (data.senderId === userBUid && data.receiverId === userAUid)) {
+                        msgs.push({ id: docSnap.id, ...data });
+                    }
+                });
+                msgs.sort((a, b) => (a.clientTime || 0) - (b.clientTime || 0));
+                adminPairMessagesList = msgs;
+                renderAdminPairChatView();
+            });
+        };
+
+        function renderAdminPairChatView() {
+            const t = translations[currentLang];
+            const container = document.getElementById('popup-admin-user-details-content');
+            if (!container || !isAdminUser() || !adminChatPairUserA || !adminChatPairUserB) return;
+
+            const userA = findAnyUserByUid(adminChatPairUserA) || { uid: adminChatPairUserA, name: 'User A' };
+            const userB = findAnyUserByUid(adminChatPairUserB) || { uid: adminChatPairUserB, name: 'User B' };
+
+            let bubblesHTML = '';
+            if (adminPairMessagesList.length === 0) {
+                bubblesHTML = `<div style="text-align:center; color:#54656F; font-size:12.5px; margin:auto; background:rgba(255,255,255,0.85); padding:8px 14px; border-radius:8px;">${t.adminNoMessagesPair}</div>`;
+            } else {
+                adminPairMessagesList.forEach(m => {
+                    const isFromA = m.senderId === adminChatPairUserA;
+                    const senderLabel = isFromA ? (userA.name || 'User') : (userB.name || 'User');
+                    bubblesHTML += `
+                        <div class="wa-msg-bubble ${isFromA ? 'wa-msg-sent' : 'wa-msg-received'}" style="max-width:88%;">
+                            <div style="font-size:10.5px; font-weight:800; color:var(--ajrak-blue); margin-bottom:2px;">${escapeHTML(senderLabel)}</div>
+                            <div id="admin-msg-display-${m.id}">${escapeHTML(m.text || '')}</div>
+                            <div id="admin-msg-edit-box-${m.id}" class="hidden" style="margin-top:6px;">
+                                <input type="text" id="admin-msg-input-${m.id}" value="${(m.text || '').replace(/"/g, '&quot;')}" style="margin-bottom:6px; padding:6px 8px; font-size:12.5px; background:#FFFFFF;">
+                                <div style="display:flex; gap:6px; justify-content:flex-end;">
+                                    <button type="button" class="btn-cancel" onclick="adminCancelMsgEdit('${m.id}')">${t.cancel}</button>
+                                    <button type="button" class="btn-save" onclick="adminSaveMsgEdit('${m.id}')">${t.saveChanges}</button>
+                                </div>
+                            </div>
+                            <div class="wa-msg-meta" style="justify-content:space-between; margin-top:5px;">
+                                <span style="display:inline-flex; gap:5px;">
+                                    <button type="button" class="btn-sm neutral" style="padding:2px 7px; font-size:10px;" onclick="adminStartMsgEdit('${m.id}')">${t.editTitle}</button>
+                                    <button type="button" class="btn-sm danger" style="padding:2px 7px; font-size:10px;" onclick="adminDeleteChatMsg('${m.id}')">${t.deleteTitle}</button>
+                                </span>
+                                <span>${escapeHTML(m.timeText || '')}${m.edited ? ` ${t.edited}` : ''}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            container.innerHTML = `
+                <div style="background:var(--ajrak-cream); border:1px solid #DCD4C6; border-radius:8px; padding:8px 12px; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--ajrak-blue);">
+                    💬 ${escapeHTML(userA.name || 'User')} ↔ ${escapeHTML(userB.name || 'User')}
+                </div>
+                <div class="wa-chat-wrapper" style="height:390px;">
+                    <div id="admin-pair-msgs-area" class="wa-messages-area">${bubblesHTML}</div>
+                </div>
+            `;
+
+            const area = document.getElementById('admin-pair-msgs-area');
+            if (area) area.scrollTop = area.scrollHeight;
+        }
+
+        window.adminStartMsgEdit = function(msgId) {
+            document.getElementById(`admin-msg-display-${msgId}`)?.classList.add('hidden');
+            document.getElementById(`admin-msg-edit-box-${msgId}`)?.classList.remove('hidden');
+        };
+
+        window.adminCancelMsgEdit = function(msgId) {
+            document.getElementById(`admin-msg-display-${msgId}`)?.classList.remove('hidden');
+            document.getElementById(`admin-msg-edit-box-${msgId}`)?.classList.add('hidden');
+        };
+
+        window.adminSaveMsgEdit = async function(msgId) {
+            if (!isAdminUser() || !msgId) return;
+            const t = translations[currentLang];
+            const inputEl = document.getElementById(`admin-msg-input-${msgId}`);
+            const newText = (inputEl?.value || '').trim();
+            if (!newText) {
+                showCustomAlert(t.noticeTitle, t.alertEmptyEdit, t.alertOkBtn, "error");
+                return;
+            }
+            await updateDoc(doc(db, "messages", msgId), {
+                text: newText,
+                edited: true
+            }).catch(() => {});
+        };
+
+        window.adminDeleteChatMsg = async function(msgId) {
+            if (!isAdminUser() || !msgId) return;
+            const t = translations[currentLang];
+            const confirmed = await showCustomConfirm(t.deleteReplyConfirmTitle, t.confirmDeleteComment, t.yesDeleteBtn, true);
+            if (!confirmed) return;
+            await deleteDoc(doc(db, "messages", msgId)).catch(() => {});
+        };
+
 
         let adminHighlightedUserUid = null;
 
