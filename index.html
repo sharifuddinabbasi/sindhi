@@ -2314,6 +2314,10 @@
                 msgSignupSuccess: "Account created! A verification link has been sent to your email. Please check your Inbox or Spam folder, click the link, and then log in.",
                 msgLoginEmpty: "Please enter both email and password.",
                 msgNotVerified: "Your email is not verified yet! Please check your email and click the verification link first.",
+                resendVerifyBtn: "Resend Verification Email",
+                resendVerifyWaitPrefix: "Resend available in",
+                resendVerifySending: "Sending verification email...",
+                resendVerifySentOk: "A new verification email has been sent! Check your Inbox or Spam folder. You can resend again after 1 minute.",
                 confirmDelete: "Are you sure you want to delete this post?",
                 confirmDeleteComment: "Delete this reply?",
                 alertEmptyPost: "Please write something or select an image to post.",
@@ -2528,6 +2532,10 @@
                 msgSignupSuccess: "اڪائونٽ ٺهي ويو آهي! توهان جي اي ميل تي تصديقي لنڪ موڪليو ويو آهي. مهرباني ڪري انباڪس يا Spam چيڪ ڪري لنڪ تي ڪلڪ ڪريو ۽ پوءِ لاگ ان ڪريو.",
                 msgLoginEmpty: "مهرباني ڪري اي ميل ۽ پاسورڊ ٻئي لکو.",
                 msgNotVerified: "توهان جي اي ميل اڃا تائين تصديق ٿيل ناهي! مهرباني ڪري پهرين اي ميل ۾ موڪليل لنڪ تي ڪلڪ ڪريو.",
+                resendVerifyBtn: "تصديقي اي ميل ٻيهر موڪليو (Resend Email)",
+                resendVerifyWaitPrefix: "ٻيهر موڪلڻ جو آپشن ايندو",
+                resendVerifySending: "تصديقي اي ميل موڪلي پئي وڃي...",
+                resendVerifySentOk: "نئين تصديقي اي ميل موڪلي وئي آهي! پنهنجو Inbox يا Spam چيڪ ڪريو. 1 منٽ بعد ٻيهر موڪلي سگهجي ٿي.",
                 confirmDelete: "ڇا توهان پڪ سان هيءَ پوسٽ ختم ڪرڻ چاهيو ٿا؟",
                 confirmDeleteComment: "ڇا هي تبصرو ڊليٽ ڪجي؟",
                 alertEmptyPost: "پوسٽ ڪرڻ لاءِ ڪجهه لکو يا تصوير چونڊيو.",
@@ -3889,7 +3897,111 @@
             }
         };
 
+        let pendingUnverifiedCred = null;
+        let resendVerifyCountdownTimer = null;
+
+        function getVerificationSentTimestamp(emailStr) {
+            if (!emailStr) return 0;
+            return Number(localStorage.getItem("sb_verify_sent_" + emailStr.trim().toLowerCase()) || 0);
+        }
+
+        function recordVerificationSent(emailStr) {
+            if (!emailStr) return;
+            localStorage.setItem("sb_verify_sent_" + emailStr.trim().toLowerCase(), String(Date.now()));
+        }
+
+        function updateResendVerifyButtonState() {
+            const btn = document.getElementById('btn-resend-verify-email');
+            if (!btn) return;
+            const t = translations[currentLang];
+            const emailStr = pendingUnverifiedCred?.email || document.getElementById('login-email')?.value || '';
+            const lastSent = getVerificationSentTimestamp(emailStr);
+            const elapsedMs = lastSent ? (Date.now() - lastSent) : 60000;
+            const remainingSec = Math.max(0, Math.ceil((60000 - elapsedMs) / 1000));
+
+            if (remainingSec > 0) {
+                const mins = String(Math.floor(remainingSec / 60)).padStart(2, '0');
+                const secs = String(remainingSec % 60).padStart(2, '0');
+                btn.disabled = true;
+                btn.innerText = `${t.resendVerifyWaitPrefix} (${mins}:${secs})`;
+            } else {
+                btn.disabled = false;
+                btn.innerText = t.resendVerifyBtn;
+            }
+        }
+
+        function showUnverifiedLoginNotice(text, emailStr, passwordStr, isError = true) {
+            pendingUnverifiedCred = { email: emailStr, password: passwordStr };
+            const t = translations[currentLang];
+            const msgBox = document.getElementById('auth-message');
+            msgBox.innerHTML = `
+                <div>${escapeHTML(text)}</div>
+                <div style="margin-top:10px; text-align:center;">
+                    <button id="btn-resend-verify-email" type="button" class="btn-sm primary" onclick="resendVerificationEmail()">${t.resendVerifyBtn}</button>
+                </div>
+            `;
+            msgBox.className = `status-msg ${isError ? 'status-error' : 'status-success'}`;
+            msgBox.classList.remove('hidden');
+
+            updateResendVerifyButtonState();
+            if (resendVerifyCountdownTimer) {
+                clearInterval(resendVerifyCountdownTimer);
+            }
+            resendVerifyCountdownTimer = setInterval(() => {
+                const activeBtn = document.getElementById('btn-resend-verify-email');
+                if (!activeBtn) {
+                    clearInterval(resendVerifyCountdownTimer);
+                    resendVerifyCountdownTimer = null;
+                    return;
+                }
+                updateResendVerifyButtonState();
+            }, 500);
+        }
+
+        window.resendVerificationEmail = async function() {
+            const t = translations[currentLang];
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
+            const emailStr = (pendingUnverifiedCred?.email || document.getElementById('login-email')?.value || '').trim();
+            const passwordStr = pendingUnverifiedCred?.password || document.getElementById('login-password')?.value || '';
+            const lastSent = getVerificationSentTimestamp(emailStr);
+            if (lastSent && (Date.now() - lastSent) < 60000) {
+                updateResendVerifyButtonState();
+                return;
+            }
+            if (!emailStr || !passwordStr) {
+                showCustomAlert(t.invalidLoginTitle, t.msgLoginEmpty, t.alertOkBtn, "error");
+                return;
+            }
+
+            const btn = document.getElementById('btn-resend-verify-email');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = t.resendVerifySending;
+            }
+
+            try {
+                const cred = await signInWithEmailAndPassword(auth, emailStr, passwordStr);
+                await sendEmailVerification(cred.user);
+                recordVerificationSent(emailStr);
+                await signOut(auth);
+                showUnverifiedLoginNotice(t.resendVerifySentOk, emailStr, passwordStr, false);
+            } catch (err) {
+                if (isNetworkError(err)) {
+                    showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                } else {
+                    showUnverifiedLoginNotice(err.message || t.msgNotVerified, emailStr, passwordStr, true);
+                }
+            }
+        };
+
         function showMessage(text, isError = false) {
+            if (resendVerifyCountdownTimer) {
+                clearInterval(resendVerifyCountdownTimer);
+                resendVerifyCountdownTimer = null;
+            }
             const msgBox = document.getElementById('auth-message');
             msgBox.innerText = text;
             msgBox.className = `status-msg ${isError ? 'status-error' : 'status-success'}`;
@@ -3930,10 +4042,11 @@
                 });
 
                 await sendEmailVerification(userCredential.user);
+                recordVerificationSent(email);
                 await signOut(auth);
 
                 switchTab('login');
-                showMessage(t.msgSignupSuccess, false);
+                showUnverifiedLoginNotice(t.msgSignupSuccess, email, password, false);
             } catch (error) {
                 if (isNetworkError(error)) {
                     showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
@@ -3964,8 +4077,13 @@
                 await setPersistence(auth, browserLocalPersistence);
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 if (!userCredential.user.emailVerified) {
+                    const sentTs = getVerificationSentTimestamp(email);
+                    if (!sentTs) {
+                        recordVerificationSent(email);
+                    }
                     await signOut(auth);
-                    showMessage(t.msgNotVerified, true);
+                    showUnverifiedLoginNotice(t.msgNotVerified, email, password, true);
+                    return;
                 } else {
                     const uSnap = await getDoc(doc(db, "users", userCredential.user.uid));
                     if (uSnap.exists() && uSnap.data().blocked === true && (userCredential.user.email || "").toLowerCase().trim() !== ADMIN_EMAIL) {
