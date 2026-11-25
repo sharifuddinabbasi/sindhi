@@ -2760,12 +2760,6 @@
                 return;
             }
 
-            const abusivePostWords = findAbusiveContent(text);
-            if (abusivePostWords.length > 0) {
-                showCustomAlert(t.noticeTitle, buildAbusivePostAlertText(abusivePostWords), t.alertOkBtn, "error");
-                return;
-            }
-
             if (btn) {
                 btn.disabled = true;
                 btn.innerText = file ? t.uploadingPhoto : t.posting;
