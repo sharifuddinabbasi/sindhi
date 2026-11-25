@@ -2311,6 +2311,7 @@
                 commentPlaceholder: "Write a reply...",
                 sendBtn: "Send",
                 msgSignupInvalid: "Please enter your full name, a valid email, and a password of at least 6 characters.",
+                msgEmailAlreadyRegistered: "Your account is already created! Please open your email Inbox (or Spam folder) and click the verification link to verify your account.",
                 msgSignupSuccess: "Account created! A verification link has been sent to your email. Please check your Inbox or Spam folder, click the link, and then log in.",
                 msgLoginEmpty: "Please enter both email and password.",
                 msgNotVerified: "Your email is not verified yet! Please check your email and click the verification link first.",
@@ -2529,6 +2530,7 @@
                 commentPlaceholder: "پنهنجو جواب لکو...",
                 sendBtn: "موڪليو",
                 msgSignupInvalid: "مهرباني ڪري پورو نالو، صحيح اي ميل ۽ گهٽ ۾ گهٽ 6 اکرن جو پاسورڊ لکو.",
+                msgEmailAlreadyRegistered: "توهان جو اڪائونٽ اڳ ئي ٺهي چڪو آهي! مهرباني ڪري پنهنجي اي ميل جو Inbox (يا Spam) کوليو ۽ اڪائونٽ تصديق ڪرڻ لاءِ لنڪ تي ڪلڪ ڪريو.",
                 msgSignupSuccess: "اڪائونٽ ٺهي ويو آهي! توهان جي اي ميل تي تصديقي لنڪ موڪليو ويو آهي. مهرباني ڪري انباڪس يا Spam چيڪ ڪري لنڪ تي ڪلڪ ڪريو ۽ پوءِ لاگ ان ڪريو.",
                 msgLoginEmpty: "مهرباني ڪري اي ميل ۽ پاسورڊ ٻئي لکو.",
                 msgNotVerified: "توهان جي اي ميل اڃا تائين تصديق ٿيل ناهي! مهرباني ڪري پهرين اي ميل ۾ موڪليل لنڪ تي ڪلڪ ڪريو.",
@@ -4050,6 +4052,12 @@
             } catch (error) {
                 if (isNetworkError(error)) {
                     showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                } else if ((error?.code || '').toLowerCase().includes('email-already-in-use')) {
+                    if (!getVerificationSentTimestamp(email)) {
+                        recordVerificationSent(email);
+                    }
+                    switchTab('login');
+                    showUnverifiedLoginNotice(t.msgEmailAlreadyRegistered, email, password, false);
                 } else {
                     showMessage(error.message, true);
                 }
