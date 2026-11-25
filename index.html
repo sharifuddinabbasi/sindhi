@@ -2760,6 +2760,12 @@
                 return;
             }
 
+            const abusivePostWords = findAbusiveContent(text);
+            if (abusivePostWords.length > 0) {
+                showCustomAlert(t.noticeTitle, buildAbusivePostAlertText(abusivePostWords), t.alertOkBtn, "error");
+                return;
+            }
+
             if (btn) {
                 btn.disabled = true;
                 btn.innerText = file ? t.uploadingPhoto : t.posting;
@@ -4937,6 +4943,125 @@
 
         let myCropSrcUrl = null;
         let myCropZoom = 1.2;
+        let myCropPanX = 0;
+        let myCropPanY = 0;
+
+        function clampPan(val, zoomVal, stageSize = 160) {
+            const maxPan = Math.max(40, ((zoomVal - 1) * stageSize) / 2 + stageSize * 0.45);
+            return Math.max(-maxPan, Math.min(maxPan, val));
+        }
+
+        function applyCropTransformToImg(imgEl, zoomVal, panX, panY) {
+            if (!imgEl) return;
+            imgEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomVal})`;
+        }
+
+        function attachTouchGestureCropper(stageEl, imgEl, stateGetter, stateSetter) {
+            if (!stageEl || !imgEl) return;
+            let isDragging = false;
+            let startX = 0;
+            let startY = 0;
+            let startPanX = 0;
+            let startPanY = 0;
+            let pinchStartDist = 0;
+            let pinchStartZoom = 1;
+
+            function getTouchDist(t0, t1) {
+                return Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+            }
+
+            stageEl.addEventListener("touchstart", function(e) {
+                if (e.touches.length === 2) {
+                    isDragging = false;
+                    pinchStartDist = getTouchDist(e.touches[0], e.touches[1]);
+                    pinchStartZoom = stateGetter().zoom;
+                    e.preventDefault();
+                } else if (e.touches.length === 1) {
+                    isDragging = true;
+                    const st = stateGetter();
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    startPanX = st.panX;
+                    startPanY = st.panY;
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            stageEl.addEventListener("touchmove", function(e) {
+                const st = stateGetter();
+                if (e.touches.length === 2 && pinchStartDist > 0) {
+                    const dist = getTouchDist(e.touches[0], e.touches[1]);
+                    const nextZoom = Math.max(1, Math.min(3.5, pinchStartZoom * (dist / pinchStartDist)));
+                    const nextPanX = clampPan(st.panX, nextZoom);
+                    const nextPanY = clampPan(st.panY, nextZoom);
+                    stateSetter({ zoom: nextZoom, panX: nextPanX, panY: nextPanY });
+                    applyCropTransformToImg(imgEl, nextZoom, nextPanX, nextPanY);
+                    e.preventDefault();
+                } else if (e.touches.length === 1 && isDragging) {
+                    const dx = e.touches[0].clientX - startX;
+                    const dy = e.touches[0].clientY - startY;
+                    const nextPanX = clampPan(startPanX + dx, st.zoom);
+                    const nextPanY = clampPan(startPanY + dy, st.zoom);
+                    stateSetter({ zoom: st.zoom, panX: nextPanX, panY: nextPanY });
+                    applyCropTransformToImg(imgEl, st.zoom, nextPanX, nextPanY);
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            stageEl.addEventListener("touchend", function(e) {
+                if (e.touches.length === 1) {
+                    const st = stateGetter();
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    startPanX = st.panX;
+                    startPanY = st.panY;
+                    isDragging = true;
+                    pinchStartDist = 0;
+                } else if (e.touches.length === 0) {
+                    isDragging = false;
+                    pinchStartDist = 0;
+                }
+            });
+
+            // Mouse / pointer fallback for desktop testing
+            stageEl.addEventListener("pointerdown", function(e) {
+                if (e.pointerType === "touch") return;
+                isDragging = true;
+                const st = stateGetter();
+                startX = e.clientX;
+                startY = e.clientY;
+                startPanX = st.panX;
+                startPanY = st.panY;
+                stageEl.setPointerCapture(e.pointerId);
+            });
+
+            stageEl.addEventListener("pointermove", function(e) {
+                if (e.pointerType === "touch" || !isDragging) return;
+                const st = stateGetter();
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                const nextPanX = clampPan(startPanX + dx, st.zoom);
+                const nextPanY = clampPan(startPanY + dy, st.zoom);
+                stateSetter({ zoom: st.zoom, panX: nextPanX, panY: nextPanY });
+                applyCropTransformToImg(imgEl, st.zoom, nextPanX, nextPanY);
+            });
+
+            stageEl.addEventListener("pointerup", function(e) {
+                if (e.pointerType === "touch") return;
+                isDragging = false;
+            });
+
+            stageEl.addEventListener("wheel", function(e) {
+                e.preventDefault();
+                const st = stateGetter();
+                const delta = e.deltaY < 0 ? 0.15 : -0.15;
+                const nextZoom = Math.max(1, Math.min(3.5, Number((st.zoom + delta).toFixed(2))));
+                const nextPanX = clampPan(st.panX, nextZoom);
+                const nextPanY = clampPan(st.panY, nextZoom);
+                stateSetter({ zoom: nextZoom, panX: nextPanX, panY: nextPanY });
+                applyCropTransformToImg(imgEl, nextZoom, nextPanX, nextPanY);
+            }, { passive: false });
+        }
 
         window.renderProfilePopup = function() {
             const t = translations[currentLang];
@@ -4951,14 +5076,8 @@
             const cropEditorHTML = myCropSrcUrl ? `
                 <div id="my-avatar-crop-box" style="background:#FFFFFF; border:1.5px solid var(--ajrak-gold); border-radius:10px; padding:12px; margin-bottom:12px; text-align:center;">
                     <div style="font-size:13px; font-weight:800; color:var(--ajrak-blue); margin-bottom:8px;">${t.zoomInOutLabel}</div>
-                    <div style="width:160px; height:160px; margin:0 auto 10px; border-radius:50%; overflow:hidden; border:3px solid var(--ajrak-gold); background:#EAE2D3; display:flex; align-items:center; justify-content:center;">
-                        <img id="my-crop-preview-img" src="${escapeHTML(myCropSrcUrl)}" style="width:100%; height:100%; object-fit:cover; transform:scale(${myCropZoom}); transition:transform 0.1s ease;" alt="Zoom Preview">
-                    </div>
-                    <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px;" dir="ltr">
-                        <button type="button" class="btn-sm neutral" onclick="adjustMyCropZoom(-0.15)">➖</button>
-                        <input id="my-crop-zoom-slider" type="range" min="1" max="3" step="0.05" value="${myCropZoom}" oninput="setMyCropZoom(this.value)" style="width:140px; margin-bottom:0; cursor:pointer;">
-                        <button type="button" class="btn-sm neutral" onclick="adjustMyCropZoom(0.15)">➕</button>
-                        <span id="my-crop-zoom-val" style="font-size:11.5px; font-weight:800; color:var(--ajrak-blue); min-width:38px;">${Math.round(myCropZoom * 100)}%</span>
+                    <div id="my-avatar-crop-stage" style="width:160px; height:160px; margin:0 auto 12px; border-radius:50%; overflow:hidden; border:3px solid var(--ajrak-gold); background:#EAE2D3; display:flex; align-items:center; justify-content:center; touch-action:none; user-select:none; cursor:grab;">
+                        <img id="my-crop-preview-img" src="${escapeHTML(myCropSrcUrl)}" draggable="false" style="width:100%; height:100%; object-fit:cover; transform:translate(${myCropPanX}px, ${myCropPanY}px) scale(${myCropZoom}); pointer-events:none;" alt="Zoom Preview">
                     </div>
                     <div style="display:flex; gap:8px; justify-content:center;">
                         <button type="button" class="btn-cancel" onclick="cancelMyCropEditor()">${t.cancel}</button>
@@ -5023,6 +5142,14 @@
                     </p>
                 </div>
             `;
+            if (myCropSrcUrl) {
+                attachTouchGestureCropper(
+                    document.getElementById('my-avatar-crop-stage'),
+                    document.getElementById('my-crop-preview-img'),
+                    () => ({ zoom: myCropZoom, panX: myCropPanX, panY: myCropPanY }),
+                    (next) => { myCropZoom = next.zoom; myCropPanX = next.panX; myCropPanY = next.panY; }
+                );
+            }
         };
 
         window.enableProfileNameEdit = function() {
@@ -5055,7 +5182,7 @@
             }
         };
 
-        function buildZoomedSquareDataUrl(srcUrl, zoomVal, outSize = 320) {
+        function buildZoomedSquareDataUrl(srcUrl, zoomVal, outSize = 320, panX = 0, panY = 0, stageSize = 160) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
                 img.crossOrigin = "anonymous";
@@ -5066,17 +5193,21 @@
                         reject(new Error("Invalid image"));
                         return;
                     }
-                    const z = Math.max(1, Math.min(3, Number(zoomVal) || 1));
-                    const baseSide = Math.min(iw, ih);
-                    const cropSide = baseSide / z;
-                    const sx = Math.max(0, (iw - cropSide) / 2);
-                    const sy = Math.max(0, (ih - cropSide) / 2);
+                    const z = Math.max(1, Math.min(3.5, Number(zoomVal) || 1));
+                    const coverScale = Math.max(stageSize / iw, stageSize / ih);
+                    const dispW = iw * coverScale * z;
+                    const dispH = ih * coverScale * z;
+
+                    // Top-left of zoomed image relative to stage center
+                    const leftInStage = (stageSize - dispW) / 2 + (Number(panX) || 0);
+                    const topInStage = (stageSize - dispH) / 2 + (Number(panY) || 0);
 
                     const canvas = document.createElement('canvas');
                     canvas.width = outSize;
                     canvas.height = outSize;
                     const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, sx, sy, cropSide, cropSide, 0, 0, outSize, outSize);
+                    const ratio = outSize / stageSize;
+                    ctx.drawImage(img, leftInStage * ratio, topInStage * ratio, dispW * ratio, dispH * ratio);
                     resolve(canvas.toDataURL('image/jpeg', 0.85));
                 };
                 img.onerror = function() {
@@ -5086,24 +5217,11 @@
             });
         }
 
-        window.setMyCropZoom = function(val) {
-            myCropZoom = Math.max(1, Math.min(3, parseFloat(val) || 1));
-            const imgEl = document.getElementById('my-crop-preview-img');
-            const valEl = document.getElementById('my-crop-zoom-val');
-            if (imgEl) imgEl.style.transform = `scale(${myCropZoom})`;
-            if (valEl) valEl.innerText = `${Math.round(myCropZoom * 100)}%`;
-        };
-
-        window.adjustMyCropZoom = function(delta) {
-            const nextZ = Math.max(1, Math.min(3, Number((myCropZoom + delta).toFixed(2))));
-            const slider = document.getElementById('my-crop-zoom-slider');
-            if (slider) slider.value = nextZ;
-            setMyCropZoom(nextZ);
-        };
-
         window.cancelMyCropEditor = function() {
             myCropSrcUrl = null;
             myCropZoom = 1.2;
+            myCropPanX = 0;
+            myCropPanY = 0;
             const inp = document.getElementById('profile-pic-input');
             if (inp) inp.value = '';
             renderProfilePopup();
@@ -5124,7 +5242,7 @@
                 statusEl.classList.remove('hidden');
             }
             try {
-                const croppedData = await buildZoomedSquareDataUrl(myCropSrcUrl, myCropZoom, 320);
+                const croppedData = await buildZoomedSquareDataUrl(myCropSrcUrl, myCropZoom, 320, myCropPanX, myCropPanY, 160);
                 const uploadResult = await uploadToAvailableDrive(
                     croppedData,
                     "avatar_" + currentUserObj.uid + "_" + Date.now() + ".jpg"
@@ -5151,6 +5269,8 @@
                 currentUserObj.photoDriveIndex = uploadResult.driveIndex;
                 myCropSrcUrl = null;
                 myCropZoom = 1.2;
+                myCropPanX = 0;
+                myCropPanY = 0;
                 renderProfilePopup();
             } catch (err) {
                 if (isNetworkError(err)) {
@@ -5202,6 +5322,8 @@
             reader.onload = function(event) {
                 myCropSrcUrl = event.target.result;
                 myCropZoom = 1.25;
+                myCropPanX = 0;
+                myCropPanY = 0;
                 renderProfilePopup();
             };
             reader.readAsDataURL(file);
@@ -6750,6 +6872,8 @@ You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your com
 
         let adminCropSrcUrl = null;
         let adminCropZoom = 1.2;
+        let adminCropPanX = 0;
+        let adminCropPanY = 0;
 
         window.adminOpenUserPhotoCropper = function(targetUid, useExisting = true) {
             const targetUser = findAnyUserByUid(targetUid);
@@ -6757,6 +6881,8 @@ You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your com
             if (useExisting && targetUser.photoUrl) {
                 adminCropSrcUrl = targetUser.photoUrl;
                 adminCropZoom = 1.2;
+                adminCropPanX = 0;
+                adminCropPanY = 0;
                 renderAdminUserDetailsView();
             } else {
                 const fileInp = document.getElementById(`admin-user-photo-input-${targetUid}`);
@@ -6771,29 +6897,18 @@ You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your com
             reader.onload = function(ev) {
                 adminCropSrcUrl = ev.target.result;
                 adminCropZoom = 1.25;
+                adminCropPanX = 0;
+                adminCropPanY = 0;
                 renderAdminUserDetailsView();
             };
             reader.readAsDataURL(file);
         };
 
-        window.setAdminCropZoom = function(val) {
-            adminCropZoom = Math.max(1, Math.min(3, parseFloat(val) || 1));
-            const imgEl = document.getElementById('admin-crop-preview-img');
-            const valEl = document.getElementById('admin-crop-zoom-val');
-            if (imgEl) imgEl.style.transform = `scale(${adminCropZoom})`;
-            if (valEl) valEl.innerText = `${Math.round(adminCropZoom * 100)}%`;
-        };
-
-        window.adjustAdminCropZoom = function(delta) {
-            const nextZ = Math.max(1, Math.min(3, Number((adminCropZoom + delta).toFixed(2))));
-            const slider = document.getElementById('admin-crop-zoom-slider');
-            if (slider) slider.value = nextZ;
-            setAdminCropZoom(nextZ);
-        };
-
         window.cancelAdminCropEditor = function() {
             adminCropSrcUrl = null;
             adminCropZoom = 1.2;
+            adminCropPanX = 0;
+            adminCropPanY = 0;
             renderAdminUserDetailsView();
         };
 
@@ -6808,7 +6923,7 @@ You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your com
             const btn = document.getElementById('btn-admin-save-cropped-photo');
             if (btn) btn.disabled = true;
             try {
-                const croppedData = await buildZoomedSquareDataUrl(adminCropSrcUrl, adminCropZoom, 320);
+                const croppedData = await buildZoomedSquareDataUrl(adminCropSrcUrl, adminCropZoom, 320, adminCropPanX, adminCropPanY, 150);
                 const uploadResult = await uploadToAvailableDrive(
                     croppedData,
                     "admin_avatar_" + targetUid + "_" + Date.now() + ".jpg"
@@ -6896,6 +7011,65 @@ You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your com
             showCustomAlert(t.noticeTitle, t.userNameUpdatedMsg, t.alertOkBtn, "info");
         };
 
+        window.adminDeleteUserRecordPermanently = async function(targetUid) {
+            if (!isAdminUser() || !targetUid) return;
+            const t = translations[currentLang];
+            const targetUser = findAnyUserByUid(targetUid);
+            if (!targetUser) return;
+            if ((targetUser.email || '').toLowerCase().trim() === ADMIN_EMAIL) return;
+
+            const confirmed = await showCustomConfirm(
+                t.modalDeleteAccountTitle,
+                `${t.deleteAccountWarningDesc}\n\n${targetUser.name || 'User'} (${targetUser.email || ''})`,
+                t.yesDeleteBtn,
+                true
+            );
+            if (!confirmed) return;
+
+            try {
+                const postsSnap = await getDocs(query(collection(db, "posts"), where("authorId", "==", targetUid)));
+                for (const pDoc of postsSnap.docs) {
+                    await deleteDoc(doc(db, "posts", pDoc.id)).catch(() => {});
+                }
+            } catch (e) {}
+
+            try {
+                const histSnap = await getDocs(query(collection(db, "history"), where("uid", "==", targetUid)));
+                for (const hDoc of histSnap.docs) {
+                    await deleteDoc(doc(db, "history", hDoc.id)).catch(() => {});
+                }
+            } catch (e) {}
+
+            try {
+                const notifSnap = await getDocs(query(collection(db, "notifications"), where("toUid", "==", targetUid)));
+                for (const nDoc of notifSnap.docs) {
+                    await deleteDoc(doc(db, "notifications", nDoc.id)).catch(() => {});
+                }
+            } catch (e) {}
+
+            try {
+                const allUsersSnap = await getDocs(collection(db, "users"));
+                for (const otherDoc of allUsersSnap.docs) {
+                    if (otherDoc.id === targetUid) continue;
+                    const oData = otherDoc.data() || {};
+                    const hasFriend = Array.isArray(oData.friends) && oData.friends.includes(targetUid);
+                    const hasReq = Array.isArray(oData.friendRequests) && oData.friendRequests.includes(targetUid);
+                    if (hasFriend || hasReq) {
+                        const patch = {};
+                        if (hasFriend) patch.friends = arrayRemove(targetUid);
+                        if (hasReq) patch.friendRequests = arrayRemove(targetUid);
+                        await updateDoc(doc(db, "users", otherDoc.id), patch).catch(() => {});
+                    }
+                }
+            } catch (e) {}
+
+            await deleteDoc(doc(db, "users", targetUid)).catch(() => {});
+            allUsersList = allUsersList.filter(u => u.uid !== targetUid);
+            adminDetailsTargetUid = null;
+            closePopup();
+            openPopup('admin_users');
+        };
+
         window.renderAdminUserDetailsView = function() {
             const t = translations[currentLang];
             const container = document.getElementById('popup-admin-user-details-content');
@@ -6915,14 +7089,8 @@ You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your com
             const adminCropBoxHTML = adminCropSrcUrl ? `
                 <div style="background:#FFFFFF; border:1.5px solid var(--ajrak-gold); border-radius:10px; padding:12px; margin-top:12px; text-align:center;">
                     <div style="font-size:13px; font-weight:800; color:var(--ajrak-blue); margin-bottom:8px;">${t.zoomInOutLabel}</div>
-                    <div style="width:150px; height:150px; margin:0 auto 10px; border-radius:50%; overflow:hidden; border:3px solid var(--ajrak-gold); background:#EAE2D3;">
-                        <img id="admin-crop-preview-img" src="${escapeHTML(adminCropSrcUrl)}" style="width:100%; height:100%; object-fit:cover; transform:scale(${adminCropZoom}); transition:transform 0.1s ease;" alt="Admin Zoom Preview">
-                    </div>
-                    <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px;" dir="ltr">
-                        <button type="button" class="btn-sm neutral" onclick="adjustAdminCropZoom(-0.15)">➖</button>
-                        <input id="admin-crop-zoom-slider" type="range" min="1" max="3" step="0.05" value="${adminCropZoom}" oninput="setAdminCropZoom(this.value)" style="width:130px; margin-bottom:0; cursor:pointer;">
-                        <button type="button" class="btn-sm neutral" onclick="adjustAdminCropZoom(0.15)">➕</button>
-                        <span id="admin-crop-zoom-val" style="font-size:11.5px; font-weight:800; color:var(--ajrak-blue); min-width:38px;">${Math.round(adminCropZoom * 100)}%</span>
+                    <div id="admin-crop-stage" style="width:150px; height:150px; margin:0 auto 12px; border-radius:50%; overflow:hidden; border:3px solid var(--ajrak-gold); background:#EAE2D3; touch-action:none; user-select:none; cursor:grab;">
+                        <img id="admin-crop-preview-img" src="${escapeHTML(adminCropSrcUrl)}" draggable="false" style="width:100%; height:100%; object-fit:cover; transform:translate(${adminCropPanX}px, ${adminCropPanY}px) scale(${adminCropZoom}); pointer-events:none;" alt="Admin Zoom Preview">
                     </div>
                     <div style="display:flex; gap:8px; justify-content:center;">
                         <button type="button" class="btn-cancel" onclick="cancelAdminCropEditor()">${t.cancel}</button>
@@ -6971,6 +7139,7 @@ You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your com
                         ${targetUser.photoUrl ? `<button type="button" class="btn-sm primary" onclick="adminOpenUserPhotoCropper('${targetUser.uid}', true)">${t.editUserPhotoBtn}</button>` : ''}
                         <button type="button" class="btn-sm neutral" onclick="adminOpenUserPhotoCropper('${targetUser.uid}', false)">📷 ${t.addPhoto}</button>
                         ${hasPhoto ? `<button type="button" class="btn-sm danger" onclick="adminDeleteUserPhoto('${targetUser.uid}')">${t.deletePhotoBtn}</button>` : ''}
+                        <button type="button" class="btn-sm danger" onclick="adminDeleteUserRecordPermanently('${targetUser.uid}')">${t.deleteAccountBtn}</button>
                     </div>
 
                     ${adminCropBoxHTML}
@@ -6989,6 +7158,14 @@ You wrote inappropriate/abusive words (${wordsStr}) in your comment, so your com
                 </div>
                 <div>${friendsListHTML}</div>
             `;
+            if (adminCropSrcUrl) {
+                attachTouchGestureCropper(
+                    document.getElementById('admin-crop-stage'),
+                    document.getElementById('admin-crop-preview-img'),
+                    () => ({ zoom: adminCropZoom, panX: adminCropPanX, panY: adminCropPanY }),
+                    (next) => { adminCropZoom = next.zoom; adminCropPanX = next.panX; adminCropPanY = next.panY; }
+                );
+            }
         };
 
         window.adminUnfriendPair = async function(userAUid, userBUid) {
