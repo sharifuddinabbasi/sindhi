@@ -2541,10 +2541,20 @@
             durationMs: DEFAULT_ANNOUNCEMENT_DURATION_MS,
             isDefaultWelcome: true
         };
-        let latestAnnouncementObj = null;
+        let activeAnnouncementsList = [];
         let announcementsHistoryList = [];
         let announcementTimerInterval = null;
         let unsubscribeAnnouncements = null;
+
+        function formatRemainingClock(remMs) {
+            const remSec = Math.max(0, Math.ceil(remMs / 1000));
+            const hrs = Math.floor(remSec / 3600);
+            const mins = Math.floor((remSec % 3600) / 60);
+            const secs = String(remSec % 60).padStart(2, '0');
+            return hrs > 0
+                ? `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${secs}`
+                : `${String(mins).padStart(2, '0')}:${secs}`;
+        }
 
         function loadLocalAnnouncementsList() {
             try {
@@ -2578,15 +2588,13 @@
         }
 
         function mergeAnnouncementsIntoHistory(incomingList) {
-            const byKey = new Map();
+            const byId = new Map();
             function putItem(item) {
-                if (!item) return;
-                const key = item.announcementDocId || item.firestoreAnnId || item.id || ("ts_" + (item.createdAtMs || Date.now()));
-                const existing = byKey.get(key) || {};
-                byKey.set(key, {
+                if (!item || !item.id) return;
+                const existing = byId.get(item.id) || {};
+                byId.set(item.id, {
                     ...existing,
                     ...item,
-                    id: existing.id || item.id || key,
                     createdAtMs: existing.createdAtMs || item.createdAtMs || Date.now(),
                     dateTimeText: existing.dateTimeText || item.dateTimeText || formatDateTime12h(existing.createdAtMs || item.createdAtMs || Date.now())
                 });
@@ -2594,28 +2602,12 @@
             loadLocalAnnouncementsList().forEach(putItem);
             announcementsHistoryList.forEach(putItem);
             (incomingList || []).forEach(putItem);
-            const byId = byKey;
+
             const merged = Array.from(byId.values()).sort((a, b) => (a.createdAtMs || 0) - (b.createdAtMs || 0));
             announcementsHistoryList = merged;
             saveLocalAnnouncementsList(merged);
 
-            let bestActive = null;
-            let bestActiveTs = 0;
-            merged.forEach(item => {
-                const activeTs = item.activeCreatedAtMs || item.createdAtMs || 0;
-                const expTs = item.activeExpiresAtMs || ((item.createdAtMs || 0) + (item.durationMs || DEFAULT_ANNOUNCEMENT_DURATION_MS));
-                if (Date.now() < expTs && activeTs >= bestActiveTs) {
-                    bestActiveTs = activeTs;
-                    bestActive = {
-                        ...item,
-                        createdAtMs: activeTs,
-                        expiresAtMs: expTs
-                    };
-                }
-            });
-            if (bestActive) {
-                latestAnnouncementObj = bestActive;
-            }
+            activeAnnouncementsList = [...merged].sort((a, b) => (b.activeCreatedAtMs || b.createdAtMs || 0) - (a.activeCreatedAtMs || a.createdAtMs || 0));
             renderActiveAnnouncementBanner();
             if (isAdminUser() && !document.getElementById('popup-announcement')?.classList.contains('hidden')) {
                 renderAdminAnnouncementsHistoryList();
@@ -2631,20 +2623,22 @@
                 localStorage.setItem(userKey, String(startMs));
             }
             const remaining = (startMs + DEFAULT_ANNOUNCEMENT_DURATION_MS) - Date.now();
-            if (remaining > 0) {
-                const candidate = {
+            if (remaining > 0 && activeAnnouncementsList.length === 0) {
+                activeAnnouncementsList = [{
                     ...DEFAULT_WELCOME_ANNOUNCEMENT,
                     createdAtMs: startMs,
-                    expiresAtMs: startMs + DEFAULT_ANNOUNCEMENT_DURATION_MS
-                };
-                if (!latestAnnouncementObj || getAnnouncementRemainingMs(latestAnnouncementObj) <= 0) {
-                    latestAnnouncementObj = candidate;
-                }
+                    activeCreatedAtMs: startMs,
+                    expiresAtMs: startMs + DEFAULT_ANNOUNCEMENT_DURATION_MS,
+                    activeExpiresAtMs: startMs + DEFAULT_ANNOUNCEMENT_DURATION_MS
+                }];
             }
             renderActiveAnnouncementBanner();
             if (!announcementTimerInterval) {
                 announcementTimerInterval = setInterval(() => {
                     renderActiveAnnouncementBanner();
+                    if (isAdminUser() && !document.getElementById('popup-announcement')?.classList.contains('hidden') && !document.activeElement?.id?.startsWith('repost-hhmm-')) {
+                        renderAdminAnnouncementsHistoryList();
+                    }
                 }, 1000);
             }
         }
@@ -2710,12 +2704,6 @@
 
             async function finishAndCloseAnnouncement(annPayload) {
                 mergeAnnouncementsIntoHistory([annPayload]);
-                latestAnnouncementObj = {
-                    ...annPayload,
-                    createdAtMs: annPayload.activeCreatedAtMs || annPayload.createdAtMs,
-                    expiresAtMs: annPayload.activeExpiresAtMs || annPayload.expiresAtMs
-                };
-                renderActiveAnnouncementBanner();
                 if (textEl) textEl.value = '';
                 if (imgInput) imgInput.value = '';
                 updateAnnouncementPhotoLabel();
@@ -2747,7 +2735,6 @@
                     createdAt: serverTimestamp()
                 };
 
-                // Immediately record locally so every created announcement stays in list
                 await finishAndCloseAnnouncement({ id: uniqueLocalId, postMirrorId: null, ...payload });
 
                 let fsDocId = null;
@@ -2813,49 +2800,170 @@
             }
         };
 
-        window.repostAnnouncement = async function(annId) {
+        function formatMsToHhMm(msVal) {
+            const totalMin = Math.max(1, Math.round((Number(msVal) || DEFAULT_ANNOUNCEMENT_DURATION_MS) / 60000));
+            const hh = Math.floor(totalMin / 60);
+            const mm = totalMin % 60;
+            return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+        }
+
+        function getFullPostRemainingMs(postObj) {
+            if (!postObj || !postObj.isFullPostAnnouncement) return 0;
+            const nowMs = Date.now();
+            const durMs = typeof postObj.fullPostDurationMs === 'number' && postObj.fullPostDurationMs > 0
+                ? postObj.fullPostDurationMs
+                : (typeof postObj.durationMs === 'number' && postObj.durationMs > 0
+                    ? postObj.durationMs
+                    : DEFAULT_ANNOUNCEMENT_DURATION_MS);
+            const uid = currentUserObj && currentUserObj.uid ? currentUserObj.uid : "guest";
+            const fKey = `sb_fpost_uwin_${uid}_${postObj.id || "fpost"}`;
+            let userWin = null;
+            try {
+                const rawWin = localStorage.getItem(fKey);
+                if (rawWin) userWin = JSON.parse(rawWin);
+            } catch (e) {}
+
+            if (userWin && typeof userWin.expiresAtMs === 'number') {
+                return Math.max(0, userWin.expiresAtMs - nowMs);
+            }
+
+            const newWin = {
+                startMs: nowMs,
+                expiresAtMs: nowMs + durMs
+            };
+            try {
+                localStorage.setItem(fKey, JSON.stringify(newWin));
+            } catch (e) {}
+
+            return Math.max(0, newWin.expiresAtMs - nowMs);
+        }
+
+        window.publishFullPostAnnouncement = async function(annId) {
             if (!isAdminUser() || !annId) return;
             const t = translations[currentLang];
-            const durInput = document.getElementById('announcement-duration-hhmm');
+            if (!navigator.onLine) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
             const target = announcementsHistoryList.find(a => a.id === annId);
             if (!target) return;
 
-            const chosenDurMs = durInput && String(durInput.value || '').trim()
-                ? parseHhMmToMs(durInput.value)
+            const itemDurInput = document.getElementById(`repost-hhmm-${annId}`);
+            const topDurInput = document.getElementById('announcement-duration-hhmm');
+            const rawDur = (itemDurInput && String(itemDurInput.value || '').trim())
+                ? itemDurInput.value
+                : ((topDurInput && String(topDurInput.value || '').trim()) ? topDurInput.value : '');
+            const chosenDurMs = rawDur
+                ? parseHhMmToMs(rawDur)
                 : (target.durationMs || DEFAULT_ANNOUNCEMENT_DURATION_MS);
+
+            const now = new Date();
             const nowMs = Date.now();
-            const nextExpiresMs = nowMs + chosenDurMs;
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " · " + now.toLocaleDateString();
+            const h24 = now.getHours();
+            const ampm = h24 >= 12 ? "PM" : "AM";
+            const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
 
-            target.durationMs = chosenDurMs;
-            target.activeCreatedAtMs = nowMs;
-            target.activeExpiresAtMs = nextExpiresMs;
-            saveLocalAnnouncementsList(announcementsHistoryList);
-
-            latestAnnouncementObj = {
-                ...target,
-                createdAtMs: nowMs,
-                expiresAtMs: nextExpiresMs
-            };
-            renderActiveAnnouncementBanner();
-            renderAdminAnnouncementsHistoryList();
             closeAnnouncementPopupNow();
 
-            if (!annId.startsWith("local_")) {
-                await updateDoc(doc(db, "announcements", annId), {
+            try {
+                await addDoc(collection(db, "posts"), {
+                    authorId: currentUserObj?.uid || "admin",
+                    authorName: currentUserObj?.name || "Admin",
+                    timeText: timeString,
+                    postYear: now.getFullYear(),
+                    postMonth: now.getMonth() + 1,
+                    postDay: now.getDate(),
+                    postHour12: h12,
+                    postAmPm: ampm,
+                    postMinute: now.getMinutes(),
+                    text: target.text || "",
+                    image: target.image || null,
+                    imageFileId: target.imageFileId || null,
+                    driveIndex: target.driveIndex ?? null,
+                    privacy: "public",
+                    isFullPostAnnouncement: true,
+                    fullPostDurationMs: chosenDurMs,
+                    fullPostCreatedAtMs: nowMs,
+                    fullPostExpiresAtMs: nowMs + chosenDurMs,
+                    likes: [],
+                    unlikes: [],
+                    comments: [],
+                    edited: false,
+                    createdAt: serverTimestamp()
+                });
+            } catch (e) {
+                showCustomAlert(t.noticeTitle, e.message || "Error", t.alertOkBtn, "error");
+            }
+        };
+
+        window.repostAnnouncement = async function(annId) {
+            if (!isAdminUser() || !annId) return;
+            const target = announcementsHistoryList.find(a => a.id === annId);
+            if (!target) return;
+
+            const itemDurInput = document.getElementById(`repost-hhmm-${annId}`);
+            const topDurInput = document.getElementById('announcement-duration-hhmm');
+            const rawDur = (itemDurInput && String(itemDurInput.value || '').trim())
+                ? itemDurInput.value
+                : ((topDurInput && String(topDurInput.value || '').trim()) ? topDurInput.value : '');
+
+            const chosenDurMs = rawDur
+                ? parseHhMmToMs(rawDur)
+                : (target.durationMs || DEFAULT_ANNOUNCEMENT_DURATION_MS);
+            const nowMs = Date.now();
+            const repostId = "ann_" + nowMs + "_" + Math.random().toString(36).slice(2, 7);
+            const nextExpiresMs = nowMs + chosenDurMs;
+            const dateTimeText = formatDateTime12h(nowMs);
+
+            const repostedEntry = {
+                id: repostId,
+                postMirrorId: null,
+                text: target.text || "",
+                image: target.image || null,
+                imageFileId: target.imageFileId || null,
+                driveIndex: target.driveIndex ?? null,
+                authorId: currentUserObj?.uid || target.authorId || null,
+                authorName: currentUserObj?.name || target.authorName || "Admin",
+                durationMs: chosenDurMs,
+                dateTimeText: dateTimeText,
+                activeCreatedAtMs: nowMs,
+                activeExpiresAtMs: nextExpiresMs,
+                expiresAtMs: nextExpiresMs,
+                createdAtMs: nowMs,
+                createdAt: serverTimestamp()
+            };
+
+            mergeAnnouncementsIntoHistory([repostedEntry]);
+            closeAnnouncementPopupNow();
+
+            try {
+                const docRef = await addDoc(collection(db, "announcements"), repostedEntry);
+                const postAnnRef = await addDoc(collection(db, "posts"), {
+                    isAnnouncement: true,
+                    announcementDocId: docRef.id,
+                    authorId: currentUserObj?.uid || "admin",
+                    authorName: currentUserObj?.name || "Admin",
+                    text: repostedEntry.text,
+                    image: repostedEntry.image,
+                    imageFileId: repostedEntry.imageFileId,
+                    driveIndex: repostedEntry.driveIndex,
+                    privacy: "public",
                     durationMs: chosenDurMs,
+                    dateTimeText: dateTimeText,
                     activeCreatedAtMs: nowMs,
                     activeExpiresAtMs: nextExpiresMs,
-                    expiresAtMs: nextExpiresMs
-                }).catch(() => {});
-            }
-            if (target.postMirrorId) {
-                await updateDoc(doc(db, "posts", target.postMirrorId), {
-                    durationMs: chosenDurMs,
-                    activeCreatedAtMs: nowMs,
-                    activeExpiresAtMs: nextExpiresMs,
-                    expiresAtMs: nextExpiresMs
-                }).catch(() => {});
-            }
+                    expiresAtMs: nextExpiresMs,
+                    createdAtMs: nowMs,
+                    createdAt: serverTimestamp()
+                });
+                const savedEntry = announcementsHistoryList.find(a => a.id === repostId);
+                if (savedEntry) {
+                    savedEntry.postMirrorId = postAnnRef.id;
+                    savedEntry.firestoreAnnId = docRef.id;
+                    saveLocalAnnouncementsList(announcementsHistoryList);
+                }
+            } catch (e) {}
         };
 
         window.deleteSavedAnnouncement = async function(annId) {
@@ -2866,16 +2974,17 @@
 
             const target = announcementsHistoryList.find(a => a.id === annId);
             announcementsHistoryList = announcementsHistoryList.filter(a => a.id !== annId);
+            activeAnnouncementsList = activeAnnouncementsList.filter(a => a.id !== annId);
             saveLocalAnnouncementsList(announcementsHistoryList);
 
-            if (latestAnnouncementObj && latestAnnouncementObj.id === annId) {
-                latestAnnouncementObj = null;
-                renderActiveAnnouncementBanner();
-            }
+            renderActiveAnnouncementBanner();
             renderAdminAnnouncementsHistoryList();
 
-            if (!annId.startsWith("local_")) {
+            if (!annId.startsWith("local_") && !annId.startsWith("ann_")) {
                 await deleteDoc(doc(db, "announcements", annId)).catch(() => {});
+            }
+            if (target && target.firestoreAnnId) {
+                await deleteDoc(doc(db, "announcements", target.firestoreAnnId)).catch(() => {});
             }
             if (target && target.postMirrorId) {
                 await deleteDoc(doc(db, "posts", target.postMirrorId)).catch(() => {});
@@ -2887,23 +2996,38 @@
             if (!cont || !isAdminUser()) return;
             const t = translations[currentLang];
 
-            const list = [...announcementsHistoryList].sort((a, b) => (a.createdAtMs || 0) - (b.createdAtMs || 0));
+            const list = [...announcementsHistoryList].sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
             if (list.length === 0) {
                 cont.innerHTML = '';
                 return;
             }
 
+            const existingInputs = {};
+            list.forEach(item => {
+                const el = document.getElementById(`repost-hhmm-${item.id}`);
+                if (el && document.activeElement === el) {
+                    existingInputs[item.id] = el.value;
+                }
+            });
+
             let html = '';
             list.forEach(item => {
                 const dtText = item.dateTimeText || formatDateTime12h(item.createdAtMs || Date.now());
+                const remMs = getAnnouncementRemainingMs(item);
+                const timerBadge = remMs > 0
+                    ? `<span style="font-size:11px; font-weight:800; color:var(--ajrak-red); margin-inline-start:6px;" dir="ltr">(${formatRemainingClock(remMs)})</span>`
+                    : '';
+                const defaultHhMm = existingInputs[item.id] || formatMsToHhMm(item.durationMs || DEFAULT_ANNOUNCEMENT_DURATION_MS);
                 const textHtml = item.text ? `<div class="post-content" style="margin-bottom:8px;">${escapeHTML(item.text)}</div>` : '';
                 const imgHtml = item.image ? `<img src="${escapeHTML(item.image)}" class="post-image" style="max-height:200px; margin-bottom:8px;" alt="Announcement">` : '';
                 html += `
                     <div class="admin-panel-card" style="flex-direction:column; align-items:stretch; gap:8px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                            <span style="font-size:11.5px; font-weight:800; color:var(--ajrak-blue);" dir="ltr">${escapeHTML(dtText)}</span>
-                            <div class="popup-actions">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
+                            <span style="font-size:11.5px; font-weight:800; color:var(--ajrak-blue);" dir="ltr">${escapeHTML(dtText)}${timerBadge}</span>
+                            <div class="popup-actions" style="align-items:center;">
+                                <input type="text" id="repost-hhmm-${item.id}" value="${escapeHTML(defaultHhMm)}" placeholder="hh:mm" maxlength="5" dir="ltr" style="width:62px; margin-bottom:0; padding:4px 6px; text-align:center; font-size:12px; font-weight:800; color:var(--ajrak-red); border:1.5px solid var(--ajrak-gold); border-radius:6px; background:#FFFFFF;">
                                 <button type="button" class="btn-sm primary" onclick="repostAnnouncement('${item.id}')">${t.btnPost}</button>
+                                <button type="button" class="btn-sm primary" onclick="publishFullPostAnnouncement('${item.id}')">Full Post</button>
                                 <button type="button" class="btn-sm danger" onclick="deleteSavedAnnouncement('${item.id}')">${t.deleteTitle}</button>
                             </div>
                         </div>
@@ -2959,48 +3083,44 @@
             const bannerEl = document.getElementById('announcement-banner-container');
             if (!bannerEl) return;
 
-            if (!latestAnnouncementObj) {
-                bannerEl.classList.add('hidden');
-                bannerEl.innerHTML = '';
-                return;
-            }
-
-            const remMs = getAnnouncementRemainingMs(latestAnnouncementObj);
-            if (remMs <= 0) {
-                bannerEl.classList.add('hidden');
-                bannerEl.innerHTML = '';
-                return;
-            }
-
             const t = translations[currentLang];
-            const remSec = Math.ceil(remMs / 1000);
-            const hrs = Math.floor(remSec / 3600);
-            const mins = Math.floor((remSec % 3600) / 60);
-            const secs = String(remSec % 60).padStart(2, '0');
-            const timerLabel = hrs > 0
-                ? `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${secs}`
-                : `${String(mins).padStart(2, '0')}:${secs}`;
+            const activeItems = (activeAnnouncementsList || [])
+                .map(ann => ({ ann, remMs: getAnnouncementRemainingMs(ann) }))
+                .filter(entry => entry.remMs > 0)
+                .sort((a, b) => (b.ann.activeCreatedAtMs || b.ann.createdAtMs || 0) - (a.ann.activeCreatedAtMs || a.ann.createdAtMs || 0));
 
-            const textPart = latestAnnouncementObj.text
-                ? `<div class="announcement-golden-text">${escapeHTML(latestAnnouncementObj.text)}</div>`
-                : '';
-            const imgPart = latestAnnouncementObj.image
-                ? `<img src="${escapeHTML(latestAnnouncementObj.image)}" class="announcement-banner-img" alt="Announcement">`
-                : '';
+            if (activeItems.length === 0) {
+                bannerEl.classList.add('hidden');
+                bannerEl.innerHTML = '';
+                return;
+            }
 
-            bannerEl.innerHTML = `
-                <div class="announcement-banner-card">
-                    <div class="ajrak-border-strip"></div>
-                    <div class="announcement-banner-body">
-                        <div class="announcement-banner-header">
-                            <span>${t.announcementBannerTag}</span>
-                            <span>${timerLabel}</span>
+            let cardsHtml = '';
+            activeItems.forEach(({ ann, remMs }) => {
+                const timerLabel = formatRemainingClock(remMs);
+                const textPart = ann.text
+                    ? `<div class="announcement-golden-text">${escapeHTML(ann.text)}</div>`
+                    : '';
+                const imgPart = ann.image
+                    ? `<img src="${escapeHTML(ann.image)}" class="announcement-banner-img" alt="Announcement">`
+                    : '';
+
+                cardsHtml += `
+                    <div class="announcement-banner-card">
+                        <div class="ajrak-border-strip"></div>
+                        <div class="announcement-banner-body">
+                            <div class="announcement-banner-header">
+                                <span>${t.announcementBannerTag}</span>
+                                <span>${timerLabel}</span>
+                            </div>
+                            ${textPart}
+                            ${imgPart}
                         </div>
-                        ${textPart}
-                        ${imgPart}
                     </div>
-                </div>
-            `;
+                `;
+            });
+
+            bannerEl.innerHTML = cardsHtml;
             bannerEl.classList.remove('hidden');
         }
 
@@ -3029,6 +3149,9 @@
             if (!announcementTimerInterval) {
                 announcementTimerInterval = setInterval(() => {
                     renderActiveAnnouncementBanner();
+                    if (isAdminUser() && !document.getElementById('popup-announcement')?.classList.contains('hidden') && !document.activeElement?.id?.startsWith('repost-hhmm-')) {
+                        renderAdminAnnouncementsHistoryList();
+                    }
                 }, 1000);
             }
         }
@@ -3038,6 +3161,7 @@
                 try { unsubscribeAnnouncements(); } catch (e) {}
             }
             announcementsHistoryList = loadLocalAnnouncementsList();
+            activeAnnouncementsList = [...announcementsHistoryList].sort((a, b) => (b.activeCreatedAtMs || b.createdAtMs || 0) - (a.activeCreatedAtMs || a.createdAtMs || 0));
             syncAnnouncementFromPosts(latestDocs);
             const q = query(collection(db, "announcements"), orderBy("createdAtMs", "asc"));
             unsubscribeAnnouncements = onSnapshot(q, (snapshot) => {
@@ -6516,6 +6640,10 @@
 
             const visiblePosts = postsArray.filter(post => {
                 if (post && post.isAnnouncement === true) return false;
+                if (post && post.isFullPostAnnouncement === true) {
+                    if (isAdminUser()) return true;
+                    return getFullPostRemainingMs(post) > 0;
+                }
                 if (isAdminUser()) return true;
                 const postPriv = post.privacy || 'public';
                 if (post.authorId === currentUserObj.uid) return true;
