@@ -5956,7 +5956,7 @@
 
             const myEmailNorm = (currentUserObj?.email || '').toLowerCase().trim();
             const filteredUsers = allUsersList.filter(u => {
-                if (!u || u.deleted === true || u.blocked === true) return false;
+                if (!u || u.deleted === true || u.blocked === true || !u.email) return false;
                 if (currentUserObj && u.uid === currentUserObj.uid) return false;
                 const uEmailNorm = (u.email || '').toLowerCase().trim();
                 if (!uEmailNorm || uEmailNorm === ADMIN_EMAIL) return false;
@@ -5998,13 +5998,17 @@
                     btnHTML = `<button class="btn-sm primary" onclick="sendOrCancelRequest('${u.uid}', false)">${t.addFriend}</button>`;
                 }
 
+                const adminDelBtn = isAdminUser()
+                    ? `<button class="btn-sm danger" title="${t.deleteTitle}" onclick="adminDeleteUserRecordPermanently('${u.uid}')">${ICON_DUSTBIN_SVG}</button>`
+                    : '';
+
                 container.innerHTML += `
                     <div class="popup-list-item">
                         <div class="popup-user-info">
                             <div class="mini-avatar ${ringCls}">${avatarInner}</div>
                             <span class="popup-user-name">${escapeHTML(u.name)}</span>
                         </div>
-                        <div class="popup-actions">${btnHTML}</div>
+                        <div class="popup-actions">${btnHTML}${adminDelBtn}</div>
                     </div>
                 `;
             });
