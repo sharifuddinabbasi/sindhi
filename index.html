@@ -4540,7 +4540,10 @@
                 snapshot.forEach((docSnap) => {
                     const uData = docSnap.data();
                     if (uData && uData.liveAnnouncement && typeof uData.liveAnnouncement === 'object') {
-                        syncedAnns.push(uData.liveAnnouncement);
+                        syncedAnns.push({
+                            ...uData.liveAnnouncement,
+                            id: uData.liveAnnouncement.id || ("live_" + docSnap.id)
+                        });
                     }
                     if (docSnap.id !== currentUserObj.uid) {
                         allUsersList.push(uData);
