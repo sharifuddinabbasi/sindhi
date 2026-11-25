@@ -1807,11 +1807,12 @@
                 <div id="popup-announcement" class="hidden">
                     <div class="create-post">
                         <textarea id="announcement-text" placeholder="Write an announcement for all users..."></textarea>
-                        <div class="post-options">
+                        <div class="post-options" style="flex-wrap:wrap; gap:8px;">
                             <label for="announcement-image" class="custom-file-label">
                                 📷 <span id="announcement-photo-label-text">Add Photo</span>
                             </label>
                             <input type="file" id="announcement-image" accept="image/*" style="display:none;" onchange="updateAnnouncementPhotoLabel()">
+                            <input type="text" id="announcement-duration-hhmm" value="00:05" placeholder="hh:mm" maxlength="5" dir="ltr" title="Duration (hh:mm)" style="width:76px; margin-bottom:0; padding:8px 8px; text-align:center; font-weight:800; color:var(--ajrak-red); border:1.5px solid var(--ajrak-gold); border-radius:6px; background:#FFFFFF;">
                             <button id="announcement-submit-btn" class="btn-post" onclick="createAnnouncement()">Post</button>
                         </div>
                     </div>
@@ -2529,11 +2530,71 @@
         let unsubscribeHistory = null;
         let unsubscribeMessages = null;
 
-        const ANNOUNCEMENT_DURATION_MS = 5 * 60 * 1000;
+        const DEFAULT_ANNOUNCEMENT_DURATION_MS = 5 * 60 * 1000;
+        const DEFAULT_WELCOME_ANNOUNCEMENT = {
+            id: "default_welcome_sindhi_world_book",
+            text: "Welcome to Sindhi World Book — Connect with friends in the traditional colors of Sindh!",
+            image: null,
+            authorName: "Admin",
+            durationMs: DEFAULT_ANNOUNCEMENT_DURATION_MS,
+            isDefaultWelcome: true
+        };
         let latestAnnouncementObj = null;
         let announcementTimerInterval = null;
-        let appOpenSessionMs = Date.now();
         let unsubscribeAnnouncements = null;
+
+        function ensureDefaultWelcomeAnnouncementForUser() {
+            if (!currentUserObj || !currentUserObj.uid) return;
+            const userKey = `sb_welcome_start_${currentUserObj.uid}`;
+            let startMs = Number(localStorage.getItem(userKey) || 0);
+            if (!startMs) {
+                startMs = Date.now();
+                localStorage.setItem(userKey, String(startMs));
+            }
+            const remaining = (startMs + DEFAULT_ANNOUNCEMENT_DURATION_MS) - Date.now();
+            if (remaining > 0) {
+                const candidate = {
+                    ...DEFAULT_WELCOME_ANNOUNCEMENT,
+                    createdAtMs: startMs,
+                    expiresAtMs: startMs + DEFAULT_ANNOUNCEMENT_DURATION_MS
+                };
+                if (!latestAnnouncementObj || getAnnouncementRemainingMs(latestAnnouncementObj) <= 0) {
+                    latestAnnouncementObj = candidate;
+                }
+            }
+            renderActiveAnnouncementBanner();
+            if (!announcementTimerInterval) {
+                announcementTimerInterval = setInterval(() => {
+                    renderActiveAnnouncementBanner();
+                }, 1000);
+            }
+        }
+
+        function parseHhMmToMs(rawVal) {
+            const clean = String(rawVal || '').trim();
+            if (!clean) return DEFAULT_ANNOUNCEMENT_DURATION_MS;
+            const parts = clean.split(':');
+            if (parts.length === 2) {
+                const hh = parseInt(parts[0], 10);
+                const mm = parseInt(parts[1], 10);
+                if (!isNaN(hh) && !isNaN(mm) && hh >= 0 && mm >= 0 && (hh > 0 || mm > 0)) {
+                    return ((hh * 60) + mm) * 60 * 1000;
+                }
+            } else {
+                const minsOnly = parseInt(clean, 10);
+                if (!isNaN(minsOnly) && minsOnly > 0) {
+                    return minsOnly * 60 * 1000;
+                }
+            }
+            return DEFAULT_ANNOUNCEMENT_DURATION_MS;
+        }
+
+        function closeAnnouncementPopupNow() {
+            const pAnn = document.getElementById('popup-announcement');
+            if (pAnn) pAnn.classList.add('hidden');
+            const overlay = document.getElementById('popup-overlay');
+            if (overlay) overlay.classList.add('hidden');
+        }
 
         window.updateAnnouncementPhotoLabel = function() {
             const t = translations[currentLang];
@@ -2552,9 +2613,11 @@
             }
             const textEl = document.getElementById('announcement-text');
             const imgInput = document.getElementById('announcement-image');
+            const durInput = document.getElementById('announcement-duration-hhmm');
             const btn = document.getElementById('announcement-submit-btn');
             const text = (textEl?.value || '').trim();
             const file = imgInput?.files?.[0] || null;
+            const durationMs = parseHhMmToMs(durInput?.value);
 
             if (!text && !file) {
                 showCustomAlert(t.noticeTitle, t.alertEmptyPost, t.alertOkBtn, "error");
@@ -2566,21 +2629,61 @@
                 btn.innerText = file ? t.uploadingPhoto : t.posting;
             }
 
+            async function finishAndCloseAnnouncement(annPayload) {
+                latestAnnouncementObj = annPayload;
+                renderActiveAnnouncementBanner();
+                if (textEl) textEl.value = '';
+                if (imgInput) imgInput.value = '';
+                updateAnnouncementPhotoLabel();
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = translations[currentLang].btnPost;
+                }
+                closeAnnouncementPopupNow();
+            }
+
             async function saveAnnouncementDoc(imgUrl, fileId, driveIdx) {
                 const nowMs = Date.now();
-                await addDoc(collection(db, "announcements"), {
+                const expiresAtMs = nowMs + durationMs;
+                const payload = {
                     text: text,
                     image: imgUrl || null,
                     imageFileId: fileId || null,
                     driveIndex: driveIdx ?? null,
+                    authorId: currentUserObj?.uid || null,
                     authorName: currentUserObj?.name || "Admin",
+                    durationMs: durationMs,
+                    expiresAtMs: expiresAtMs,
                     createdAtMs: nowMs,
                     createdAt: serverTimestamp()
-                });
-                if (textEl) textEl.value = '';
-                if (imgInput) imgInput.value = '';
-                updateAnnouncementPhotoLabel();
-                closePopup();
+                };
+                let savedId = "local_" + nowMs;
+                try {
+                    const docRef = await addDoc(collection(db, "announcements"), payload);
+                    savedId = docRef.id;
+                } catch (fsErr) {
+                    console.log("Announcement collection write fallback:", fsErr);
+                }
+                try {
+                    const postAnnRef = await addDoc(collection(db, "posts"), {
+                        isAnnouncement: true,
+                        authorId: currentUserObj?.uid || "admin",
+                        authorName: currentUserObj?.name || "Admin",
+                        text: text,
+                        image: imgUrl || null,
+                        imageFileId: fileId || null,
+                        driveIndex: driveIdx ?? null,
+                        privacy: "public",
+                        durationMs: durationMs,
+                        expiresAtMs: expiresAtMs,
+                        createdAtMs: nowMs,
+                        createdAt: serverTimestamp()
+                    });
+                    if (savedId.startsWith("local_")) savedId = postAnnRef.id;
+                } catch (postErr) {
+                    console.log("Announcement posts mirror error:", postErr);
+                }
+                await finishAndCloseAnnouncement({ id: savedId, ...payload });
             }
 
             try {
@@ -2590,43 +2693,35 @@
                             const upRes = await uploadToAvailableDrive(compressedData, "ann_" + Date.now() + ".jpg");
                             await saveAnnouncementDoc(upRes.url, upRes.fileId, upRes.driveIndex);
                         } catch (err) {
-                            showCustomAlert(t.postPhotoErrTitle, t.postPhotoErrDesc, t.alertOkBtn, "error");
-                        } finally {
                             if (btn) {
                                 btn.disabled = false;
                                 btn.innerText = translations[currentLang].btnPost;
                             }
+                            showCustomAlert(t.postPhotoErrTitle, t.postPhotoErrDesc, t.alertOkBtn, "error");
                         }
                     });
                 } else {
                     await saveAnnouncementDoc(null, null, null);
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.innerText = translations[currentLang].btnPost;
-                    }
                 }
             } catch (e) {
                 if (btn) {
                     btn.disabled = false;
                     btn.innerText = translations[currentLang].btnPost;
                 }
+                showCustomAlert(t.noticeTitle, e.message || "Error", t.alertOkBtn, "error");
             }
         };
 
         function getAnnouncementRemainingMs(annObj) {
-            if (!annObj || typeof annObj.createdAtMs !== 'number') return 0;
-            const annExpiresAt = annObj.createdAtMs + ANNOUNCEMENT_DURATION_MS;
-            const remainingFromPost = annExpiresAt - Date.now();
-            if (remainingFromPost <= 0) return 0;
-
-            const openKey = `sb_ann_open_${annObj.id}`;
-            let firstOpenMs = Number(localStorage.getItem(openKey) || 0);
-            if (!firstOpenMs || firstOpenMs < annObj.createdAtMs) {
-                firstOpenMs = Math.max(appOpenSessionMs, annObj.createdAtMs);
-                localStorage.setItem(openKey, String(firstOpenMs));
-            }
-            const remainingFromOpen = (firstOpenMs + ANNOUNCEMENT_DURATION_MS) - Date.now();
-            return Math.max(0, Math.min(remainingFromPost, remainingFromOpen));
+            if (!annObj) return 0;
+            const createdMs = typeof annObj.createdAtMs === 'number' ? annObj.createdAtMs : 0;
+            const durMs = typeof annObj.durationMs === 'number' && annObj.durationMs > 0
+                ? annObj.durationMs
+                : DEFAULT_ANNOUNCEMENT_DURATION_MS;
+            const expiresAt = typeof annObj.expiresAtMs === 'number'
+                ? annObj.expiresAtMs
+                : (createdMs + durMs);
+            return Math.max(0, expiresAt - Date.now());
         }
 
         function renderActiveAnnouncementBanner() {
@@ -2648,9 +2743,12 @@
 
             const t = translations[currentLang];
             const remSec = Math.ceil(remMs / 1000);
-            const mins = Math.floor(remSec / 60);
+            const hrs = Math.floor(remSec / 3600);
+            const mins = Math.floor((remSec % 3600) / 60);
             const secs = String(remSec % 60).padStart(2, '0');
-            const timerLabel = `${mins}:${secs}`;
+            const timerLabel = hrs > 0
+                ? `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${secs}`
+                : `${String(mins).padStart(2, '0')}:${secs}`;
 
             const textPart = latestAnnouncementObj.text
                 ? `<div class="announcement-golden-text">${escapeHTML(latestAnnouncementObj.text)}</div>`
@@ -2675,10 +2773,28 @@
             bannerEl.classList.remove('hidden');
         }
 
+        function syncAnnouncementFromPosts(postsArr) {
+            const annPosts = (postsArr || []).filter(p => p && p.isAnnouncement === true);
+            if (annPosts.length > 0) {
+                annPosts.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
+                const newestPostAnn = annPosts[0];
+                if (!latestAnnouncementObj || (newestPostAnn.createdAtMs || 0) >= (latestAnnouncementObj.createdAtMs || 0)) {
+                    latestAnnouncementObj = newestPostAnn;
+                }
+            }
+            renderActiveAnnouncementBanner();
+            if (!announcementTimerInterval) {
+                announcementTimerInterval = setInterval(() => {
+                    renderActiveAnnouncementBanner();
+                }, 1000);
+            }
+        }
+
         function listenToAnnouncements() {
             if (unsubscribeAnnouncements) {
                 try { unsubscribeAnnouncements(); } catch (e) {}
             }
+            syncAnnouncementFromPosts(latestDocs);
             const q = query(collection(db, "announcements"), orderBy("createdAtMs", "desc"));
             unsubscribeAnnouncements = onSnapshot(q, (snapshot) => {
                 let newest = null;
@@ -2687,15 +2803,12 @@
                         newest = { id: docSnap.id, ...docSnap.data() };
                     }
                 });
-                latestAnnouncementObj = newest;
-                renderActiveAnnouncementBanner();
-
-                if (announcementTimerInterval) {
-                    clearInterval(announcementTimerInterval);
+                if (newest && (!latestAnnouncementObj || (newest.createdAtMs || 0) >= (latestAnnouncementObj.createdAtMs || 0))) {
+                    latestAnnouncementObj = newest;
                 }
-                announcementTimerInterval = setInterval(() => {
-                    renderActiveAnnouncementBanner();
-                }, 1000);
+                renderActiveAnnouncementBanner();
+            }, () => {
+                syncAnnouncementFromPosts(latestDocs);
             });
         }
 
@@ -3530,6 +3643,7 @@
                 listenToMessages();
                 listenToPosts();
                 listenToAnnouncements();
+                ensureDefaultWelcomeAnnouncementForUser();
             } else {
                 currentUserObj = null;
                 document.getElementById('feed-section').classList.add('hidden');
@@ -5294,6 +5408,7 @@
                 snapshot.forEach((docSnap) => {
                     latestDocs.push({ id: docSnap.id, ...docSnap.data() });
                 });
+                syncAnnouncementFromPosts(latestDocs);
                 renderPostsList(latestDocs);
                 renderNotificationsPopup();
                 if (!document.getElementById('popup-profile').classList.contains('hidden')) {
@@ -6158,6 +6273,7 @@
             }
 
             const visiblePosts = postsArray.filter(post => {
+                if (post && post.isAnnouncement === true) return false;
                 if (isAdminUser()) return true;
                 const postPriv = post.privacy || 'public';
                 if (post.authorId === currentUserObj.uid) return true;
