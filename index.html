@@ -3419,16 +3419,29 @@
 
         const customVerifyToken = urlParams.get('verifyToken');
 
+        const customVerifyPayload = urlParams.get('verifyEmail');
+
         async function sendStyledVerificationEmail(emailStr, nameStr, uidStr) {
-            const verDoc = await addDoc(collection(db, "email_verifications"), {
-                uid: uidStr || null,
-                email: (emailStr || "").trim().toLowerCase(),
-                name: nameStr || "User",
-                verified: false,
-                expiresAt: Date.now() + (24 * 60 * 60 * 1000)
-            });
             const baseUrl = window.location.origin + window.location.pathname;
-            const verifyUrl = `${baseUrl}?verifyToken=${encodeURIComponent(verDoc.id)}`;
+            let verifyUrl = "";
+            try {
+                const verDoc = await addDoc(collection(db, "email_verifications"), {
+                    uid: uidStr || null,
+                    email: (emailStr || "").trim().toLowerCase(),
+                    name: nameStr || "User",
+                    verified: false,
+                    expiresAt: Date.now() + (24 * 60 * 60 * 1000)
+                });
+                verifyUrl = `${baseUrl}?verifyToken=${encodeURIComponent(verDoc.id)}`;
+            } catch (fsErr) {
+                const pack = btoa(unescape(encodeURIComponent(JSON.stringify({
+                    uid: uidStr || "",
+                    email: (emailStr || "").trim().toLowerCase(),
+                    name: nameStr || "User",
+                    exp: Date.now() + (24 * 60 * 60 * 1000)
+                }))));
+                verifyUrl = `${baseUrl}?verifyEmail=${encodeURIComponent(pack)}`;
+            }
 
             await fetch(DRIVE_URLS[0], {
                 method: "POST",
@@ -3443,9 +3456,46 @@
             });
         }
 
+        async function markUserAsCustomVerified(uidVal, emailVal) {
+            if (uidVal) {
+                await setDoc(doc(db, "users", uidVal), { emailVerifiedCustom: true }, { merge: true }).catch(() => {});
+            }
+            if (emailVal) {
+                try {
+                    const qSnap = await getDocs(query(collection(db, "users"), where("email", "==", emailVal.trim().toLowerCase())));
+                    for (const d of qSnap.docs) {
+                        await updateDoc(doc(db, "users", d.id), { emailVerifiedCustom: true }).catch(() => {});
+                    }
+                } catch (e) {}
+            }
+        }
+
         async function handleCustomEmailVerifyToken() {
-            if (!customVerifyToken) return false;
             const t = translations[currentLang];
+            if (customVerifyPayload) {
+                document.getElementById('auth-section').classList.remove('hidden');
+                switchTab('login');
+                try {
+                    const decoded = JSON.parse(decodeURIComponent(escape(atob(customVerifyPayload))));
+                    if (!decoded || !decoded.exp || Date.now() > decoded.exp) {
+                        showMessage(t.invalidResetLink, true);
+                        return true;
+                    }
+                    await markUserAsCustomVerified(decoded.uid, decoded.email);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    showMessage(
+                        currentLang === 'sd'
+                            ? "توهان جي اي ميل ڪاميابيءَ سان تصديق ٿي وئي آهي! هاڻي لاگ ان ڪريو."
+                            : "Your email has been verified successfully! You can now log in.",
+                        false
+                    );
+                } catch (e) {
+                    showMessage(t.invalidResetLink, true);
+                }
+                return true;
+            }
+
+            if (!customVerifyToken) return false;
             document.getElementById('auth-section').classList.remove('hidden');
             switchTab('login');
             try {
@@ -3461,9 +3511,7 @@
                     return true;
                 }
                 await updateDoc(verRef, { verified: true }).catch(() => {});
-                if (vData.uid) {
-                    await updateDoc(doc(db, "users", vData.uid), { emailVerifiedCustom: true }).catch(() => {});
-                }
+                await markUserAsCustomVerified(vData.uid, vData.email);
                 window.history.replaceState({}, document.title, window.location.pathname);
                 showMessage(
                     currentLang === 'sd'
@@ -4101,9 +4149,9 @@
                     friendsPrivacy: "public",
                     friends: [],
                     friendRequests: []
-                });
+                }).catch(() => {});
 
-                await sendStyledVerificationEmail(email, name, userCredential.user.uid);
+                await sendStyledVerificationEmail(email, name, userCredential.user.uid).catch(() => {});
                 recordVerificationSent(email);
                 await signOut(auth);
 
