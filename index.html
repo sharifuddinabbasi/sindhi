@@ -2209,6 +2209,8 @@
                 unfriendBtn: "✕ Unfriend",
                 acceptBtn: "Accept",
                 declineBtn: "Decline",
+                sentRequestsHeading: "Sent Requests",
+                friendsSectionHeading: "Friends",
                 noFriends: "Your friend list is empty. Click 🔍 to find friends!",
                 noRequests: "No pending friend requests.",
                 noNotifs: "No notifications yet.",
@@ -2428,6 +2430,8 @@
                 unfriendBtn: "✕ دوست ختم ڪريو",
                 acceptBtn: "قبول ڪريو",
                 declineBtn: "رد ڪريو",
+                sentRequestsHeading: "موڪليل درخواستون (Sent Requests)",
+                friendsSectionHeading: "دوست (Friends)",
                 noFriends: "توهان جي دوستن جي لسٽ خالي آهي. دوست ڳولڻ لاءِ 🔍 تي ڪلڪ ڪريو!",
                 noRequests: "هن وقت دوستيءَ جي ڪا به درخواست ناهي.",
                 noNotifs: "اڃا تائين ڪو به اطلاع ناهي.",
@@ -4847,15 +4851,17 @@
                 allUsersList = [];
                 const syncedAnns = [];
                 snapshot.forEach((docSnap) => {
-                    const uData = docSnap.data();
-                    if (uData && uData.liveAnnouncement && typeof uData.liveAnnouncement === 'object') {
+                    const uData = docSnap.data() || {};
+                    if (uData.liveAnnouncement && typeof uData.liveAnnouncement === 'object') {
                         syncedAnns.push({
                             ...uData.liveAnnouncement,
                             id: uData.liveAnnouncement.id || ("live_" + docSnap.id)
                         });
                     }
-                    if (docSnap.id !== currentUserObj.uid) {
-                        allUsersList.push(uData);
+                    if (uData.deleted === true) return;
+                    const docUid = uData.uid || docSnap.id;
+                    if (docUid !== currentUserObj.uid) {
+                        allUsersList.push({ ...uData, uid: docUid });
                     }
                 });
                 if (syncedAnns.length > 0) {
@@ -5085,7 +5091,42 @@
                 </p>
             `;
 
+            const sentRequestsData = currentUserObj
+                ? allUsersList.filter(u => !myFriendsList.includes(u.uid) && Array.isArray(u.friendRequests) && u.friendRequests.includes(currentUserObj.uid))
+                : [];
+
+            if (sentRequestsData.length > 0) {
+                container.innerHTML += `
+                    <div style="font-size:12.5px; font-weight:800; color:var(--ajrak-red); margin-bottom:8px; padding-inline-start:2px;">
+                        ${t.sentRequestsHeading} (${sentRequestsData.length})
+                    </div>
+                `;
+                sentRequestsData.forEach(u => {
+                    const avatarInner = getAvatarHTML(u.photoUrl, u.name);
+                    const ringCls = getOnlineRingClass(u);
+                    container.innerHTML += `
+                        <div class="popup-list-item">
+                            <div class="popup-user-info">
+                                <div class="mini-avatar ${ringCls}">${avatarInner}</div>
+                                <span class="popup-user-name">${escapeHTML(u.name)}</span>
+                            </div>
+                            <div class="popup-actions">
+                                <button class="btn-sm pending" onclick="sendOrCancelRequest('${u.uid}', true)">${t.requestSent}</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
             const myFriendsData = allUsersList.filter(u => myFriendsList.includes(u.uid));
+
+            if (sentRequestsData.length > 0) {
+                container.innerHTML += `
+                    <div style="font-size:12.5px; font-weight:800; color:var(--ajrak-blue); margin:12px 0 8px; padding-inline-start:2px;">
+                        ${t.friendsSectionHeading} (${myFriendsData.length})
+                    </div>
+                `;
+            }
 
             if (myFriendsData.length === 0) {
                 container.innerHTML += `<p style="text-align:center; color:#666; font-size:13px; padding:12px;">${t.noFriends}</p>`;
@@ -5356,8 +5397,16 @@
                     }
                 } catch (e) {}
 
-                // Delete user profile document
+                // Delete user profile document (and any stale docs with same email)
                 await deleteDoc(doc(db, "users", uidToDelete)).catch(() => {});
+                if (authUser.email) {
+                    try {
+                        const sameEmailSnap = await getDocs(query(collection(db, "users"), where("email", "==", authUser.email.trim().toLowerCase())));
+                        for (const uDoc of sameEmailSnap.docs) {
+                            await deleteDoc(doc(db, "users", uDoc.id)).catch(() => {});
+                        }
+                    } catch (e) {}
+                }
 
                 // Delete Firebase Auth account
                 await deleteUser(authUser);
@@ -5622,7 +5671,14 @@
                 return;
             }
 
+            const myEmailNorm = (currentUserObj?.email || '').toLowerCase().trim();
             const filteredUsers = allUsersList.filter(u => {
+                if (!u || u.deleted === true || u.blocked === true) return false;
+                if (currentUserObj && u.uid === currentUserObj.uid) return false;
+                const uEmailNorm = (u.email || '').toLowerCase().trim();
+                if (!uEmailNorm || uEmailNorm === ADMIN_EMAIL) return false;
+                if (myEmailNorm && uEmailNorm === myEmailNorm) return false;
+
                 const isProfilePublic = (u.profilePrivacy || 'public') === 'public';
                 if (!isProfilePublic) return false;
 
