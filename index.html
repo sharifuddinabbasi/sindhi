@@ -7222,7 +7222,16 @@
                                                 if (canManagePost) {
                                                     return `<button type="button" class="post-privacy-badge ${pPriv} clickable" onclick="toggleExistingPostPrivacy('${postId}')" title="Change Privacy">${pLabel}</button>`;
                                                 }
-                                                return `<span class="post-privacy-badge ${pPriv}">${pLabel}</span>`;
+                                                const isAlreadyFriend = myFriendsList.includes(post.authorId);
+                                                if (isAlreadyFriend) {
+                                                    return `<span class="post-privacy-badge ${pPriv}">${pLabel}</span>`;
+                                                }
+                                                const authorUserObj = allUsersList.find(u => u.uid === post.authorId);
+                                                const reqSent = Array.isArray(authorUserObj?.friendRequests) && authorUserObj.friendRequests.includes(currentUserObj.uid);
+                                                if (reqSent) {
+                                                    return `<button type="button" class="btn-sm pending" style="margin-inline-start:6px; padding:3px 9px; border-radius:12px;" onclick="sendOrCancelRequest('${post.authorId}', true)">${t.requestSent}</button>`;
+                                                }
+                                                return `<button type="button" class="btn-sm primary" style="margin-inline-start:6px; padding:3px 9px; border-radius:12px;" onclick="sendOrCancelRequest('${post.authorId}', false)">${t.addFriend}</button>`;
                                             })()}
                                         </div>
                                         <div class="post-time">${post.timeText || ''} ${post.edited ? t.edited : ''}${post.resharedFrom ? ` · <span style="color:var(--ajrak-red); font-weight:700;">${t.resharedFromLabel} ${escapeHTML(post.resharedFrom.authorName || 'User')}</span>` : ''}</div>
