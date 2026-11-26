@@ -4770,6 +4770,8 @@
             if ("serviceWorker" in navigator) {
                 navigator.serviceWorker.ready.then((reg) => {
                     if (count > 0 && "Notification" in window && Notification.permission === "granted") {
+                        // App is on screen: the in-app badge/sound is enough, no system notification
+                        if (document.visibilityState === 'visible') return;
                         if (reg.active) {
                             reg.active.postMessage({
                                 type: "NEW_MSG_BADGE",
@@ -4886,6 +4888,7 @@
 
         async function markFriendMessagesAsRead(friendUid) {
             if (!friendUid || !currentUserObj) return;
+            if (document.visibilityState !== 'visible') return;
             const unreadFromFriend = allMyMessages.filter(
                 m => m.senderId === friendUid && m.receiverId === currentUserObj.uid && !m.read
             );
@@ -4904,6 +4907,22 @@
                 clearAllSystemNotifications();
             }
         }
+
+        function waOnAppVisible() {
+            if (document.visibilityState !== 'visible' || !currentUserObj) return;
+            const popupMsgEl = document.getElementById('popup-messages');
+            const overlayEl = document.getElementById('popup-overlay');
+            const chatOpen = activeChatFriendUid && popupMsgEl && !popupMsgEl.classList.contains('hidden') && overlayEl && !overlayEl.classList.contains('hidden');
+            if (chatOpen) {
+                renderActiveChatMessages();
+                markFriendMessagesAsRead(activeChatFriendUid);
+            }
+            const unread = allMyMessages.filter(m => m.receiverId === currentUserObj.uid && !m.read && !(chatOpen && m.senderId === activeChatFriendUid)).length;
+            if (unread === 0) clearAllSystemNotifications();
+        }
+        document.addEventListener('visibilitychange', waOnAppVisible);
+        window.addEventListener('focus', waOnAppVisible);
+        window.addEventListener('pageshow', waOnAppVisible);
 
         window.backToChatFriendsList = function() {
             clearMsgSelection(); clearReply();
