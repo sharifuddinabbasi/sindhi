@@ -4589,6 +4589,31 @@
             }
         }
 
+        // Backup refresh for ticks: while a chat is open, re-check my own sent messages that are not yet read
+        let tickPollBusy = false;
+        setInterval(async () => {
+            if (tickPollBusy || document.hidden || !currentUserObj || !activeChatFriendUid || !navigator.onLine) return;
+            const popupMsgEl = document.getElementById('popup-messages');
+            if (!popupMsgEl || popupMsgEl.classList.contains('hidden')) return;
+            const pending = allMyMessages.filter(m =>
+                m.senderId === currentUserObj.uid && m.receiverId === activeChatFriendUid && !m.read
+            ).slice(-10);
+            if (!pending.length) return;
+            tickPollBusy = true;
+            try {
+                let changed = false;
+                for (const m of pending) {
+                    const snap = await getDoc(doc(db, "messages", m.id));
+                    if (!snap.exists()) continue;
+                    const d = snap.data();
+                    if (!!d.read !== !!m.read || !!d.delivered !== !!m.delivered) {
+                        m.read = d.read; m.delivered = d.delivered; changed = true;
+                    }
+                }
+                if (changed) renderActiveChatMessages();
+            } catch (e) {} finally { tickPollBusy = false; }
+        }, 4000);
+
         function listenToMessages() {
             if (!currentUserObj || !currentUserObj.uid) return;
             if (unsubscribeMessages) {

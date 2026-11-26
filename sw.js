@@ -1,7 +1,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-const CACHE_NAME = "sindhi-world-book-v105";
+const CACHE_NAME = "sindhi-world-book-v106";
 const ASSETS = [
   "./",
   "./index.html",
@@ -62,6 +62,13 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const host = new URL(event.request.url).hostname;
+  // Never intercept Firebase live data (messages, ticks, notifications) - let it go straight to the network
+  if (
+    (host.endsWith("googleapis.com") && host !== "fonts.googleapis.com") ||
+    host.endsWith("firebaseio.com") ||
+    host.endsWith("cloudfunctions.net")
+  ) return;
   event.respondWith(
     fetch(event.request)
       .then((res) => {
