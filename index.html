@@ -710,6 +710,13 @@
         #wa-react-bar { position: absolute; top: 54px; left: 50%; transform: translateX(-50%); background: #FFFFFF; border-radius: 30px; padding: 5px 8px; display: flex; gap: 2px; box-shadow: 0 3px 12px rgba(0,0,0,0.35); z-index: 5; }
         #wa-react-bar button { background: none; border: none; font-size: 24px; padding: 2px 5px; border-radius: 50%; cursor: pointer; line-height: 1.2; }
         #wa-react-bar button:active { background: #E9EDEF; }
+        #wa-react-bar .wa-react-plus { font-size: 22px; width: 32px; height: 32px; padding: 0; margin-left: 2px; background: #E9EDEF; color: #54656F; font-weight: 600; align-self: center; display: flex; align-items: center; justify-content: center; }
+        .wa-emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+        .wa-sheet .wa-emoji-grid button { font-size: 26px; padding: 6px 0; text-align: center; background: none; border: none; border-radius: 8px; }
+        .wa-sheet .wa-emoji-grid button:active { background: #E9EDEF; }
+        .wa-info-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 4px; border-bottom: 1px solid #EEE7D9; font-size: 14px; color: #1A1A1A; }
+        .wa-info-row b { color: #14284B; white-space: nowrap; }
+        .wa-info-row span { text-align: right; color: #444; }
         .wa-quote { background: rgba(0,0,0,0.06); border-left: 3px solid #00A884; border-radius: 6px; padding: 4px 8px; margin: 0 0 4px; font-size: 12px; color: #444; cursor: pointer; }
         .wa-quote b { display: block; color: #075E54; font-size: 11.5px; }
         .wa-fwd { font-size: 11px; color: #667781; font-style: italic; margin-bottom: 2px; }
@@ -1816,6 +1823,7 @@
                                     <span style="font-weight:bold; font-size:17px;">1</span>
                                 </div>
                                 <div class="wa-sel-actions">
+                                    <button type="button" id="wa-act-info" onclick="msgActionInfo()" title="Info"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" style="display:block"><circle cx="12" cy="12" r="9.5"/><line x1="12" y1="11" x2="12" y2="17"/><circle cx="12" cy="7.6" r="0.6" fill="#fff"/></svg></button>
                                     <button type="button" id="wa-act-reply" onclick="msgActionReply()" title="Reply">↩</button>
                                     <button type="button" id="wa-act-copy" onclick="msgActionCopy()" title="Copy">📋</button>
                                     <button type="button" onclick="msgActionDelete()" title="Delete">🗑</button>
@@ -1829,6 +1837,7 @@
                                 <button type="button" onclick="msgReact('😮')">😮</button>
                                 <button type="button" onclick="msgReact('😢')">😢</button>
                                 <button type="button" onclick="msgReact('🙏')">🙏</button>
+                                <button type="button" class="wa-react-plus" onclick="msgReactMore()" title="More">+</button>
                             </div>
                             <div id="wa-main-topbar" class="wa-chat-topbar">
                                 <button type="button" class="wa-back-btn" onclick="backToChatFriendsList()">←</button>
@@ -2130,7 +2139,7 @@
             onMessage(messaging, (payload) => {
                 const msgId = payload?.data?.msgId;
                 if (msgId && currentUserObj) {
-                    updateDoc(doc(db, "messages", msgId), { delivered: true }).catch(() => {});
+                    updateDoc(doc(db, "messages", msgId), { delivered: true, deliveredAt: Date.now() }).catch(() => {});
                 }
             });
         } catch (e) {}
@@ -4720,7 +4729,7 @@
                     if (!snap.exists()) continue;
                     const d = snap.data();
                     if (!!d.read !== !!m.read || !!d.delivered !== !!m.delivered) {
-                        m.read = d.read; m.delivered = d.delivered; changed = true;
+                        m.read = d.read; m.delivered = d.delivered; m.readAt = d.readAt; m.deliveredAt = d.deliveredAt; changed = true;
                     }
                 }
                 if (changed) renderActiveChatMessages();
@@ -4748,7 +4757,7 @@
                     if (change.type === "added" || change.type === "modified") {
                         const m = change.doc.data();
                         if (m.receiverId === currentUserObj.uid && m.delivered !== true) {
-                            updateDoc(doc(db, "messages", change.doc.id), { delivered: true })
+                            updateDoc(doc(db, "messages", change.doc.id), { delivered: true, deliveredAt: m.deliveredAt || Date.now() })
                                 .catch((err) => console.error("Delivered update failed:", err));
                         }
                     }
@@ -4800,7 +4809,9 @@
             for (const msg of unreadFromFriend) {
                 await updateDoc(doc(db, "messages", msg.id), {
                     delivered: true,
-                    read: true
+                    deliveredAt: msg.deliveredAt || Date.now(),
+                    read: true,
+                    readAt: Date.now()
                 }).catch(() => {});
             }
             const remainingUnread = allMyMessages.filter(
@@ -5039,7 +5050,7 @@
             main.classList.add('hidden');
             sel.classList.remove('hidden');
             const del = !!m.deletedForAll;
-            ['wa-act-reply', 'wa-act-copy', 'wa-act-forward'].forEach(id => {
+            ['wa-act-info', 'wa-act-reply', 'wa-act-copy', 'wa-act-forward'].forEach(id => {
                 const b = document.getElementById(id);
                 if (b) b.classList.toggle('hidden', del);
             });
@@ -5147,6 +5158,78 @@
             buttons.push({ label: 'Cancel' });
             openWaSheet('Forward to...', buttons);
         };
+        window.msgReactMore = function () {
+            const m = getSelectedMsg();
+            if (!m || m.deletedForAll) return;
+            const emojis = ['👍','❤️','😂','😮','😢','🙏','😀','😃','😄','😁','😆','😅','🤣','🙂','😉','😊','😇','🥰','😍','🤩','😘','😋','😎','🤗','🤔','😐','😴','😭','😡','🤯','😱','🥳','😬','🙄','😔','👏','🙌','👌','✌️','🤝','💪','👎','👋','🤲','🔥','🎉','✨','💯','💔','💙','💚','🌹','🌙','⭐','☀️','✅','❌','🎂','🕌','📖'];
+            closeWaSheet();
+            const ov = document.createElement('div');
+            ov.id = 'wa-sheet-overlay';
+            ov.className = 'wa-sheet-overlay';
+            const sh = document.createElement('div');
+            sh.className = 'wa-sheet';
+            const hd = document.createElement('div');
+            hd.className = 'wa-sheet-title';
+            hd.textContent = 'React';
+            sh.appendChild(hd);
+            const grid = document.createElement('div');
+            grid.className = 'wa-emoji-grid';
+            emojis.forEach(e => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = e;
+                b.onclick = () => { closeWaSheet(); window.msgReact(e); };
+                grid.appendChild(b);
+            });
+            sh.appendChild(grid);
+            ov.appendChild(sh);
+            ov.addEventListener('click', (ev) => { if (ev.target === ov) closeWaSheet(); });
+            document.body.appendChild(ov);
+        };
+
+        window.msgActionInfo = function () {
+            const m = getSelectedMsg();
+            if (!m || m.deletedForAll) return;
+            const fmt = (t) => t ? new Date(t).toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+            const sender = m.senderId === currentUserObj.uid
+                ? 'You'
+                : ((allUsersList.find(u => u.uid === m.senderId) || {}).name || 'User');
+            const deliveredTxt = m.deliveredAt ? fmt(m.deliveredAt) : (m.delivered ? 'Delivered (time not recorded)' : 'Not delivered yet');
+            const readTxt = m.readAt ? fmt(m.readAt) : (m.read ? 'Read (time not recorded)' : 'Not read yet');
+            const rows = [
+                ['Sent by', sender],
+                ['Sent', fmt(m.clientTime) || (m.timeText || '')],
+                ['Delivered', deliveredTxt],
+                ['Read', readTxt]
+            ];
+            clearMsgSelection();
+            closeWaSheet();
+            const ov = document.createElement('div');
+            ov.id = 'wa-sheet-overlay';
+            ov.className = 'wa-sheet-overlay';
+            const sh = document.createElement('div');
+            sh.className = 'wa-sheet';
+            const hd = document.createElement('div');
+            hd.className = 'wa-sheet-title';
+            hd.textContent = 'Message info';
+            sh.appendChild(hd);
+            rows.forEach(r => {
+                const row = document.createElement('div');
+                row.className = 'wa-info-row';
+                const b = document.createElement('b'); b.textContent = r[0];
+                const sp = document.createElement('span'); sp.textContent = r[1];
+                row.appendChild(b); row.appendChild(sp);
+                sh.appendChild(row);
+            });
+            const close = document.createElement('button');
+            close.type = 'button'; close.textContent = 'Close';
+            close.onclick = closeWaSheet;
+            sh.appendChild(close);
+            ov.appendChild(sh);
+            ov.addEventListener('click', (ev) => { if (ev.target === ov) closeWaSheet(); });
+            document.body.appendChild(ov);
+        };
+
         window.msgReact = async function (emoji) {
             const m = getSelectedMsg();
             if (!m || m.deletedForAll) return;
@@ -5277,7 +5360,7 @@
                                     const okByCodes = Array.isArray(parsed.codes) && parsed.codes.includes(200);
                                     const okByResults = Array.isArray(parsed.results) && parsed.results.some(r => r && r.code === 200);
                                     if (parsed.status === "sent" && (okByCodes || okByResults)) {
-                                        updateDoc(doc(db, "messages", msgDocRef.id), { delivered: true }).catch(() => {});
+                                        updateDoc(doc(db, "messages", msgDocRef.id), { delivered: true, deliveredAt: Date.now() }).catch(() => {});
                                     }
                                 } catch (e) {}
                             })
