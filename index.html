@@ -2135,10 +2135,31 @@
                 history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
             } catch (e) {}
         }
+        let lastOpenedMsgId = null;
+        async function readPendingOpenFromCache() {
+            try {
+                if (!('caches' in window) || !currentUserObj) return;
+                const c = await caches.open('swb-pending');
+                const key = new URL('__open_chat__', location.href).href;
+                const r = await c.match(key);
+                if (!r) return;
+                await c.delete(key);
+                const j = await r.json();
+                if (j && (Date.now() - j.t) < 2 * 60 * 1000) {
+                    pendingOpenMsgId = j.msgId || 'none';
+                    handlePendingOpenMsg();
+                }
+            } catch (e) {}
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') setTimeout(readPendingOpenFromCache, 300);
+        });
         async function handlePendingOpenMsg() {
             if (!pendingOpenMsgId || !currentUserObj) return;
             const id = pendingOpenMsgId;
             pendingOpenMsgId = null;
+            if (id !== 'none' && id === lastOpenedMsgId) return;
+            lastOpenedMsgId = id;
             let senderId = null;
             if (id !== 'none') {
                 try {
@@ -4552,6 +4573,7 @@
                 ensureDefaultWelcomeAnnouncementForUser();
                 setTimeout(applyPendingShare, 600);
                 setTimeout(handlePendingOpenMsg, 800);
+                setTimeout(readPendingOpenFromCache, 1200);
             } else {
                 currentUserObj = null;
                 document.getElementById('feed-section').classList.add('hidden');

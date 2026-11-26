@@ -1,7 +1,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-const CACHE_NAME = "sindhi-world-book-v109";
+const CACHE_NAME = "sindhi-world-book-v110";
 const ASSETS = [
   "./",
   "./index.html",
@@ -54,7 +54,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== "swb-pending").map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
@@ -115,8 +115,18 @@ self.addEventListener("message", (event) => {
 self.addEventListener("notificationclick", (event) => {
   const msgId = (event.notification.data && event.notification.data.msgId) || "";
   event.notification.close();
+  // Remember which message was tapped, so the app can open that chat even if the URL/message is lost
+  const savePending = caches
+    .open("swb-pending")
+    .then((c) =>
+      c.put(
+        new URL("__open_chat__", self.registration.scope).href,
+        new Response(JSON.stringify({ msgId: msgId, t: Date.now() }))
+      )
+    )
+    .catch(() => {});
   event.waitUntil(
-    clearAllMsgNotificationsAndBadge().then(() =>
+    clearAllMsgNotificationsAndBadge().then(() => savePending).then(() =>
       clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
         for (const client of clientList) {
           if ("focus" in client) {
