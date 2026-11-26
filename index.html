@@ -2028,17 +2028,23 @@
         <div style="color:#14284B; font-weight:bold; font-size:15px;">Sindhi World Book...</div>
     </div>
     <script>
+        // Slow internet: keep waiting (never show the login page by guesswork), only offer a reload button
+        function showBootSlowNotice() {
+            var bl = document.getElementById('app-boot-loader');
+            if (!bl) return;
+            bl.classList.remove('hidden');
+            if (document.getElementById('boot-slow-notice')) return;
+            var box = document.createElement('div');
+            box.id = 'boot-slow-notice';
+            box.style.marginTop = '14px';
+            box.innerHTML = '<div style="color:#14284B; font-size:14px; margin-bottom:10px;">انٽرنيٽ سست آهي، انتظار ڪريو...<br>Slow internet, please wait...</div>' +
+                '<button type="button" class="btn-primary" onclick="location.reload()">ٻيهر ڪوشش / Reload</button>';
+            bl.appendChild(box);
+        }
         setTimeout(function() {
             var bl = document.getElementById('app-boot-loader');
-            if (bl && !bl.classList.contains('hidden')) {
-                bl.classList.add('hidden');
-                var authSec = document.getElementById('auth-section');
-                var feedSec = document.getElementById('feed-section');
-                if (authSec && feedSec && feedSec.classList.contains('hidden')) {
-                    authSec.classList.remove('hidden');
-                }
-            }
-        }, 4500);
+            if (bl && !bl.classList.contains('hidden')) showBootSlowNotice();
+        }, 8000);
     </script>
     <style>@keyframes spinBoot { to { transform: rotate(360deg); } }</style>
     <div id="shared-post-preview-section" class="card shared-post-preview-card hidden">
@@ -2150,9 +2156,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
             getAuth, 
-            setPersistence,
-            indexedDBLocalPersistence,
-            browserLocalPersistence,
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
             sendEmailVerification, 
@@ -2212,7 +2215,6 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        setPersistence(auth, indexedDBLocalPersistence).catch(() => setPersistence(auth, browserLocalPersistence)).catch(() => {});
         const db = getFirestore(app);
         let messaging = null;
         try {
@@ -4770,7 +4772,6 @@
             }
 
             try {
-                await setPersistence(auth, browserLocalPersistence);
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 const uSnapCheck = await getDoc(doc(db, "users", userCredential.user.uid)).catch(() => null);
                 const isCustomVerified = Boolean(uSnapCheck && uSnapCheck.exists() && uSnapCheck.data().emailVerifiedCustom === true);
@@ -4818,25 +4819,51 @@
             await signOut(auth);
         };
 
-        onAuthStateChanged(auth, async (user) => {
+        function hideBootLoader() {
             const bootLoader = document.getElementById('app-boot-loader');
             if (bootLoader) bootLoader.classList.add('hidden');
+        }
+
+        // Signed-in user but the network failed: keep retrying instead of showing the login page
+        async function getUserDocWithRetry(ref, uid) {
+            let delay = 1000;
+            while (auth.currentUser && auth.currentUser.uid === uid) {
+                try {
+                    return await getDoc(ref);
+                } catch (e) {
+                    if (e && e.code === 'permission-denied') throw e;
+                    document.getElementById('auth-section').classList.add('hidden');
+                    showBootSlowNotice();
+                    await new Promise(r => setTimeout(r, delay));
+                    delay = Math.min(delay * 2, 8000);
+                }
+            }
+            return null;
+        }
+
+        onAuthStateChanged(auth, async (user) => {
             try {
 
             if (await handleCustomEmailVerifyToken()) {
+                hideBootLoader();
                 return;
             }
 
             if (isResetPasswordFlow) {
+                hideBootLoader();
                 await initCustomResetScreen();
                 return;
             }
 
             if (user) {
                 const userDocRef = doc(db, "users", user.uid);
-                const userSnap = await getDoc(userDocRef);
+                const userSnap = await getUserDocWithRetry(userDocRef, user.uid);
+                // Signed out while waiting: the next auth event updates the screen
+                if (!userSnap || !auth.currentUser || auth.currentUser.uid !== user.uid) return;
                 const isCustomVer = Boolean(userSnap.exists() && userSnap.data().emailVerifiedCustom === true);
                 if (!user.emailVerified && !isCustomVer) {
+                    hideBootLoader();
+                    document.getElementById('auth-section').classList.remove('hidden');
                     return;
                 }
                 const isThisAdmin = (user.email || "").toLowerCase().trim() === ADMIN_EMAIL;
@@ -4844,6 +4871,7 @@
                 if (userSnap.exists() && userSnap.data().blocked === true && !isThisAdmin) {
                     const tBlk = translations[currentLang];
                     await signOut(auth);
+                    hideBootLoader();
                     showCustomAlert(tBlk.accountBlockedTitle, tBlk.accountBlockedDesc, tBlk.alertOkBtn, "error");
                     return;
                 }
@@ -4897,6 +4925,7 @@
                 const floatBtnOnLogin = document.getElementById('shared-post-login-toggle-wrap');
                 if (floatBtnOnLogin) floatBtnOnLogin.classList.add('hidden');
                 syncAdminFeedState(latestDocs);
+                hideBootLoader();
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('reset-password-screen').classList.add('hidden');
                 document.getElementById('feed-section').classList.remove('hidden');
@@ -4917,6 +4946,7 @@
                 setTimeout(handlePendingOpenMsg, 800);
                 setTimeout(readPendingOpenFromCache, 1200);
             } else {
+                hideBootLoader();
                 currentUserObj = null;
                 setSwAuthState(false);
                 clearAllSystemNotifications();
@@ -4935,7 +4965,12 @@
             }
             } catch (authErr) {
                 console.log("Auth state error:", authErr);
-                document.getElementById('auth-section').classList.remove('hidden');
+                if (!auth.currentUser) {
+                    hideBootLoader();
+                    document.getElementById('auth-section').classList.remove('hidden');
+                } else if (document.getElementById('feed-section').classList.contains('hidden')) {
+                    showBootSlowNotice();
+                }
             }
         });
 
