@@ -2453,7 +2453,7 @@
                 passChangedSuccess: "Password changed successfully!",
                 settingOptDeleteAccount: "🗑️ Delete Account",
                 modalDeleteAccountTitle: "🗑️ Delete Account",
-                deleteAccountWarningDesc: "Warning: Deleting your account is permanent and will remove your profile, posts, and account access. Please enter your account password to confirm:",
+                deleteAccountWarningDesc: "Warning: Deleting your account is permanent. Your profile, posts, comments, photos and files will be deleted. Messages you sent in chats will remain with the people you chatted with. Please enter your account password to confirm:",
                 deleteAccountPassPlaceholder: "Enter your account password",
                 deleteAccountBtn: "Delete My Account",
                 deletingAccountStatus: "Deleting account...",
@@ -2746,7 +2746,7 @@
                 passChangedSuccess: "پاسورڊ ڪاميابيءَ سان تبديل ٿي ويو!",
                 settingOptDeleteAccount: "🗑️ اڪائونٽ ڊليٽ ڪريو (Delete Account)",
                 modalDeleteAccountTitle: "🗑️ اڪائونٽ ڊليٽ ڪريو",
-                deleteAccountWarningDesc: "خبردار: اڪائونٽ ڊليٽ ڪرڻ سان توهان جي پروفائيل، پوسٽون ۽ اڪائونٽ هميشه لاءِ ختم ٿي ويندا. تصديق لاءِ پنهنجو پاسورڊ لکو:",
+                deleteAccountWarningDesc: "خبردار: اڪائونٽ ڊليٽ ڪرڻ سان توهان جي پروفائيل، پوسٽون، ڪمينٽس ۽ فائلون هميشه لاءِ ختم ٿي وينديون. چيٽ ۾ توهان جا موڪليل ميسيج انهن ماڻهن وٽ رهندا جن سان توهان چيٽ ڪئي هئي. تصديق لاءِ پنهنجو پاسورڊ لکو:",
                 deleteAccountPassPlaceholder: "پنهنجو اڪائونٽ پاسورڊ لکو",
                 deleteAccountBtn: "اڪائونٽ ڊليٽ ڪريو",
                 deletingAccountStatus: "اڪائونٽ ڊليٽ ٿي رهيو آهي...",
@@ -5113,6 +5113,16 @@
             renderChatFriendsList();
         };
 
+        function getChatUser(uid) {
+            const u = allUsersList.find(x => x.uid === uid);
+            if (u) return u;
+            for (const m of allMyMessages) {
+                const n = m.deletedUserNames && m.deletedUserNames[uid];
+                if (n) return { uid: uid, name: n + ' (Deleted account)', photoUrl: null, deleted: true };
+            }
+            return null;
+        }
+
         window.renderChatFriendsList = function() {
             const t = translations[currentLang];
             const container = document.getElementById('popup-chat-friends-list');
@@ -5125,7 +5135,8 @@
                 if (m.receiverId && m.receiverId !== currentUserObj.uid) chatPartnerIds.add(m.receiverId);
             });
 
-            const chatUsers = allUsersList.filter(u => chatPartnerIds.has(u.uid));
+            const chatUsers = [];
+            chatPartnerIds.forEach(id => { const cu = getChatUser(id); if (cu) chatUsers.push(cu); });
 
             if (chatUsers.length === 0) {
                 container.innerHTML = `<p style="text-align:center; color:#666; font-size:13px; padding:16px;">${t.noFriends}</p>`;
@@ -5155,8 +5166,8 @@
             enriched.forEach(item => {
                 const u = item.user;
                 const avatarInner = getAvatarHTML(u.photoUrl, u.name);
-                const ringCls = getOnlineRingClass(u);
-                const onlineRingCls = getOnlineRingClass(u);
+                const ringCls = u.deleted ? '' : getOnlineRingClass(u);
+                const onlineRingCls = ringCls;
                 let previewText = t.tapToChat;
                 if (item.lastMsg) {
                     const prefix = item.lastMsg.senderId === currentUserObj.uid ? t.youPrefix : "";
@@ -5186,7 +5197,7 @@
         // ================= Long-press a chat in the list -> Delete / Cancel =================
         window.deleteWholeChat = async function (friendUid) {
             const t = translations[currentLang];
-            const friend = allUsersList.find(u => u.uid === friendUid);
+            const friend = getChatUser(friendUid);
             const ok = await showCustomConfirm(
                 wl('waDelChatTitle'),
                 wl('waDelChatDesc').replace('{name}', (friend && friend.name) || wl('waUser')),
@@ -5244,7 +5255,7 @@
 
         window.openFriendChat = async function(friendUid) {
             clearMsgSelection(); clearReply();
-            const friendUser = allUsersList.find(u => u.uid === friendUid);
+            const friendUser = getChatUser(friendUid);
             if (!friendUser) return;
 
             activeChatFriendUid = friendUid;
@@ -5255,10 +5266,16 @@
             document.getElementById('wa-active-friend-avatar').innerHTML = getAvatarHTML(friendUser.photoUrl, friendUser.name);
 
             renderActiveChatMessages();
-            await markFriendMessagesAsRead(friendUid);
+            const chatInputEl = document.getElementById('wa-chat-input');
+            if (chatInputEl) {
+                if (chatInputEl.dataset.ph === undefined) chatInputEl.dataset.ph = chatInputEl.placeholder;
+                chatInputEl.disabled = !!friendUser.deleted;
+                chatInputEl.placeholder = friendUser.deleted ? 'This account was deleted' : chatInputEl.dataset.ph;
+            }
+            if (!friendUser.deleted) await markFriendMessagesAsRead(friendUid);
             setTimeout(() => {
                 const input = document.getElementById('wa-chat-input');
-                if (input) input.focus();
+                if (input && !friendUser.deleted) input.focus();
             }, 100);
         };
 
@@ -6024,6 +6041,7 @@
         };
 
         async function sendMessageCore(toUid, text, extra = {}) {
+            if (!allUsersList.some(u => u.uid === toUid)) { if (typeof waToast === 'function') waToast('This account was deleted'); return; }
             const now = new Date();
             const timeText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -6130,6 +6148,7 @@
             const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " · " + now.toLocaleDateString();
             await addDoc(collection(db, "notifications"), {
                 toUid: toUid,
+                fromUid: currentUserObj.uid,
                 fromName: currentUserObj.name,
                 type: type,
                 isOwnPost: isOwnPost,
@@ -6951,6 +6970,124 @@
             }
         };
 
+        // ================= Full account data purge (Firestore + Google Drive) =================
+        // Chat messages are intentionally KEPT, so the other person still has the conversation.
+        function driveDeleteFile(fileId, idx) {
+            if (!fileId) return;
+            const url = DRIVE_URLS[typeof idx === 'number' ? idx : 0] || DRIVE_URLS[0];
+            if (!url) return;
+            fetch(url, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'delete', fileId: fileId }) }).catch(() => {});
+        }
+        async function purgeAccountData(uid, email, userData) {
+            userData = userData || {};
+            const cleanEmail = (email || '').trim().toLowerCase();
+
+            // 1) Chats stay with the other person. Only remember the name so the chat still shows who it was.
+            try {
+                const msgSnap = await getDocs(query(collection(db, "messages"), where("participants", "array-contains", uid)));
+                for (const m of msgSnap.docs) {
+                    await updateDoc(doc(db, "messages", m.id), { ["deletedUserNames." + uid]: userData.name || 'User' }).catch(() => {});
+                }
+            } catch (e) {}
+
+            // 2) User's own posts + their Drive images
+            try {
+                const postsSnap = await getDocs(query(collection(db, "posts"), where("authorId", "==", uid)));
+                for (const pDoc of postsSnap.docs) {
+                    const pd = pDoc.data() || {};
+                    if (pd.imageFileId) driveDeleteFile(pd.imageFileId, pd.driveIndex);
+                    await deleteDoc(doc(db, "posts", pDoc.id)).catch(() => {});
+                }
+            } catch (e) {}
+
+            // 3) User's announcements + their Drive images
+            try {
+                const annSnap = await getDocs(query(collection(db, "announcements"), where("authorId", "==", uid)));
+                for (const aDoc of annSnap.docs) {
+                    const ad = aDoc.data() || {};
+                    if (ad.imageFileId) driveDeleteFile(ad.imageFileId, ad.driveIndex);
+                    await deleteDoc(doc(db, "announcements", aDoc.id)).catch(() => {});
+                }
+            } catch (e) {}
+
+            // 4) Remove the user's comments, comment-likes, likes and unlikes from other people's posts
+            try {
+                const allPosts = await getDocs(collection(db, "posts"));
+                for (const pd of allPosts.docs) {
+                    const d = pd.data() || {};
+                    if (d.authorId === uid) continue;
+                    const patch = {};
+                    if (Array.isArray(d.likes) && d.likes.includes(uid)) patch.likes = arrayRemove(uid);
+                    if (Array.isArray(d.unlikes) && d.unlikes.includes(uid)) patch.unlikes = arrayRemove(uid);
+                    if (Array.isArray(d.comments) && d.comments.some(c => c && (c.authorId === uid || (c.likes || []).includes(uid) || (c.unlikes || []).includes(uid)))) {
+                        patch.comments = d.comments
+                            .filter(c => !(c && c.authorId === uid))
+                            .map(c => {
+                                if (!c) return c;
+                                const n = { ...c };
+                                if (Array.isArray(n.likes)) n.likes = n.likes.filter(x => x !== uid);
+                                if (Array.isArray(n.unlikes)) n.unlikes = n.unlikes.filter(x => x !== uid);
+                                return n;
+                            });
+                    }
+                    if (Object.keys(patch).length) await updateDoc(doc(db, "posts", pd.id), patch).catch(() => {});
+                }
+            } catch (e) {}
+
+            // 5) History + notifications (received and sent)
+            try {
+                const histSnap = await getDocs(query(collection(db, "history"), where("uid", "==", uid)));
+                for (const h of histSnap.docs) await deleteDoc(doc(db, "history", h.id)).catch(() => {});
+            } catch (e) {}
+            try {
+                const nSnap = await getDocs(query(collection(db, "notifications"), where("toUid", "==", uid)));
+                for (const n of nSnap.docs) await deleteDoc(doc(db, "notifications", n.id)).catch(() => {});
+            } catch (e) {}
+            try {
+                const nSnap2 = await getDocs(query(collection(db, "notifications"), where("fromUid", "==", uid)));
+                for (const n of nSnap2.docs) await deleteDoc(doc(db, "notifications", n.id)).catch(() => {});
+            } catch (e) {}
+
+            // 6) Email verification / password reset tokens
+            if (cleanEmail) {
+                for (const col of ["email_verifications", "password_resets"]) {
+                    try {
+                        const tSnap = await getDocs(query(collection(db, col), where("email", "==", cleanEmail)));
+                        for (const t of tSnap.docs) await deleteDoc(doc(db, col, t.id)).catch(() => {});
+                    } catch (e) {}
+                }
+            }
+
+            // 7) Profile photo on Google Drive
+            if (userData.photoFileId) driveDeleteFile(userData.photoFileId, userData.photoDriveIndex);
+
+            // 8) Remove from other users' friends / friend requests
+            try {
+                const allUsersSnap = await getDocs(collection(db, "users"));
+                for (const otherDoc of allUsersSnap.docs) {
+                    if (otherDoc.id === uid) continue;
+                    const oData = otherDoc.data() || {};
+                    const hasFriend = Array.isArray(oData.friends) && oData.friends.includes(uid);
+                    const hasReq = Array.isArray(oData.friendRequests) && oData.friendRequests.includes(uid);
+                    if (hasFriend || hasReq) {
+                        const patch = {};
+                        if (hasFriend) patch.friends = arrayRemove(uid);
+                        if (hasReq) patch.friendRequests = arrayRemove(uid);
+                        await updateDoc(doc(db, "users", otherDoc.id), patch).catch(() => {});
+                    }
+                }
+            } catch (e) {}
+
+            // 9) Profile document (also stale docs with the same email) - includes FCM tokens, email, etc.
+            await deleteDoc(doc(db, "users", uid)).catch(() => {});
+            if (cleanEmail) {
+                try {
+                    const sameEmailSnap = await getDocs(query(collection(db, "users"), where("email", "==", cleanEmail)));
+                    for (const uDoc of sameEmailSnap.docs) await deleteDoc(doc(db, "users", uDoc.id)).catch(() => {});
+                } catch (e) {}
+            }
+        }
+
         window.deleteUserAccount = async function() {
             const t = translations[currentLang];
             if (!navigator.onLine) {
@@ -6987,56 +7124,7 @@
 
                 const uidToDelete = authUser.uid;
 
-                // Delete user's posts
-                try {
-                    const postsSnap = await getDocs(query(collection(db, "posts"), where("authorId", "==", uidToDelete)));
-                    for (const pDoc of postsSnap.docs) {
-                        await deleteDoc(doc(db, "posts", pDoc.id)).catch(() => {});
-                    }
-                } catch (e) {}
-
-                // Delete user's history & notifications
-                try {
-                    const histSnap = await getDocs(query(collection(db, "history"), where("uid", "==", uidToDelete)));
-                    for (const hDoc of histSnap.docs) {
-                        await deleteDoc(doc(db, "history", hDoc.id)).catch(() => {});
-                    }
-                } catch (e) {}
-
-                try {
-                    const notifSnap = await getDocs(query(collection(db, "notifications"), where("toUid", "==", uidToDelete)));
-                    for (const nDoc of notifSnap.docs) {
-                        await deleteDoc(doc(db, "notifications", nDoc.id)).catch(() => {});
-                    }
-                } catch (e) {}
-
-                // Remove deleted user from other users' friends & friendRequests arrays
-                try {
-                    const allUsersSnap = await getDocs(collection(db, "users"));
-                    for (const otherDoc of allUsersSnap.docs) {
-                        if (otherDoc.id === uidToDelete) continue;
-                        const oData = otherDoc.data() || {};
-                        const hasFriend = Array.isArray(oData.friends) && oData.friends.includes(uidToDelete);
-                        const hasReq = Array.isArray(oData.friendRequests) && oData.friendRequests.includes(uidToDelete);
-                        if (hasFriend || hasReq) {
-                            const patch = {};
-                            if (hasFriend) patch.friends = arrayRemove(uidToDelete);
-                            if (hasReq) patch.friendRequests = arrayRemove(uidToDelete);
-                            await updateDoc(doc(db, "users", otherDoc.id), patch).catch(() => {});
-                        }
-                    }
-                } catch (e) {}
-
-                // Delete user profile document (and any stale docs with same email)
-                await deleteDoc(doc(db, "users", uidToDelete)).catch(() => {});
-                if (authUser.email) {
-                    try {
-                        const sameEmailSnap = await getDocs(query(collection(db, "users"), where("email", "==", authUser.email.trim().toLowerCase())));
-                        for (const uDoc of sameEmailSnap.docs) {
-                            await deleteDoc(doc(db, "users", uDoc.id)).catch(() => {});
-                        }
-                    } catch (e) {}
-                }
+                await purgeAccountData(uidToDelete, authUser.email, currentUserObj || {});
 
                 // Delete Firebase Auth account
                 await deleteUser(authUser);
@@ -8409,44 +8497,7 @@
             );
             if (!confirmed) return;
 
-            try {
-                const postsSnap = await getDocs(query(collection(db, "posts"), where("authorId", "==", targetUid)));
-                for (const pDoc of postsSnap.docs) {
-                    await deleteDoc(doc(db, "posts", pDoc.id)).catch(() => {});
-                }
-            } catch (e) {}
-
-            try {
-                const histSnap = await getDocs(query(collection(db, "history"), where("uid", "==", targetUid)));
-                for (const hDoc of histSnap.docs) {
-                    await deleteDoc(doc(db, "history", hDoc.id)).catch(() => {});
-                }
-            } catch (e) {}
-
-            try {
-                const notifSnap = await getDocs(query(collection(db, "notifications"), where("toUid", "==", targetUid)));
-                for (const nDoc of notifSnap.docs) {
-                    await deleteDoc(doc(db, "notifications", nDoc.id)).catch(() => {});
-                }
-            } catch (e) {}
-
-            try {
-                const allUsersSnap = await getDocs(collection(db, "users"));
-                for (const otherDoc of allUsersSnap.docs) {
-                    if (otherDoc.id === targetUid) continue;
-                    const oData = otherDoc.data() || {};
-                    const hasFriend = Array.isArray(oData.friends) && oData.friends.includes(targetUid);
-                    const hasReq = Array.isArray(oData.friendRequests) && oData.friendRequests.includes(targetUid);
-                    if (hasFriend || hasReq) {
-                        const patch = {};
-                        if (hasFriend) patch.friends = arrayRemove(targetUid);
-                        if (hasReq) patch.friendRequests = arrayRemove(targetUid);
-                        await updateDoc(doc(db, "users", otherDoc.id), patch).catch(() => {});
-                    }
-                }
-            } catch (e) {}
-
-            await deleteDoc(doc(db, "users", targetUid)).catch(() => {});
+            await purgeAccountData(targetUid, targetUser.email, targetUser);
             allUsersList = allUsersList.filter(u => u.uid !== targetUid);
             adminDetailsTargetUid = null;
             closePopup();
