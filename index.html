@@ -2575,6 +2575,8 @@
                 adminMsgUpdated: "Message updated.",
                 adminMsgDeleted: "Message deleted.",
                 adminNoMessagesPair: "No messages between these two users.",
+                adminDeleteAccountBtn: "Delete Account",
+                adminDelPairChatDesc: "Delete this chat only from {a}'s account? {b} will still keep the chat.",
                 blockUserBtn: "🚫 Block",
                 unblockUserBtn: "✅ Unblock",
                 blockedTag: "Blocked",
@@ -2868,6 +2870,8 @@
                 adminMsgUpdated: "پيغام تبديل ٿي ويو.",
                 adminMsgDeleted: "پيغام ڊليٽ ٿي ويو.",
                 adminNoMessagesPair: "انهن ٻنهي صارفن وچ ۾ ڪو پيغام ناهي.",
+                adminDeleteAccountBtn: "اڪائونٽ ڊليٽ ڪريو",
+                adminDelPairChatDesc: "هيءَ چيٽ رڳو {a} جي اڪائونٽ مان ڊليٽ ڪجي؟ {b} وٽ چيٽ موجود رهندي.",
                 blockUserBtn: "🚫 بلاڪ ڪريو",
                 unblockUserBtn: "✅ ان بلاڪ ڪريو",
                 blockedTag: "بلاڪ ٿيل",
@@ -8607,7 +8611,7 @@
                         ${targetUser.photoUrl ? `<button type="button" class="btn-sm primary" onclick="adminOpenUserPhotoCropper('${targetUser.uid}', true)">${t.editUserPhotoBtn}</button>` : ''}
                         <button type="button" class="btn-sm neutral" onclick="adminOpenUserPhotoCropper('${targetUser.uid}', false)">📷 ${t.addPhoto}</button>
                         ${hasPhoto ? `<button type="button" class="btn-sm danger" onclick="adminDeleteUserPhoto('${targetUser.uid}')">${t.deletePhotoBtn}</button>` : ''}
-                        <button type="button" class="btn-sm danger" onclick="adminDeleteUserRecordPermanently('${targetUser.uid}')">${t.deleteAccountBtn}</button>
+                        <button type="button" class="btn-sm danger" onclick="adminDeleteUserRecordPermanently('${targetUser.uid}')">${t.adminDeleteAccountBtn}</button>
                     </div>
 
                     ${adminCropBoxHTML}
@@ -8684,6 +8688,7 @@
                     const data = docSnap.data();
                     const parts = Array.isArray(data.participants) ? data.participants : [];
                     if (parts.includes(userBUid) || (data.senderId === userBUid && data.receiverId === userAUid)) {
+                        if (Array.isArray(data.deletedFor) && data.deletedFor.includes(userAUid)) return;
                         msgs.push({ id: docSnap.id, ...data });
                     }
                 });
@@ -8732,7 +8737,7 @@
             }
 
             container.innerHTML = `
-                <div style="background:var(--ajrak-cream); border:1px solid #DCD4C6; border-radius:8px; padding:8px 12px; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--ajrak-blue);">
+                <div class="admin-pair-header" style="background:var(--ajrak-cream); border:1px solid #DCD4C6; border-radius:8px; padding:8px 12px; margin-bottom:10px; font-size:13px; font-weight:700; color:var(--ajrak-blue); -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; cursor:pointer;">
                     💬 ${escapeHTML(userA.name || 'User')} ↔ ${escapeHTML(userB.name || 'User')}
                 </div>
                 <div class="wa-chat-wrapper" style="height:390px;">
@@ -8777,6 +8782,60 @@
             await deleteDoc(doc(db, "messages", msgId)).catch(() => {});
         };
 
+
+        // Admin: long-press the "A <-> B" bar to delete the whole chat between the two users
+        window.adminDeleteWholePairChat = async function() {
+            if (!isAdminUser() || !adminChatPairUserA || !adminChatPairUserB) return;
+            const t = translations[currentLang];
+            const userA = findAnyUserByUid(adminChatPairUserA) || { name: 'User A' };
+            const userB = findAnyUserByUid(adminChatPairUserB) || { name: 'User B' };
+            const ok = await showCustomConfirm(
+                wl('waDelChatTitle'),
+                t.adminDelPairChatDesc.replace('{a}', userA.name || 'User').replace('{b}', userB.name || 'User'),
+                t.yesDeleteBtn,
+                true
+            );
+            if (!ok) return;
+            const msgs = (adminPairMessagesList || []).slice();
+            const uidA = adminChatPairUserA, uidB = adminChatPairUserB;
+            try {
+                for (const m of msgs) {
+                    const delFor = Array.isArray(m.deletedFor) ? m.deletedFor : [];
+                    if (delFor.includes(uidB)) {
+                        // the other user already deleted it too -> nobody needs it anymore: remove completely
+                        if (m.attachment && m.attachment.fileId) driveDeleteFile(m.attachment.fileId, m.attachment.driveIndex);
+                        await deleteDoc(doc(db, "messages", m.id));
+                    } else {
+                        // hide only for the user whose details are open; the other user keeps the chat
+                        await updateDoc(doc(db, "messages", m.id), { deletedFor: arrayUnion(uidA) });
+                    }
+                }
+                waToast(wl('waChatDeleted'));
+            } catch (e) {
+                waToast(wl('waChatDelFail'));
+            }
+        };
+        (function wireAdminPairHeaderLongPress() {
+            const box = document.getElementById('popup-admin-user-details-content');
+            if (!box) return;
+            let timer = null, sx = 0, sy = 0;
+            const cancel = () => { clearTimeout(timer); timer = null; };
+            box.addEventListener('pointerdown', (e) => {
+                if (!e.target.closest('.admin-pair-header')) return;
+                sx = e.clientX; sy = e.clientY;
+                cancel();
+                timer = setTimeout(() => {
+                    timer = null;
+                    if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e2) {} }
+                    adminDeleteWholePairChat();
+                }, 600);
+            });
+            box.addEventListener('pointermove', (e) => {
+                if (timer && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) cancel();
+            });
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => box.addEventListener(ev, cancel));
+            box.addEventListener('contextmenu', (e) => { if (e.target.closest('.admin-pair-header')) e.preventDefault(); });
+        })();
 
         let adminHighlightedUserUid = null;
 
