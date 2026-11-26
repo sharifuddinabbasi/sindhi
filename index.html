@@ -541,6 +541,8 @@
             transition: 0.15s;
         }
 
+        .chat-friend-row { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
         .chat-friend-row:hover {
             background: var(--ajrak-cream);
             border-color: #25D366;
@@ -4989,7 +4991,7 @@
                     : '';
 
                 container.innerHTML += `
-                    <div class="chat-friend-row" onclick="openFriendChat('${u.uid}')">
+                    <div class="chat-friend-row" data-uid="${u.uid}" onclick="openFriendChat('${u.uid}')">
                         <div class="chat-friend-left">
                             <div class="mini-avatar ${ringCls}">${avatarInner}</div>
                             <div class="chat-friend-meta">
@@ -5002,6 +5004,66 @@
                 `;
             });
         };
+
+
+        // ================= Long-press a chat in the list -> Delete / Cancel =================
+        window.deleteWholeChat = async function (friendUid) {
+            const t = translations[currentLang];
+            const friend = allUsersList.find(u => u.uid === friendUid);
+            const ok = await showCustomConfirm(
+                'Delete chat?',
+                'All messages in your chat with ' + ((friend && friend.name) || 'this user') + ' will be deleted. This cannot be undone.',
+                'Yes, Delete',
+                true
+            );
+            if (!ok) return;
+            const msgs = allMyMessages.filter(m =>
+                (m.senderId === friendUid && m.receiverId === currentUserObj.uid) ||
+                (m.senderId === currentUserObj.uid && m.receiverId === friendUid)
+            );
+            try {
+                await Promise.all(msgs.map(m => updateDoc(doc(db, "messages", m.id), { deletedFor: arrayUnion(currentUserObj.uid) })));
+                // update the list right away without waiting for the server round trip
+                allMyMessages = allMyMessages.filter(m => !msgs.some(x => x.id === m.id));
+                renderChatFriendsList();
+                waToast('Chat deleted');
+            } catch (e) {
+                waToast('Could not delete chat');
+            }
+        };
+        (function wireChatListLongPress() {
+            const box = document.getElementById('popup-chat-friends-list');
+            if (!box) return;
+            let timer = null, fired = false, sx = 0, sy = 0;
+            const cancel = () => { clearTimeout(timer); timer = null; };
+            box.addEventListener('pointerdown', (e) => {
+                const row = e.target.closest('.chat-friend-row');
+                if (!row || !row.dataset.uid) return;
+                fired = false; sx = e.clientX; sy = e.clientY;
+                cancel();
+                timer = setTimeout(() => {
+                    fired = true;
+                    if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e2) {} }
+                    const uid = row.dataset.uid;
+                    const friend = allUsersList.find(u => u.uid === uid);
+                    openWaSheet((friend && friend.name) || 'Chat', [
+                        { label: 'Delete', cls: 'danger', onClick: () => deleteWholeChat(uid) },
+                        { label: 'Cancel' }
+                    ]);
+                }, 500);
+            });
+            box.addEventListener('pointermove', (e) => {
+                if (timer && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) cancel();
+            });
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => box.addEventListener(ev, cancel));
+            box.addEventListener('scroll', cancel, { passive: true });
+            box.addEventListener('contextmenu', (e) => { if (e.target.closest('.chat-friend-row')) e.preventDefault(); });
+            // after a long press, swallow the click so the chat does not open
+            box.addEventListener('click', (e) => {
+                if (fired) { fired = false; e.stopPropagation(); e.preventDefault(); }
+            }, true);
+        })();
+        // =============================================================================================
 
         window.openFriendChat = async function(friendUid) {
             clearMsgSelection(); clearReply();
