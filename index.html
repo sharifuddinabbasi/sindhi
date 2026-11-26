@@ -2126,6 +2126,45 @@
                 try { history.replaceState({}, '', location.pathname); } catch (e) {}
             }
         })();
+        // ---- Notification tap: open the chat of the person who sent the message ----
+        let pendingOpenMsgId = urlParams.get('openMsg') || null;
+        if (pendingOpenMsgId) {
+            try {
+                const cleanUrl = new URL(location.href);
+                cleanUrl.searchParams.delete('openMsg');
+                history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+            } catch (e) {}
+        }
+        async function handlePendingOpenMsg() {
+            if (!pendingOpenMsgId || !currentUserObj) return;
+            const id = pendingOpenMsgId;
+            pendingOpenMsgId = null;
+            let senderId = null;
+            if (id !== 'none') {
+                try {
+                    const snap = await getDoc(doc(db, "messages", id));
+                    if (snap.exists()) {
+                        const d = snap.data();
+                        if (d.receiverId === currentUserObj.uid) senderId = d.senderId;
+                    }
+                } catch (e) {}
+            }
+            for (let i = 0; i < 25 && senderId && !allUsersList.find(u => u.uid === senderId); i++) {
+                await new Promise(r => setTimeout(r, 400));
+            }
+            await window.openPopup('messages');
+            if (senderId && allUsersList.find(u => u.uid === senderId)) {
+                await window.openFriendChat(senderId);
+            }
+        }
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', (ev) => {
+                if (ev.data && ev.data.type === 'OPEN_CHAT') {
+                    pendingOpenMsgId = ev.data.msgId || 'none';
+                    handlePendingOpenMsg();
+                }
+            });
+        }
         function applyPendingShare() {
             if (!pendingShareText) return;
             const ta = document.getElementById('post-text');
@@ -4512,6 +4551,7 @@
                 listenToAnnouncements();
                 ensureDefaultWelcomeAnnouncementForUser();
                 setTimeout(applyPendingShare, 600);
+                setTimeout(handlePendingOpenMsg, 800);
             } else {
                 currentUserObj = null;
                 document.getElementById('feed-section').classList.add('hidden');

@@ -1,7 +1,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-const CACHE_NAME = "sindhi-world-book-v108";
+const CACHE_NAME = "sindhi-world-book-v109";
 const ASSETS = [
   "./",
   "./index.html",
@@ -40,7 +40,7 @@ messaging.onBackgroundMessage((payload) => {
     tag: "sindhi-world-book-msg",
     renotify: true,
     requireInteraction: false,
-    data: { url: "./index.html" }
+    data: { url: "./index.html", msgId: data.msgId || "" }
   });
 });
 
@@ -113,14 +113,21 @@ self.addEventListener("message", (event) => {
 });
 
 self.addEventListener("notificationclick", (event) => {
+  const msgId = (event.notification.data && event.notification.data.msgId) || "";
   event.notification.close();
   event.waitUntil(
     clearAllMsgNotificationsAndBadge().then(() =>
       clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
         for (const client of clientList) {
-          if ("focus" in client) return client.focus();
+          if ("focus" in client) {
+            // App already open: tell it to open the chat of this message
+            client.postMessage({ type: "OPEN_CHAT", msgId: msgId });
+            return client.focus();
+          }
         }
-        if (clients.openWindow) return clients.openWindow("./index.html");
+        // App closed: start it and let it open the chat
+        const target = msgId ? "./index.html?openMsg=" + encodeURIComponent(msgId) : "./index.html";
+        if (clients.openWindow) return clients.openWindow(target);
       })
     )
   );
