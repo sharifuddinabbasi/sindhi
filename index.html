@@ -5348,7 +5348,7 @@
                             ${tickHTML}
                         </div>
                         ${msgReactionsHTML(m)}
-                        ${(isMine && m.id === lastMineId && m.pushResult && m.pushResult !== 'ok') ? `<div style="font-size:10px;color:#888;max-width:230px;word-break:break-all;margin-top:2px;">push problem: ${escapeHTML(m.pushResult)}</div>` : ''}
+                        ${(isAdminUser() && isMine && m.id === lastMineId && m.pushResult && m.pushResult !== 'ok') ? `<div style="font-size:10px;color:#888;max-width:230px;word-break:break-all;margin-top:2px;">push problem: ${escapeHTML(m.pushResult)}</div>` : ''}
                     </div>
                 `;
             });
@@ -6122,6 +6122,10 @@
                                     else if (Array.isArray(p.results) && p.results[0]) short = "code " + p.results[0].code + " " + String(p.results[0].body || "").slice(0, 100);
                                 } catch (e) {}
                                 savePush(short);
+                                // Dead token (app reinstalled / logged out): remove it so the receiver gets a fresh one on next login
+                                if (/UNREGISTERED|NOT_FOUND|Device unregistered/i.test(String(txt))) {
+                                    updateDoc(doc(db, "users", toUid), { fcmTokens: [], lastFcmToken: null }).catch(() => {});
+                                }
                                 try {
                                     const parsed = JSON.parse(txt);
                                     const okByCodes = Array.isArray(parsed.codes) && parsed.codes.includes(200);
