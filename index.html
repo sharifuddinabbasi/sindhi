@@ -2234,10 +2234,10 @@
         }
         // On logout: stop push for this phone (remove token from the user's profile + delete the token on the device)
         async function unregisterFcmPushToken(uid) {
-            try {
-                if (uid) await updateDoc(doc(db, "users", uid), { fcmTokens: [], lastFcmToken: null }).catch(() => {});
-            } catch (e) {}
-            try { if (messaging) await deleteToken(messaging); } catch (e) {}
+            // Never let logout hang (e.g. when the phone is offline): give up waiting after 3 seconds
+            const wait = (p) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise(r => setTimeout(r, 3000))]);
+            if (uid) await wait(updateDoc(doc(db, "users", uid), { fcmTokens: [], lastFcmToken: null }));
+            if (messaging) await wait(deleteToken(messaging));
         }
 
         async function registerFcmPushToken(uid) {
