@@ -5235,6 +5235,9 @@
                     onClick: async () => {
                         clearMsgSelection();
                         try {
+                            if (m.attachment && m.attachment.fileId && DRIVE_URLS[0]) {
+                                fetch(DRIVE_URLS[0], { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'delete', fileId: m.attachment.fileId }) }).catch(() => {});
+                            }
                             await updateDoc(ref, { deletedForAll: true, text: '🚫 This message was deleted', attachment: null, replyTo: null, forwarded: false, reactions: {} });
                         } catch (e) { waToast('Could not delete'); }
                     }
@@ -5259,7 +5262,7 @@
                 label: u.name || 'User',
                 onClick: async () => {
                     try {
-                        await sendMessageCore(u.uid, text, { forwarded: true });
+                        await sendMessageCore(u.uid, text, m.attachment ? { forwarded: true, attachment: m.attachment } : { forwarded: true });
                         waToast('Forwarded to ' + (u.name || 'User'));
                     } catch (e) { waToast('Could not forward'); }
                 }
@@ -5435,7 +5438,7 @@
                 return `<img class="wa-att-img" src="${escapeHTML(a.url || '')}" alt="Photo">`;
             }
             if (a.type === 'audio') {
-                return `<div class="wa-voice" data-mid="${escapeHTML(m.id)}" data-src="${escapeHTML(a.url || '')}" data-dur="${Number(a.dur) || 0}"><button type="button" class="wa-voice-btn">▶</button><div class="wa-voice-bar"><i></i></div><span class="wa-voice-time">${waFmtDur(a.dur)}</span></div>`;
+                return `<div class="wa-voice" data-mid="${escapeHTML(m.id)}" data-dur="${Number(a.dur) || 0}"><button type="button" class="wa-voice-btn">▶</button><div class="wa-voice-bar"><i></i></div><span class="wa-voice-time">${waFmtDur(a.dur)}</span></div>`;
             }
             if (a.type === 'file') {
                 return `<a class="wa-file" href="${escapeHTML(a.url || '#')}" target="_blank" rel="noopener"><span class="wa-file-ic">📄</span><span class="wa-file-meta"><b>${escapeHTML(a.name || 'Document')}</b><small>${escapeHTML(waFmtSize(a.size))}${a.size ? ' · ' : ''}Tap to open</small></span></a>`;
@@ -5599,7 +5602,7 @@
             const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
             const pick = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
             let mr;
-            try { mr = new MediaRecorder(stream, pick ? { mimeType: pick, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 }); }
+            try { mr = new MediaRecorder(stream, pick ? { mimeType: pick, audioBitsPerSecond: 24000 } : { audioBitsPerSecond: 24000 }); }
             catch (e) { stream.getTracks().forEach(t => t.stop()); waToast('Voice recording is not supported here'); return; }
             const r = { mr, stream, chunks: [], t0: Date.now(), cancelled: false, mime: mr.mimeType || pick || 'audio/webm', toUid: activeChatFriendUid, timer: null };
             waRec = r;
@@ -5616,10 +5619,11 @@
                 waToast('Sending voice message...');
                 try {
                     const base = r.mime.split(';')[0];
-                    const ext = base.includes('mp4') ? 'm4a' : (base.includes('ogg') ? 'ogg' : 'webm');
+                                        const ext = base.includes('mp4') ? 'm4a' : (base.includes('ogg') ? 'ogg' : 'webm');
                     const dataUrl = await waReadAsDataURL(new Blob(r.chunks, { type: base }));
+                    // File goes to Google Drive; the message only keeps the small fileId
                     const up = await uploadToAvailableDrive(dataUrl, 'voice_' + Date.now() + '.' + ext, base);
-                    await waSendAttachment(r.toUid, { type: 'audio', url: waDriveDownloadUrl(up.fileId), fileId: up.fileId, mime: base, dur: dur }, '🎤 Voice message');
+                    await waSendAttachment(r.toUid, { type: 'audio', fileId: up.fileId, mime: base, dur: dur }, '🎤 Voice message');
                 } catch (e) { waToast('Could not send voice message'); }
             };
             mr.start();
@@ -5629,7 +5633,7 @@
             r.timer = setInterval(() => {
                 const sec = (Date.now() - r.t0) / 1000;
                 waById('wa-rec-time').textContent = waFmtDur(sec);
-                if (sec >= 180) window.stopVoiceRecord(true);
+                if (sec >= 120) window.stopVoiceRecord(true);
             }, 250);
         };
         window.stopVoiceRecord = function (send) {
@@ -5640,6 +5644,25 @@
         };
 
         // ---- voice playback ----
+        const waVoiceCache = {};
+        let waVoiceLoading = false;
+        async function waLoadVoice(fileId) {
+            if (waVoiceCache[fileId]) return waVoiceCache[fileId];
+            const res = await fetch(DRIVE_URLS[0], {
+                method: 'POST',
+                redirect: 'follow',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: 'get_file', fileId: fileId })
+            });
+            const j = JSON.parse(await res.text());
+            if (j.status !== 'success') throw new Error(j.message || 'load failed');
+            const bin = atob(j.base64);
+            const u8 = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+            const url = URL.createObjectURL(new Blob([u8], { type: j.mimeType || 'audio/webm' }));
+            waVoiceCache[fileId] = url;
+            return url;
+        }
         let waVoice = { mid: null, audio: null };
         function paintVoice() {
             document.querySelectorAll('.wa-voice').forEach(el => {
@@ -5664,7 +5687,7 @@
         (function () {
             const box = waById('wa-messages-container');
             if (!box) return;
-            box.addEventListener('click', (e) => {
+            box.addEventListener('click', async (e) => {
                 if (selectedMsgId) return;
                 const img = e.target.closest('.wa-att-img');
                 if (img) {
@@ -5683,7 +5706,20 @@
                     return;
                 }
                 if (waVoice.audio) waVoice.audio.pause();
-                const au = new Audio(el.dataset.src);
+                const srcMsg = allMyMessages.find(x => x.id === el.dataset.mid);
+                const att = srcMsg && srcMsg.attachment;
+                let src = att ? (att.data || att.url) : '';
+                if (!src && att && att.fileId) {
+                    if (waVoiceLoading) return;
+                    waVoiceLoading = true;
+                    btn.textContent = '…';
+                    try { src = await waLoadVoice(att.fileId); }
+                    catch (err) { waToast('Could not load voice message'); }
+                    waVoiceLoading = false;
+                    if (!src) { paintVoice(); return; }
+                }
+                if (!src) { waToast('Voice message not available'); return; }
+                const au = new Audio(src);
                 waVoice = { mid: el.dataset.mid, audio: au };
                 ['timeupdate', 'play', 'pause', 'loadedmetadata'].forEach(ev => au.addEventListener(ev, paintVoice));
                 au.addEventListener('ended', () => { au.currentTime = 0; waVoice = { mid: null, audio: null }; paintVoice(); });
