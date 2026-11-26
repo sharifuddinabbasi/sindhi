@@ -9884,23 +9884,35 @@ ${shareUrl}`,
             }, 150);
         }
 
-        function arm() {
+        // Chrome skips history entries that were pushed before the user ever tapped the page,
+        // so the trap entry must be pushed from (after) a real user gesture.
+        var trapped = false;
+        function activated() {
+            try { if (navigator.userActivation) return navigator.userActivation.hasBeenActive; } catch (e) {}
+            return true;
+        }
+        function ensureTrap() {
+            if (trapped || exiting || !activated()) return;
             try {
-                history.replaceState({ swb: 'base' }, '', location.href);
                 history.pushState({ swb: 'app' }, '', location.href);
+                trapped = true;
             } catch (e) {}
         }
 
         window.addEventListener('popstate', function () {
             if (exiting) return;
-            // Back was pressed: re-arm first so the next back press is caught too
-            try { history.pushState({ swb: 'app' }, '', location.href); } catch (e) {}
+            trapped = false;          // the trap entry was just consumed by this back press
+            ensureTrap();             // put it back so the next back press is caught too
             if (!closeTopLayer()) showExit();   // nothing open = Screen 1 -> ask to exit
         });
 
-        window.addEventListener('pageshow', function () { exiting = false; });
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arm);
-        else arm();
+        // Arm on every user gesture until the trap exists (also re-arms if a push was refused)
+        ['pointerup', 'touchend', 'click', 'keydown'].forEach(function (ev) {
+            document.addEventListener(ev, ensureTrap, true);
+        });
+
+        window.addEventListener('pageshow', function () { exiting = false; trapped = false; ensureTrap(); });
+        ensureTrap();
     })();
     </script>
 
