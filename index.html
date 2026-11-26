@@ -4833,7 +4833,7 @@
                             <span>${escapeHTML(m.timeText || '')}</span>
                             ${tickHTML}
                         </div>
-                        ${(isMine && m.id === lastMineId && m.pushResult) ? `<div style="font-size:10px;color:#888;max-width:230px;word-break:break-all;margin-top:2px;">push: ${escapeHTML(m.pushResult)}</div>` : ''}
+                        ${(isMine && m.id === lastMineId && m.pushResult && m.pushResult !== 'ok') ? `<div style="font-size:10px;color:#888;max-width:230px;word-break:break-all;margin-top:2px;">push problem: ${escapeHTML(m.pushResult)}</div>` : ''}
                     </div>
                 `;
             });
@@ -4896,7 +4896,15 @@
                             })
                             .then(res => res.text())
                             .then(txt => {
-                                savePush(txt);
+                                let short = String(txt);
+                                try {
+                                    const p = JSON.parse(txt);
+                                    const good = p.status === "sent" && Array.isArray(p.codes) && p.codes.includes(200);
+                                    if (good) short = "ok";
+                                    else if (p.message) short = p.message;
+                                    else if (Array.isArray(p.results) && p.results[0]) short = "code " + p.results[0].code + " " + String(p.results[0].body || "").slice(0, 100);
+                                } catch (e) {}
+                                savePush(short);
                                 try {
                                     const parsed = JSON.parse(txt);
                                     const okByCodes = Array.isArray(parsed.codes) && parsed.codes.includes(200);
