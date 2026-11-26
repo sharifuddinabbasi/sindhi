@@ -699,6 +699,33 @@
             letter-spacing: -1.5px;
         }
 
+        .wa-chat-wrapper { position: relative; }
+        .wa-msg-bubble { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        .wa-msg-selected { outline: 2px solid #00A884; box-shadow: 0 0 0 4px rgba(0,168,132,0.28); }
+        .wa-flash { animation: waFlash 1.1s ease; }
+        @keyframes waFlash { 0%,60% { box-shadow: 0 0 0 4px rgba(255,200,0,0.6); } 100% { box-shadow: none; } }
+        .wa-sel-actions { display: flex; align-items: center; gap: 2px; }
+        .wa-sel-actions button { background: none; border: none; color: #FFFFFF; font-size: 21px; padding: 4px 9px; cursor: pointer; border-radius: 50%; line-height: 1; }
+        .wa-sel-actions button:active { background: rgba(255,255,255,0.18); }
+        #wa-react-bar { position: absolute; top: 54px; left: 50%; transform: translateX(-50%); background: #FFFFFF; border-radius: 30px; padding: 5px 8px; display: flex; gap: 2px; box-shadow: 0 3px 12px rgba(0,0,0,0.35); z-index: 5; }
+        #wa-react-bar button { background: none; border: none; font-size: 24px; padding: 2px 5px; border-radius: 50%; cursor: pointer; line-height: 1.2; }
+        #wa-react-bar button:active { background: #E9EDEF; }
+        .wa-quote { background: rgba(0,0,0,0.06); border-left: 3px solid #00A884; border-radius: 6px; padding: 4px 8px; margin: 0 0 4px; font-size: 12px; color: #444; cursor: pointer; }
+        .wa-quote b { display: block; color: #075E54; font-size: 11.5px; }
+        .wa-fwd { font-size: 11px; color: #667781; font-style: italic; margin-bottom: 2px; }
+        .wa-react-row { display: inline-block; background: #FFFFFF; border: 1px solid #E1E5E8; border-radius: 12px; padding: 0 6px; font-size: 13px; margin-top: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
+        #wa-reply-bar { background: #F0F2F5; border-top: 1px solid #DCD4C6; padding: 6px 10px; display: flex; align-items: center; gap: 8px; }
+        #wa-reply-bar .wa-reply-info { flex: 1; min-width: 0; border-left: 3px solid #00A884; padding-left: 8px; font-size: 12px; color: #444; direction: ltr; text-align: left; }
+        #wa-reply-bar .wa-reply-info b { display: block; color: #075E54; }
+        #wa-reply-bar .wa-reply-info div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #wa-reply-bar button { background: none; border: none; font-size: 18px; color: #667781; cursor: pointer; }
+        .wa-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100000; display: flex; align-items: flex-end; justify-content: center; }
+        .wa-sheet { background: #FFFFFF; width: 100%; max-width: 480px; border-radius: 16px 16px 0 0; padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 8px; max-height: 70vh; overflow-y: auto; }
+        .wa-sheet-title { font-weight: 700; color: #14284B; padding: 2px 4px 4px; }
+        .wa-sheet button { padding: 13px 14px; border-radius: 10px; border: 1px solid #DCD4C6; background: #FAF8F4; font-size: 15px; text-align: left; cursor: pointer; color: #1A1A1A; }
+        .wa-sheet button.danger { color: #8B1E24; font-weight: 700; }
+        .wa-toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #222; color: #FFF; padding: 8px 16px; border-radius: 20px; font-size: 13px; z-index: 100001; max-width: 85%; text-align: center; }
+
         .wa-input-bar {
             background-color: #F0F2F5;
             padding: 8px;
@@ -1783,12 +1810,33 @@
                     </div>
                     <div id="chat-conversation-view" class="hidden">
                         <div class="wa-chat-wrapper">
-                            <div class="wa-chat-topbar">
+                            <div id="wa-sel-bar" class="wa-chat-topbar hidden" style="justify-content:space-between;">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <button type="button" class="wa-back-btn" onclick="clearMsgSelection()">←</button>
+                                    <span style="font-weight:bold; font-size:17px;">1</span>
+                                </div>
+                                <div class="wa-sel-actions">
+                                    <button type="button" id="wa-act-reply" onclick="msgActionReply()" title="Reply">↩</button>
+                                    <button type="button" id="wa-act-copy" onclick="msgActionCopy()" title="Copy">📋</button>
+                                    <button type="button" onclick="msgActionDelete()" title="Delete">🗑</button>
+                                    <button type="button" id="wa-act-forward" onclick="msgActionForward()" title="Forward">↪</button>
+                                </div>
+                            </div>
+                            <div id="wa-react-bar" class="hidden">
+                                <button type="button" onclick="msgReact('👍')">👍</button>
+                                <button type="button" onclick="msgReact('❤️')">❤️</button>
+                                <button type="button" onclick="msgReact('😂')">😂</button>
+                                <button type="button" onclick="msgReact('😮')">😮</button>
+                                <button type="button" onclick="msgReact('😢')">😢</button>
+                                <button type="button" onclick="msgReact('🙏')">🙏</button>
+                            </div>
+                            <div id="wa-main-topbar" class="wa-chat-topbar">
                                 <button type="button" class="wa-back-btn" onclick="backToChatFriendsList()">←</button>
                                 <div id="wa-active-friend-avatar" class="mini-avatar" style="width:32px; height:32px; font-size:14px;"></div>
                                 <div id="wa-active-friend-name" class="wa-chat-topbar-name">Friend</div>
                             </div>
                             <div id="wa-messages-container" class="wa-messages-area"></div>
+                            <div id="wa-reply-bar" class="hidden"></div>
                             <form class="wa-input-bar" onsubmit="sendChatMessage(event)">
                                 <input type="text" id="wa-chat-input" placeholder="Type a message..." autocomplete="off">
                                 <button type="submit" class="wa-send-btn" title="Send">
@@ -4694,6 +4742,7 @@
                     allMyMessages.push({ id: docSnap.id, ...docSnap.data() });
                 });
                 allMyMessages.sort((a, b) => (a.clientTime || 0) - (b.clientTime || 0));
+                allMyMessages = allMyMessages.filter(m => !(Array.isArray(m.deletedFor) && m.deletedFor.includes(currentUserObj.uid)));
 
                 snapshot.docChanges().forEach((change) => {
                     if (change.type === "added" || change.type === "modified") {
@@ -4763,6 +4812,7 @@
         }
 
         window.backToChatFriendsList = function() {
+            clearMsgSelection(); clearReply();
             activeChatFriendUid = null;
             document.getElementById('chat-conversation-view').classList.add('hidden');
             document.getElementById('chat-friends-view').classList.remove('hidden');
@@ -4839,6 +4889,7 @@
         };
 
         window.openFriendChat = async function(friendUid) {
+            clearMsgSelection(); clearReply();
             const friendUser = allUsersList.find(u => u.uid === friendUid);
             if (!friendUser) return;
 
@@ -4889,21 +4940,265 @@
                 }
 
                 html += `
-                    <div class="wa-msg-bubble ${isMine ? 'wa-msg-sent' : 'wa-msg-received'}">
-                        <div>${escapeHTML(m.text)}</div>
+                    <div class="wa-msg-bubble ${isMine ? 'wa-msg-sent' : 'wa-msg-received'}${selectedMsgId === m.id ? ' wa-msg-selected' : ''}" data-mid="${m.id}">
+                        ${msgExtrasTopHTML(m)}<div${m.deletedForAll ? ' style="font-style:italic;color:#667781;"' : ''}>${escapeHTML(m.text)}</div>
                         <div class="wa-msg-meta">
                             <span>${escapeHTML(m.timeText || '')}</span>
                             ${tickHTML}
                         </div>
+                        ${msgReactionsHTML(m)}
                         ${(isMine && m.id === lastMineId && m.pushResult && m.pushResult !== 'ok') ? `<div style="font-size:10px;color:#888;max-width:230px;word-break:break-all;margin-top:2px;">push problem: ${escapeHTML(m.pushResult)}</div>` : ''}
                     </div>
                 `;
             });
 
             container.innerHTML = html;
-            container.scrollTop = container.scrollHeight;
+            if (!selectedMsgId) container.scrollTop = container.scrollHeight;
         }
 
+        // ================= Message long-press menu (reply / copy / delete / forward / reactions) =================
+        let selectedMsgId = null;
+        let replyingTo = null;
+
+        function waToast(text) {
+            const old = document.getElementById('wa-toast');
+            if (old) old.remove();
+            const el = document.createElement('div');
+            el.id = 'wa-toast';
+            el.className = 'wa-toast';
+            el.textContent = text;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1800);
+        }
+        function closeWaSheet() {
+            const o = document.getElementById('wa-sheet-overlay');
+            if (o) o.remove();
+        }
+        function openWaSheet(title, buttons) {
+            closeWaSheet();
+            const ov = document.createElement('div');
+            ov.id = 'wa-sheet-overlay';
+            ov.className = 'wa-sheet-overlay';
+            const sh = document.createElement('div');
+            sh.className = 'wa-sheet';
+            if (title) {
+                const hd = document.createElement('div');
+                hd.className = 'wa-sheet-title';
+                hd.textContent = title;
+                sh.appendChild(hd);
+            }
+            buttons.forEach(b => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = b.label;
+                if (b.cls) btn.className = b.cls;
+                btn.onclick = async () => { closeWaSheet(); if (b.onClick) await b.onClick(); };
+                sh.appendChild(btn);
+            });
+            ov.appendChild(sh);
+            ov.addEventListener('click', (e) => { if (e.target === ov) closeWaSheet(); });
+            document.body.appendChild(ov);
+        }
+
+        function getSelectedMsg() {
+            return allMyMessages.find(m => m.id === selectedMsgId) || null;
+        }
+        function msgExtrasTopHTML(m) {
+            if (m.deletedForAll) return '';
+            let out = '';
+            if (m.forwarded) out += '<div class="wa-fwd">↪ Forwarded</div>';
+            if (m.replyTo && m.replyTo.text !== undefined) {
+                const rn = m.replyTo.senderId === currentUserObj.uid
+                    ? 'You'
+                    : ((allUsersList.find(u => u.uid === m.replyTo.senderId) || {}).name || 'User');
+                out += `<div class="wa-quote" data-qid="${escapeHTML(m.replyTo.id || '')}"><b>${escapeHTML(rn)}</b>${escapeHTML(String(m.replyTo.text).slice(0, 100))}</div>`;
+            }
+            return out;
+        }
+        function msgReactionsHTML(m) {
+            if (m.deletedForAll || !m.reactions) return '';
+            const vals = Object.values(m.reactions).filter(Boolean);
+            if (!vals.length) return '';
+            const uniq = [...new Set(vals)].join('');
+            return `<div class="wa-react-row">${escapeHTML(uniq)}${vals.length > 1 ? ' ' + vals.length : ''}</div>`;
+        }
+
+        function updateSelectionUI() {
+            const sel = document.getElementById('wa-sel-bar');
+            const main = document.getElementById('wa-main-topbar');
+            const react = document.getElementById('wa-react-bar');
+            if (!sel || !main || !react) return;
+            const m = selectedMsgId ? getSelectedMsg() : null;
+            if (!m) {
+                selectedMsgId = null;
+                sel.classList.add('hidden');
+                react.classList.add('hidden');
+                main.classList.remove('hidden');
+                return;
+            }
+            main.classList.add('hidden');
+            sel.classList.remove('hidden');
+            const del = !!m.deletedForAll;
+            ['wa-act-reply', 'wa-act-copy', 'wa-act-forward'].forEach(id => {
+                const b = document.getElementById(id);
+                if (b) b.classList.toggle('hidden', del);
+            });
+            react.classList.toggle('hidden', del);
+        }
+        function selectMsg(id) {
+            selectedMsgId = id;
+            updateSelectionUI();
+            renderActiveChatMessages();
+        }
+        window.clearMsgSelection = function () {
+            if (!selectedMsgId) { updateSelectionUI(); return; }
+            selectedMsgId = null;
+            updateSelectionUI();
+            if (activeChatFriendUid) renderActiveChatMessages();
+        };
+
+        window.clearReply = function () {
+            replyingTo = null;
+            const bar = document.getElementById('wa-reply-bar');
+            if (bar) { bar.classList.add('hidden'); bar.innerHTML = ''; }
+        };
+        function showReplyBar() {
+            const bar = document.getElementById('wa-reply-bar');
+            if (!bar || !replyingTo) return;
+            const name = replyingTo.senderId === currentUserObj.uid
+                ? 'You'
+                : ((allUsersList.find(u => u.uid === replyingTo.senderId) || {}).name || 'User');
+            bar.innerHTML = `<div class="wa-reply-info"><b>${escapeHTML(name)}</b><div>${escapeHTML(String(replyingTo.text || '').slice(0, 80))}</div></div><button type="button" onclick="clearReply()">✕</button>`;
+            bar.classList.remove('hidden');
+        }
+
+        window.msgActionReply = function () {
+            const m = getSelectedMsg();
+            if (!m || m.deletedForAll) return;
+            replyingTo = { id: m.id, text: m.text, senderId: m.senderId };
+            clearMsgSelection();
+            showReplyBar();
+            setTimeout(() => { const i = document.getElementById('wa-chat-input'); if (i) i.focus(); }, 50);
+        };
+        window.msgActionCopy = async function () {
+            const m = getSelectedMsg();
+            if (!m || m.deletedForAll) return;
+            try {
+                await navigator.clipboard.writeText(m.text || '');
+            } catch (e) {
+                const ta = document.createElement('textarea');
+                ta.value = m.text || '';
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); } catch (e2) {}
+                ta.remove();
+            }
+            clearMsgSelection();
+            waToast('Copied');
+        };
+        window.msgActionDelete = function () {
+            const m = getSelectedMsg();
+            if (!m) return;
+            const ref = doc(db, "messages", m.id);
+            const buttons = [{
+                label: 'Delete for me',
+                onClick: async () => {
+                    clearMsgSelection();
+                    try { await updateDoc(ref, { deletedFor: arrayUnion(currentUserObj.uid) }); }
+                    catch (e) { waToast('Could not delete'); }
+                }
+            }];
+            if (m.senderId === currentUserObj.uid && !m.deletedForAll) {
+                buttons.push({
+                    label: 'Delete for everyone',
+                    cls: 'danger',
+                    onClick: async () => {
+                        clearMsgSelection();
+                        try {
+                            await updateDoc(ref, { deletedForAll: true, text: '🚫 This message was deleted', replyTo: null, forwarded: false, reactions: {} });
+                        } catch (e) { waToast('Could not delete'); }
+                    }
+                });
+            }
+            buttons.push({ label: 'Cancel' });
+            openWaSheet('Delete message?', buttons);
+        };
+        window.msgActionForward = function () {
+            const m = getSelectedMsg();
+            if (!m || m.deletedForAll) return;
+            const text = m.text || '';
+            const ids = new Set(myFriendsList);
+            allMyMessages.forEach(x => {
+                if (x.senderId && x.senderId !== currentUserObj.uid) ids.add(x.senderId);
+                if (x.receiverId && x.receiverId !== currentUserObj.uid) ids.add(x.receiverId);
+            });
+            const users = allUsersList.filter(u => ids.has(u.uid) && u.uid !== currentUserObj.uid);
+            clearMsgSelection();
+            if (!users.length) { waToast('No friends to forward to'); return; }
+            const buttons = users.map(u => ({
+                label: u.name || 'User',
+                onClick: async () => {
+                    try {
+                        await sendMessageCore(u.uid, text, { forwarded: true });
+                        waToast('Forwarded to ' + (u.name || 'User'));
+                    } catch (e) { waToast('Could not forward'); }
+                }
+            }));
+            buttons.push({ label: 'Cancel' });
+            openWaSheet('Forward to...', buttons);
+        };
+        window.msgReact = async function (emoji) {
+            const m = getSelectedMsg();
+            if (!m || m.deletedForAll) return;
+            const mine = (m.reactions && m.reactions[currentUserObj.uid]) || '';
+            const value = mine === emoji ? '' : emoji;
+            clearMsgSelection();
+            try {
+                await updateDoc(doc(db, "messages", m.id), { ['reactions.' + currentUserObj.uid]: value });
+            } catch (e) { waToast('Could not react'); }
+        };
+
+        (function wireChatLongPress() {
+            const box = document.getElementById('wa-messages-container');
+            if (!box) return;
+            let timer = null, sx = 0, sy = 0, fired = false;
+            const cancel = () => { clearTimeout(timer); timer = null; };
+            box.addEventListener('pointerdown', (e) => {
+                const b = e.target.closest('.wa-msg-bubble');
+                if (!b) return;
+                fired = false; sx = e.clientX; sy = e.clientY;
+                cancel();
+                timer = setTimeout(() => {
+                    fired = true;
+                    if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e2) {} }
+                    selectMsg(b.dataset.mid);
+                }, 450);
+            });
+            box.addEventListener('pointermove', (e) => {
+                if (timer && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) cancel();
+            });
+            ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => box.addEventListener(ev, cancel));
+            box.addEventListener('scroll', cancel, { passive: true });
+            box.addEventListener('contextmenu', (e) => { if (e.target.closest('.wa-msg-bubble')) e.preventDefault(); });
+            box.addEventListener('click', (e) => {
+                if (fired) { fired = false; return; }
+                const q = e.target.closest('.wa-quote');
+                if (q && !selectedMsgId) {
+                    const target = box.querySelector('[data-mid="' + q.dataset.qid + '"]');
+                    if (target) {
+                        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                        target.classList.add('wa-flash');
+                        setTimeout(() => target.classList.remove('wa-flash'), 1200);
+                    }
+                    return;
+                }
+                if (!selectedMsgId) return;
+                const b = e.target.closest('.wa-msg-bubble');
+                if (b && b.dataset.mid !== selectedMsgId) selectMsg(b.dataset.mid);
+                else clearMsgSelection();
+            });
+        })();
+        // =============================================================================================
         window.sendChatMessage = async function(e) {
             e.preventDefault();
             const t = translations[currentLang];
@@ -4918,13 +5213,23 @@
             if (!text) return;
 
             input.value = '';
+            const extra = {};
+            if (replyingTo) {
+                extra.replyTo = { id: replyingTo.id, text: String(replyingTo.text || '').slice(0, 200), senderId: replyingTo.senderId };
+            }
+            clearReply();
+            await sendMessageCore(activeChatFriendUid, text, extra);
+        };
+
+        async function sendMessageCore(toUid, text, extra = {}) {
             const now = new Date();
             const timeText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
             const msgDocRef = await addDoc(collection(db, "messages"), {
                 senderId: currentUserObj.uid,
-                receiverId: activeChatFriendUid,
-                participants: [currentUserObj.uid, activeChatFriendUid],
+                receiverId: toUid,
+                participants: [currentUserObj.uid, toUid],
+                ...extra,
                 text: text,
                 timeText: timeText,
                 clientTime: Date.now(),
@@ -4937,7 +5242,7 @@
             // Trigger background push notification to receiver even if their app is completely closed
             try {
                 if (PUSH_SCRIPT_URL && PUSH_SCRIPT_URL.startsWith("https://")) {
-                    const receiverSnap = await getDoc(doc(db, "users", activeChatFriendUid));
+                    const receiverSnap = await getDoc(doc(db, "users", toUid));
                     if (receiverSnap.exists()) {
                         const rData = receiverSnap.data();
                         const rawTokens = rData.lastFcmToken
@@ -4987,7 +5292,8 @@
                     savePush('push url missing');
                 }
             } catch (pushErr) { savePush('error: ' + ((pushErr && pushErr.message) || pushErr)); }
-        };
+            return msgDocRef;
+        }
 
         async function logActivityHistory(type, postId = null, snippet = "") {
             if (!currentUserObj) return;
