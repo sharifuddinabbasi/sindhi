@@ -2185,6 +2185,7 @@
         import { 
             getMessaging, 
             getToken, 
+            deleteToken, 
             onMessage 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
@@ -2224,6 +2225,21 @@
             });
         } catch (e) {}
 
+        // Tell the service worker whether someone is signed in (so it never shows push notifications when signed out)
+        function setSwAuthState(isIn) {
+            try {
+                if (!window.caches) return;
+                caches.open('swb-state').then(c => c.put(new URL('__swb_auth__', location.href).href, new Response(isIn ? 'in' : 'out'))).catch(() => {});
+            } catch (e) {}
+        }
+        // On logout: stop push for this phone (remove token from the user's profile + delete the token on the device)
+        async function unregisterFcmPushToken(uid) {
+            try {
+                if (uid) await updateDoc(doc(db, "users", uid), { fcmTokens: [], lastFcmToken: null }).catch(() => {});
+            } catch (e) {}
+            try { if (messaging) await deleteToken(messaging); } catch (e) {}
+        }
+
         async function registerFcmPushToken(uid) {
             if (!messaging || !("Notification" in window) || !("serviceWorker" in navigator)) return;
             try {
@@ -2239,6 +2255,13 @@
                         fcmTokens: [token],
                         lastFcmToken: token
                     }).catch(() => {});
+                    // This phone now belongs to this user: remove the same token from any other account (e.g. an old logout)
+                    try {
+                        const staleSnap = await getDocs(query(collection(db, "users"), where("lastFcmToken", "==", token)));
+                        for (const sd of staleSnap.docs) {
+                            if (sd.id !== uid) await updateDoc(doc(db, "users", sd.id), { fcmTokens: [], lastFcmToken: null }).catch(() => {});
+                        }
+                    } catch (e) {}
                 }
             } catch (err) {
                 console.log("FCM token error:", err);
@@ -4784,6 +4807,10 @@
             if (presenceHeartbeatTimer) { clearInterval(presenceHeartbeatTimer); presenceHeartbeatTimer = null; }
             if (unsubscribeMessages) unsubscribeMessages();
             closePopup();
+            const logoutUid = auth.currentUser ? auth.currentUser.uid : null;
+            await unregisterFcmPushToken(logoutUid);   // must happen while still signed in
+            setSwAuthState(false);
+            clearAllSystemNotifications();
             await signOut(auth);
         };
 
@@ -4817,6 +4844,7 @@
                     return;
                 }
 
+                setSwAuthState(true);
                 registerFcmPushToken(user.uid);
                 if ("Notification" in window && Notification.permission === "default") {
                     document.addEventListener("pointerdown", () => registerFcmPushToken(user.uid), { once: true });
@@ -4886,6 +4914,8 @@
                 setTimeout(readPendingOpenFromCache, 1200);
             } else {
                 currentUserObj = null;
+                setSwAuthState(false);
+                clearAllSystemNotifications();
                 document.getElementById('feed-section').classList.add('hidden');
                 document.getElementById('user-nav').classList.add('hidden');
                 document.getElementById('fb-icon-bar').classList.add('hidden');

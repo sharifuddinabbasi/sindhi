@@ -1,7 +1,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-const CACHE_NAME = "sindhi-world-book-v116";
+const CACHE_NAME = "sindhi-world-book-v117";
 const ASSETS = [
   "./",
   "./index.html",
@@ -22,7 +22,19 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 // Background push handler (runs even when app is completely closed)
-messaging.onBackgroundMessage((payload) => {
+async function isSignedOut() {
+  try {
+    const r = await caches.match(new URL("__swb_auth__", self.registration.scope).href, { cacheName: "swb-state" });
+    return r ? (await r.text()) === "out" : false;
+  } catch (e) { return false; }
+}
+
+messaging.onBackgroundMessage(async (payload) => {
+  // Nobody is signed in on this phone: show nothing, no badge
+  if (await isSignedOut()) {
+    if ("clearAppBadge" in self.navigator) self.navigator.clearAppBadge().catch(() => {});
+    return;
+  }
   const data = payload.data || {};
   const notif = payload.notification || {};
   const title = data.senderName || notif.title || "Sindhi World Book";
@@ -54,7 +66,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== "swb-pending").map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== "swb-pending" && k !== "swb-state").map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
