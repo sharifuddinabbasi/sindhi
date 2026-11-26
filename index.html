@@ -733,6 +733,57 @@
         .wa-sheet button.danger { color: #8B1E24; font-weight: 700; }
         .wa-toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #222; color: #FFF; padding: 8px 16px; border-radius: 20px; font-size: 13px; z-index: 100001; max-width: 85%; text-align: center; }
 
+
+        /* ===== Full-screen messages ===== */
+        #popup-overlay:has(#popup-messages:not(.hidden)) { padding: 0; align-items: stretch; overflow: hidden; height: var(--wa-vh, 100dvh); bottom: auto; background: #EFEAE2; }
+        #popup-overlay:has(#popup-messages:not(.hidden)) .modal-box { max-width: none; width: 100%; height: 100%; border-radius: 0; border: none; box-shadow: none; animation: none; display: flex; flex-direction: column; }
+        #popup-overlay:has(#popup-messages:not(.hidden)) .modal-header { padding-top: calc(12px + env(safe-area-inset-top, 0px)); flex-shrink: 0; }
+        #popup-overlay:has(#popup-messages:not(.hidden)) .modal-body { flex: 1; min-height: 0; max-height: none; padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+        #popup-overlay:has(#popup-messages:not(.hidden)) #popup-messages { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+        #popup-overlay:has(#popup-messages:not(.hidden)) #chat-friends-view:not(.hidden) { flex: 1; overflow-y: auto; padding: 12px; background: #FFFFFF; }
+        #popup-overlay:has(#popup-messages:not(.hidden)) #chat-conversation-view:not(.hidden) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+        #popup-overlay:has(#popup-messages:not(.hidden)) .wa-chat-wrapper { flex: 1; height: auto; min-height: 0; border-radius: 0; border: none; }
+        #popup-overlay:has(#popup-messages:not(.hidden)) .wa-input-bar { padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+
+        /* ===== Attachments / voice ===== */
+        .wa-input-wrap { flex: 1; position: relative; display: flex; align-items: center; min-width: 0; }
+        .wa-input-wrap input { width: 100%; padding-right: 44px; }
+        .wa-attach-btn { position: absolute; right: 6px; background: none; border: none; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 50%; }
+        .wa-attach-btn svg { width: 22px; height: 22px; fill: #54656F; transform: rotate(0deg); }
+        .wa-attach-btn:active { background: #E9EDEF; }
+        #wa-attach-menu { position: absolute; left: 10px; right: 10px; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); background: #FFFFFF; border-radius: 18px; padding: 16px 8px 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 4px; box-shadow: 0 6px 24px rgba(0,0,0,0.28); z-index: 6; }
+        .wa-att-item { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: none; font-size: 12px; color: #54656F; cursor: pointer; padding: 0; }
+        .wa-att-item .ic { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .wa-att-item .ic svg { width: 26px; height: 26px; fill: #FFFFFF; }
+        #wa-rec-bar { background: #F0F2F5; border-top: 1px solid #DCD4C6; padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; gap: 10px; }
+        #wa-rec-bar .wa-rec-cancel { background: none; border: none; font-size: 22px; cursor: pointer; padding: 4px 8px; }
+        #wa-rec-bar .wa-rec-info { flex: 1; display: flex; align-items: center; gap: 8px; font-size: 15px; color: #111B21; }
+        #wa-rec-bar .wa-rec-dot { width: 11px; height: 11px; border-radius: 50%; background: #E53935; animation: waRecBlink 1s infinite; }
+        @keyframes waRecBlink { 50% { opacity: 0.25; } }
+        .wa-att-img { display: block; max-width: 100%; width: 240px; max-height: 300px; min-height: 100px; object-fit: cover; border-radius: 6px; margin-bottom: 3px; background: #DDD; cursor: pointer; }
+        .wa-voice { display: flex; align-items: center; gap: 8px; min-width: 200px; padding: 2px 0; direction: ltr; }
+        .wa-voice-btn { width: 34px; height: 34px; border-radius: 50%; border: none; background: #00A884; color: #FFF; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+        .wa-voice-bar { flex: 1; height: 4px; background: rgba(0,0,0,0.15); border-radius: 2px; overflow: hidden; }
+        .wa-voice-bar i { display: block; height: 100%; width: 0; background: #00A884; }
+        .wa-voice-time { font-size: 11px; color: #667781; min-width: 32px; text-align: right; }
+        .wa-file, .wa-loc { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.06); border-radius: 8px; padding: 8px 10px; margin-bottom: 3px; text-decoration: none; color: #111B21; min-width: 190px; }
+        .wa-file-ic { font-size: 26px; }
+        .wa-file-meta, .wa-loc { flex-wrap: wrap; }
+        .wa-file-meta { display: flex; flex-direction: column; min-width: 0; }
+        .wa-file-meta b { font-size: 13px; word-break: break-all; }
+        .wa-file-meta small, .wa-loc small { font-size: 11px; color: #667781; }
+        .wa-loc { flex-direction: column; align-items: flex-start; gap: 2px; }
+        .wa-viewer { position: fixed; inset: 0; background: rgba(0,0,0,0.94); z-index: 100002; display: flex; align-items: center; justify-content: center; }
+        .wa-viewer img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .wa-viewer button { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: 14px; background: rgba(255,255,255,0.18); color: #FFF; border: none; width: 38px; height: 38px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+        .wa-preview { position: fixed; inset: 0; background: #0B141A; z-index: 100002; display: flex; flex-direction: column; color: #FFF; }
+        .wa-preview .wa-pv-top { padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 12px; }
+        .wa-preview .wa-pv-top button { background: none; border: none; color: #FFF; font-size: 22px; cursor: pointer; }
+        .wa-preview .wa-pv-body { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 10px; text-align: center; }
+        .wa-preview .wa-pv-body img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+        .wa-preview .wa-pv-bottom { display: flex; gap: 8px; padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px)); background: #1F2C34; }
+        .wa-preview .wa-pv-bottom input { flex: 1; border-radius: 20px; border: none; padding: 10px 14px; font-size: 14px; background: #2A3942; color: #FFF; margin: 0; }
+
         .wa-input-bar {
             background-color: #F0F2F5;
             padding: 8px;
@@ -1846,12 +1897,34 @@
                             </div>
                             <div id="wa-messages-container" class="wa-messages-area"></div>
                             <div id="wa-reply-bar" class="hidden"></div>
-                            <form class="wa-input-bar" onsubmit="sendChatMessage(event)">
-                                <input type="text" id="wa-chat-input" placeholder="Type a message..." autocomplete="off">
-                                <button type="submit" class="wa-send-btn" title="Send">
+                            <div id="wa-attach-menu" class="hidden">
+                                <button type="button" class="wa-att-item" onclick="pickAttach('gallery')"><span class="ic" style="background:#AC44CF"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></span>Gallery</button>
+                                <button type="button" class="wa-att-item" onclick="pickAttach('camera')"><span class="ic" style="background:#D3396D"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg></span>Camera</button>
+                                <button type="button" class="wa-att-item" onclick="pickAttach('document')"><span class="ic" style="background:#5157AE"><svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></span>Document</button>
+                                <button type="button" class="wa-att-item" onclick="pickAttach('location')"><span class="ic" style="background:#1FA855"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg></span>Location</button>
+                            </div>
+                            <input type="file" id="wa-file-gallery" accept="image/*" class="hidden">
+                            <input type="file" id="wa-file-camera" accept="image/*" capture="environment" class="hidden">
+                            <input type="file" id="wa-file-document" class="hidden">
+                            <form class="wa-input-bar" id="wa-input-form" onsubmit="sendChatMessage(event)">
+                                <div class="wa-input-wrap">
+                                    <input type="text" id="wa-chat-input" placeholder="Type a message..." autocomplete="off">
+                                    <button type="button" class="wa-attach-btn" onclick="toggleAttachMenu()" title="Attach"><svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg></button>
+                                </div>
+                                <button type="submit" id="wa-send-btn" class="wa-send-btn hidden" title="Send">
                                     <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                                 </button>
+                                <button type="button" id="wa-mic-btn" class="wa-send-btn" title="Voice message" onclick="startVoiceRecord()">
+                                    <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
+                                </button>
                             </form>
+                            <div id="wa-rec-bar" class="hidden">
+                                <button type="button" class="wa-rec-cancel" onclick="stopVoiceRecord(false)" title="Cancel">🗑</button>
+                                <div class="wa-rec-info"><span class="wa-rec-dot"></span><span id="wa-rec-time">0:00</span><span style="color:#667781;font-size:13px;">Recording…</span></div>
+                                <button type="button" class="wa-send-btn" onclick="stopVoiceRecord(true)" title="Send voice message">
+                                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -4021,7 +4094,7 @@
                 .replace(/'/g, "&#039;");
         }
 
-        async function uploadToAvailableDrive(compressedData, fileName) {
+        async function uploadToAvailableDrive(compressedData, fileName, mimeType) {
             let lastError = "No Google Drive configured.";
 
             for (let i = 0; i < DRIVE_URLS.length; i++) {
@@ -4037,7 +4110,7 @@
                         },
                         body: JSON.stringify({
                             base64: compressedData,
-                            mimeType: "image/jpeg",
+                            mimeType: mimeType || "image/jpeg",
                             fileName: fileName
                         })
                     });
@@ -4174,6 +4247,7 @@
                 try { unsubscribeAdminPairMsgs(); } catch (e) {}
                 unsubscribeAdminPairMsgs = null;
             }
+            if (window.stopVoiceRecord) window.stopVoiceRecord(false);
             activeChatFriendUid = null;
             document.getElementById('popup-overlay').classList.add('hidden');
         };
@@ -4760,6 +4834,15 @@
                             updateDoc(doc(db, "messages", change.doc.id), { delivered: true, deliveredAt: m.deliveredAt || Date.now() })
                                 .catch((err) => console.error("Delivered update failed:", err));
                         }
+                        // Backfill missing times (e.g. an older app version set delivered/read without a time)
+                        if (m.senderId === currentUserObj.uid || m.receiverId === currentUserObj.uid) {
+                            const fix = {};
+                            if (m.delivered === true && !m.deliveredAt) fix.deliveredAt = Date.now();
+                            if (m.read === true && !m.readAt) { fix.readAt = Date.now(); if (!m.deliveredAt) fix.deliveredAt = fix.deliveredAt || Date.now(); }
+                            if (Object.keys(fix).length) {
+                                updateDoc(doc(db, "messages", change.doc.id), fix).catch(() => {});
+                            }
+                        }
                     }
                 });
 
@@ -4824,6 +4907,8 @@
 
         window.backToChatFriendsList = function() {
             clearMsgSelection(); clearReply();
+            if (window.stopVoiceRecord) window.stopVoiceRecord(false);
+            if (window.toggleAttachMenu) window.toggleAttachMenu(false);
             activeChatFriendUid = null;
             document.getElementById('chat-conversation-view').classList.add('hidden');
             document.getElementById('chat-friends-view').classList.remove('hidden');
@@ -4952,7 +5037,7 @@
 
                 html += `
                     <div class="wa-msg-bubble ${isMine ? 'wa-msg-sent' : 'wa-msg-received'}${selectedMsgId === m.id ? ' wa-msg-selected' : ''}" data-mid="${m.id}">
-                        ${msgExtrasTopHTML(m)}<div${m.deletedForAll ? ' style="font-style:italic;color:#667781;"' : ''}>${escapeHTML(m.text)}</div>
+                        ${msgExtrasTopHTML(m)}${msgAttachmentHTML(m)}${msgBodyTextHTML(m)}
                         <div class="wa-msg-meta">
                             <span>${escapeHTML(m.timeText || '')}</span>
                             ${tickHTML}
@@ -4965,6 +5050,11 @@
 
             container.innerHTML = html;
             if (!selectedMsgId) container.scrollTop = container.scrollHeight;
+            container.querySelectorAll('img.wa-att-img').forEach(img => {
+                if (!img.complete) img.addEventListener('load', () => { if (!selectedMsgId) container.scrollTop = container.scrollHeight; });
+            });
+            if (typeof paintVoice === 'function') paintVoice();
+            if (typeof waUpdateSendMic === 'function') waUpdateSendMic();
         }
 
         // ================= Message long-press menu (reply / copy / delete / forward / reactions) =================
@@ -5126,7 +5216,7 @@
                     onClick: async () => {
                         clearMsgSelection();
                         try {
-                            await updateDoc(ref, { deletedForAll: true, text: '🚫 This message was deleted', replyTo: null, forwarded: false, reactions: {} });
+                            await updateDoc(ref, { deletedForAll: true, text: '🚫 This message was deleted', attachment: null, replyTo: null, forwarded: false, reactions: {} });
                         } catch (e) { waToast('Could not delete'); }
                     }
                 });
@@ -5282,6 +5372,319 @@
             });
         })();
         // =============================================================================================
+
+        // ================= Attachments, voice messages, location =================
+        const WA_MAX_FILE = 10 * 1024 * 1024;
+        const waById = (id) => document.getElementById(id);
+        function waDriveDownloadUrl(id) { return 'https://drive.google.com/uc?export=download&id=' + encodeURIComponent(id); }
+        function waFmtSize(b) { if (!b) return ''; return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+        function waFmtDur(sec) { sec = Math.max(0, Math.round(sec || 0)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+        function waReadAsDataURL(blob) {
+            return new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result);
+                r.onerror = () => reject(r.error || new Error('Could not read file'));
+                r.readAsDataURL(blob);
+            });
+        }
+        function waResizeImage(file, maxSide) {
+            maxSide = maxSide || 1280;
+            return new Promise((resolve, reject) => {
+                const fr = new FileReader();
+                fr.onerror = () => reject(fr.error || new Error('Could not read image'));
+                fr.onload = () => {
+                    const img = new Image();
+                    img.onerror = () => reject(new Error('Not a valid image'));
+                    img.onload = () => {
+                        const sc = Math.min(1, maxSide / Math.max(img.width, img.height));
+                        const c = document.createElement('canvas');
+                        c.width = Math.round(img.width * sc);
+                        c.height = Math.round(img.height * sc);
+                        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                        resolve(c.toDataURL('image/jpeg', 0.8));
+                    };
+                    img.src = fr.result;
+                };
+                fr.readAsDataURL(file);
+            });
+        }
+
+        function msgAttachmentHTML(m) {
+            if (m.deletedForAll || !m.attachment) return '';
+            const a = m.attachment;
+            if (a.type === 'image') {
+                return `<img class="wa-att-img" src="${escapeHTML(a.url || '')}" alt="Photo">`;
+            }
+            if (a.type === 'audio') {
+                return `<div class="wa-voice" data-mid="${escapeHTML(m.id)}" data-src="${escapeHTML(a.url || '')}" data-dur="${Number(a.dur) || 0}"><button type="button" class="wa-voice-btn">▶</button><div class="wa-voice-bar"><i></i></div><span class="wa-voice-time">${waFmtDur(a.dur)}</span></div>`;
+            }
+            if (a.type === 'file') {
+                return `<a class="wa-file" href="${escapeHTML(a.url || '#')}" target="_blank" rel="noopener"><span class="wa-file-ic">📄</span><span class="wa-file-meta"><b>${escapeHTML(a.name || 'Document')}</b><small>${escapeHTML(waFmtSize(a.size))}${a.size ? ' · ' : ''}Tap to open</small></span></a>`;
+            }
+            if (a.type === 'location') {
+                const la = Number(a.lat), ln = Number(a.lng);
+                return `<a class="wa-loc" href="https://www.google.com/maps?q=${la},${ln}" target="_blank" rel="noopener"><b>📍 Shared location</b><small>${la.toFixed(5)}, ${ln.toFixed(5)} · Open in Maps</small></a>`;
+            }
+            return '';
+        }
+        function msgBodyTextHTML(m) {
+            if (!m.deletedForAll && m.attachment) {
+                return m.attachment.caption ? `<div>${escapeHTML(m.attachment.caption)}</div>` : '';
+            }
+            return `<div${m.deletedForAll ? ' style="font-style:italic;color:#667781;"' : ''}>${escapeHTML(m.text)}</div>`;
+        }
+
+        function waUpdateSendMic() {
+            const i = waById('wa-chat-input'), s = waById('wa-send-btn'), mic = waById('wa-mic-btn');
+            if (!i || !s || !mic) return;
+            const has = i.value.trim().length > 0;
+            s.classList.toggle('hidden', !has);
+            mic.classList.toggle('hidden', has);
+        }
+        (function () {
+            const i = waById('wa-chat-input');
+            if (i) i.addEventListener('input', waUpdateSendMic);
+        })();
+
+        // ---- attach menu ----
+        window.toggleAttachMenu = function (force) {
+            const m = waById('wa-attach-menu');
+            if (!m) return;
+            const show = force !== undefined ? force : m.classList.contains('hidden');
+            m.classList.toggle('hidden', !show);
+        };
+        window.pickAttach = function (kind) {
+            toggleAttachMenu(false);
+            if (kind === 'gallery') waById('wa-file-gallery').click();
+            else if (kind === 'camera') waById('wa-file-camera').click();
+            else if (kind === 'document') waById('wa-file-document').click();
+            else if (kind === 'location') waShareLocation();
+        };
+        (function () {
+            const box = waById('wa-messages-container');
+            if (box) box.addEventListener('click', () => toggleAttachMenu(false));
+            [['wa-file-gallery', 'image'], ['wa-file-camera', 'image'], ['wa-file-document', 'file']].forEach(([id, kind]) => {
+                const el = waById(id);
+                if (!el) return;
+                el.addEventListener('change', () => {
+                    const f = el.files && el.files[0];
+                    el.value = '';
+                    if (f) waOpenPreview(f, (kind === 'image' && !/^image\//.test(f.type)) ? 'file' : kind);
+                });
+            });
+        })();
+
+        async function waSendAttachment(toUid, attachment, label) {
+            const text = attachment.caption || label;
+            const extra = { attachment: attachment };
+            if (replyingTo) {
+                extra.replyTo = { id: replyingTo.id, text: String(replyingTo.text || '').slice(0, 200), senderId: replyingTo.senderId };
+            }
+            clearReply();
+            await sendMessageCore(toUid, text, extra);
+        }
+
+        async function waUploadAndSend(toUid, file, kind, caption) {
+            let dataUrl, mime, name;
+            if (kind === 'image') {
+                dataUrl = await waResizeImage(file, 1280);
+                mime = 'image/jpeg';
+                name = 'chat_' + Date.now() + '.jpg';
+            } else {
+                dataUrl = await waReadAsDataURL(file);
+                mime = file.type || 'application/octet-stream';
+                name = file.name || ('file_' + Date.now());
+            }
+            const up = await uploadToAvailableDrive(dataUrl, name, mime);
+            const att = {
+                type: kind,
+                url: kind === 'image' ? up.url : waDriveDownloadUrl(up.fileId),
+                fileId: up.fileId,
+                name: name,
+                mime: mime
+            };
+            if (kind === 'file') att.size = file.size || 0;
+            if (caption) att.caption = caption;
+            await waSendAttachment(toUid, att, kind === 'image' ? '📷 Photo' : '📄 ' + name);
+        }
+
+        function waOpenPreview(file, kind) {
+            if (!activeChatFriendUid || !currentUserObj) return;
+            if (!navigator.onLine) { waToast('No internet connection'); return; }
+            if (kind === 'file' && file.size > WA_MAX_FILE) { waToast('File too large (max 10 MB)'); return; }
+            const toUid = activeChatFriendUid;
+            const old = waById('wa-preview'); if (old) old.remove();
+            const ov = document.createElement('div');
+            ov.id = 'wa-preview';
+            ov.className = 'wa-preview';
+            const top = document.createElement('div'); top.className = 'wa-pv-top';
+            const x = document.createElement('button'); x.type = 'button'; x.textContent = '✕';
+            x.onclick = () => ov.remove();
+            top.appendChild(x);
+            const body = document.createElement('div'); body.className = 'wa-pv-body';
+            let objUrl = null;
+            if (kind === 'image') {
+                objUrl = URL.createObjectURL(file);
+                const im = document.createElement('img'); im.src = objUrl; body.appendChild(im);
+            } else {
+                body.innerHTML = '<div><div style="font-size:64px">📄</div><div style="margin-top:8px;word-break:break-all;">' + escapeHTML(file.name) + '</div><div style="color:#8696A0;font-size:13px;margin-top:4px;">' + escapeHTML(waFmtSize(file.size)) + '</div></div>';
+            }
+            const bottom = document.createElement('div'); bottom.className = 'wa-pv-bottom';
+            const cap = document.createElement('input'); cap.type = 'text'; cap.placeholder = 'Add a caption...';
+            const send = document.createElement('button'); send.type = 'button'; send.className = 'wa-send-btn';
+            send.innerHTML = '<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>';
+            send.onclick = async () => {
+                send.disabled = true; cap.disabled = true; send.style.opacity = '0.5';
+                waToast('Sending...');
+                try {
+                    await waUploadAndSend(toUid, file, kind, cap.value.trim());
+                    if (objUrl) URL.revokeObjectURL(objUrl);
+                    ov.remove();
+                } catch (e) {
+                    send.disabled = false; cap.disabled = false; send.style.opacity = '1';
+                    waToast('Could not send: ' + ((e && e.message) || 'error').slice(0, 60));
+                }
+            };
+            bottom.appendChild(cap); bottom.appendChild(send);
+            ov.appendChild(top); ov.appendChild(body); ov.appendChild(bottom);
+            document.body.appendChild(ov);
+        }
+
+        // ---- location ----
+        window.waShareLocation = function () {
+            if (!activeChatFriendUid || !currentUserObj) return;
+            if (!navigator.geolocation) { waToast('Location not supported on this device'); return; }
+            const toUid = activeChatFriendUid;
+            waToast('Getting your location...');
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                try {
+                    await waSendAttachment(toUid, {
+                        type: 'location',
+                        lat: Number(pos.coords.latitude.toFixed(6)),
+                        lng: Number(pos.coords.longitude.toFixed(6))
+                    }, '📍 Location');
+                } catch (e) { waToast('Could not send location'); }
+            }, () => waToast('Location permission denied'), { enableHighAccuracy: true, timeout: 15000 });
+        };
+
+        // ---- voice recording ----
+        let waRec = null;
+        window.startVoiceRecord = async function () {
+            if (waRec || !activeChatFriendUid || !currentUserObj) return;
+            if (!navigator.onLine) { waToast('No internet connection'); return; }
+            if (!navigator.mediaDevices || !window.MediaRecorder) { waToast('Voice recording is not supported here'); return; }
+            toggleAttachMenu(false);
+            let stream;
+            try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+            catch (e) { waToast('Microphone permission denied'); return; }
+            const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+            const pick = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+            let mr;
+            try { mr = new MediaRecorder(stream, pick ? { mimeType: pick, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 }); }
+            catch (e) { stream.getTracks().forEach(t => t.stop()); waToast('Voice recording is not supported here'); return; }
+            const r = { mr, stream, chunks: [], t0: Date.now(), cancelled: false, mime: mr.mimeType || pick || 'audio/webm', toUid: activeChatFriendUid, timer: null };
+            waRec = r;
+            mr.ondataavailable = (ev) => { if (ev.data && ev.data.size) r.chunks.push(ev.data); };
+            mr.onstop = async () => {
+                clearInterval(r.timer);
+                r.stream.getTracks().forEach(t => t.stop());
+                if (waRec === r) waRec = null;
+                waById('wa-rec-bar').classList.add('hidden');
+                waById('wa-input-form').classList.remove('hidden');
+                if (r.cancelled) return;
+                const dur = Math.round((Date.now() - r.t0) / 1000);
+                if (dur < 1 || !r.chunks.length) { waToast('Recording too short'); return; }
+                waToast('Sending voice message...');
+                try {
+                    const base = r.mime.split(';')[0];
+                    const ext = base.includes('mp4') ? 'm4a' : (base.includes('ogg') ? 'ogg' : 'webm');
+                    const dataUrl = await waReadAsDataURL(new Blob(r.chunks, { type: base }));
+                    const up = await uploadToAvailableDrive(dataUrl, 'voice_' + Date.now() + '.' + ext, base);
+                    await waSendAttachment(r.toUid, { type: 'audio', url: waDriveDownloadUrl(up.fileId), fileId: up.fileId, mime: base, dur: dur }, '🎤 Voice message');
+                } catch (e) { waToast('Could not send voice message'); }
+            };
+            mr.start();
+            waById('wa-input-form').classList.add('hidden');
+            waById('wa-rec-bar').classList.remove('hidden');
+            waById('wa-rec-time').textContent = '0:00';
+            r.timer = setInterval(() => {
+                const sec = (Date.now() - r.t0) / 1000;
+                waById('wa-rec-time').textContent = waFmtDur(sec);
+                if (sec >= 180) window.stopVoiceRecord(true);
+            }, 250);
+        };
+        window.stopVoiceRecord = function (send) {
+            const r = waRec;
+            if (!r) return;
+            r.cancelled = !send;
+            if (r.mr.state !== 'inactive') { try { r.mr.stop(); } catch (e) {} }
+        };
+
+        // ---- voice playback ----
+        let waVoice = { mid: null, audio: null };
+        function paintVoice() {
+            document.querySelectorAll('.wa-voice').forEach(el => {
+                const on = waVoice.audio && waVoice.mid === el.dataset.mid;
+                const btn = el.querySelector('.wa-voice-btn');
+                const bar = el.querySelector('i');
+                const tm = el.querySelector('.wa-voice-time');
+                let dur = Number(el.dataset.dur) || 0;
+                if (on) {
+                    const a = waVoice.audio;
+                    if (!dur && isFinite(a.duration)) dur = a.duration;
+                    btn.textContent = a.paused ? '▶' : '⏸';
+                    bar.style.width = dur ? Math.min(100, a.currentTime / dur * 100) + '%' : '0';
+                    tm.textContent = waFmtDur(a.currentTime > 0 ? a.currentTime : dur);
+                } else {
+                    btn.textContent = '▶';
+                    bar.style.width = '0';
+                    tm.textContent = waFmtDur(dur);
+                }
+            });
+        }
+        (function () {
+            const box = waById('wa-messages-container');
+            if (!box) return;
+            box.addEventListener('click', (e) => {
+                if (selectedMsgId) return;
+                const img = e.target.closest('.wa-att-img');
+                if (img) {
+                    const v = document.createElement('div');
+                    v.className = 'wa-viewer';
+                    v.innerHTML = '<img src="' + escapeHTML(img.src) + '" alt=""><button type="button">✕</button>';
+                    v.onclick = () => v.remove();
+                    document.body.appendChild(v);
+                    return;
+                }
+                const btn = e.target.closest('.wa-voice-btn');
+                if (!btn) return;
+                const el = btn.closest('.wa-voice');
+                if (waVoice.audio && waVoice.mid === el.dataset.mid) {
+                    if (waVoice.audio.paused) waVoice.audio.play().catch(() => {}); else waVoice.audio.pause();
+                    return;
+                }
+                if (waVoice.audio) waVoice.audio.pause();
+                const au = new Audio(el.dataset.src);
+                waVoice = { mid: el.dataset.mid, audio: au };
+                ['timeupdate', 'play', 'pause', 'loadedmetadata'].forEach(ev => au.addEventListener(ev, paintVoice));
+                au.addEventListener('ended', () => { au.currentTime = 0; waVoice = { mid: null, audio: null }; paintVoice(); });
+                au.addEventListener('error', () => { waVoice = { mid: null, audio: null }; paintVoice(); waToast('Could not play voice message'); });
+                au.play().catch(() => { waToast('Could not play voice message'); });
+                paintVoice();
+            });
+        })();
+
+        // ---- keep chat above the on-screen keyboard ----
+        if (window.visualViewport) {
+            const updVV = () => {
+                document.documentElement.style.setProperty('--wa-vh', window.visualViewport.height + 'px');
+                const c = waById('wa-messages-container');
+                if (c && !selectedMsgId) c.scrollTop = c.scrollHeight;
+            };
+            window.visualViewport.addEventListener('resize', updVV);
+            updVV();
+        }
+        // =============================================================================================
         window.sendChatMessage = async function(e) {
             e.preventDefault();
             const t = translations[currentLang];
@@ -5296,6 +5699,7 @@
             if (!text) return;
 
             input.value = '';
+            waUpdateSendMic();
             const extra = {};
             if (replyingTo) {
                 extra.replyTo = { id: replyingTo.id, text: String(replyingTo.text || '').slice(0, 200), senderId: replyingTo.senderId };
