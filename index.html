@@ -1866,7 +1866,7 @@
                     <h3 id="modal-title">Title</h3>
                     <span id="modal-header-extra"></span>
                 </div>
-                <button class="modal-close" onclick="closePopup()">✕</button>
+                <button class="modal-close" onclick="popupBack()">✕</button>
             </div>
             <div class="modal-body">
                 <div id="popup-messages" class="hidden">
@@ -9793,6 +9793,115 @@ ${shareUrl}`,
         }
         document.addEventListener("visibilitychange", syncChatViewOnReturn);
         window.addEventListener("focus", syncChatViewOnReturn);
+    </script>
+
+
+    <script>
+    /* ===== Back-button / ✕ navigation: Chat(3) -> Chat list(2) -> Home(1) -> "Exit?" ===== */
+    (function () {
+        var $ = function (id) { return document.getElementById(id); };
+        var shown = function (el) { return !!el && !el.classList.contains('hidden'); };
+        var exiting = false;
+
+        function inChat() {
+            return shown($('popup-overlay')) && shown($('popup-messages')) && shown($('chat-conversation-view'));
+        }
+
+        // Used by the ✕ button and by the phone back button
+        window.popupBack = function () {
+            if (inChat()) { window.backToChatFriendsList(); return; }
+            window.closePopup();
+        };
+
+        function removeIf(sel) {
+            var el = document.querySelector(sel);
+            if (el) { el.remove(); return true; }
+            return false;
+        }
+
+        // Closes the top-most thing. Returns true if something was closed.
+        function closeTopLayer() {
+            if (removeIf('.wa-viewer')) return true;
+            if (removeIf('#wa-preview')) return true;
+            if (removeIf('#wa-sheet-overlay')) return true;
+            if (shown($('custom-alert-overlay'))) { window.closeCustomAlert(); return true; }
+            if (shown($('app-exit-confirm'))) { hideExit(); return true; }
+            if (shown($('popup-overlay'))) {
+                if (inChat()) {
+                    if (shown($('wa-attach-menu'))) { window.toggleAttachMenu(false); return true; }
+                    if (shown($('wa-sel-bar'))) { window.clearMsgSelection(); return true; }
+                }
+                window.popupBack();
+                return true;
+            }
+            return false;
+        }
+
+        function exitText() {
+            var sd = (localStorage.getItem('sb_lang') || 'en') === 'sd';
+            return sd
+                ? { q: 'ڇا توهان ايپ مان نڪرڻ چاهيو ٿا؟', y: 'ها', n: 'نه', d: 'rtl' }
+                : { q: 'Do you want to exit the app?', y: 'Yes', n: 'No', d: 'ltr' };
+        }
+
+        function showExit() {
+            var box = $('app-exit-confirm');
+            var t = exitText();
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'app-exit-confirm';
+                box.style.cssText = 'position:fixed;inset:0;z-index:200000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:24px;';
+                // Tap anywhere on the screen = No (stay)
+                box.addEventListener('click', hideExit);
+                document.body.appendChild(box);
+            }
+            box.classList.remove('hidden');
+            box.style.display = 'flex';
+            box.innerHTML =
+                '<div dir="' + t.d + '" style="background:#fff;border:2px solid #D4AF37;border-radius:14px;max-width:320px;width:100%;padding:22px 18px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.35);">' +
+                '<div style="font-weight:bold;color:#14284B;font-size:17px;margin-bottom:18px;">' + t.q + '</div>' +
+                '<div style="display:flex;gap:12px;justify-content:center;">' +
+                '<button type="button" id="app-exit-yes" style="flex:1;padding:10px 0;border-radius:22px;border:1.5px solid #D4AF37;background:#8B1E24;color:#fff;font-weight:bold;font-size:15px;">' + t.y + '</button>' +
+                '<button type="button" id="app-exit-no" style="flex:1;padding:10px 0;border-radius:22px;border:1.5px solid #14284B;background:#fff;color:#14284B;font-weight:bold;font-size:15px;">' + t.n + '</button>' +
+                '</div></div>';
+            $('app-exit-yes').addEventListener('click', function (e) { e.stopPropagation(); doExit(); });
+        }
+
+        function hideExit() {
+            var box = $('app-exit-confirm');
+            if (box) { box.classList.add('hidden'); box.style.display = 'none'; }
+        }
+
+        function doExit() {
+            exiting = true;           // stop trapping the back button
+            hideExit();
+            try { history.go(-1); } catch (e) {}   // step back onto the base entry
+            try { window.close(); } catch (e) {}   // closes an installed PWA
+            setTimeout(function () {
+                if (document.visibilityState === 'visible') {
+                    try { history.back(); } catch (e) {}
+                }
+            }, 150);
+        }
+
+        function arm() {
+            try {
+                history.replaceState({ swb: 'base' }, '', location.href);
+                history.pushState({ swb: 'app' }, '', location.href);
+            } catch (e) {}
+        }
+
+        window.addEventListener('popstate', function () {
+            if (exiting) return;
+            // Back was pressed: re-arm first so the next back press is caught too
+            try { history.pushState({ swb: 'app' }, '', location.href); } catch (e) {}
+            if (!closeTopLayer()) showExit();   // nothing open = Screen 1 -> ask to exit
+        });
+
+        window.addEventListener('pageshow', function () { exiting = false; });
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arm);
+        else arm();
+    })();
     </script>
 
 </body>
