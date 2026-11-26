@@ -4448,6 +4448,9 @@
                 }
 
                 registerFcmPushToken(user.uid);
+                if ("Notification" in window && Notification.permission === "default") {
+                    document.addEventListener("pointerdown", () => registerFcmPushToken(user.uid), { once: true });
+                }
                 const displayName = user.displayName || user.email.split('@')[0];
                 currentUserObj = { uid: user.uid, name: displayName, email: user.email, photoUrl: null, passSync: null };
 
@@ -4808,6 +4811,8 @@
             }
 
             let html = '';
+            const lastMine = [...thread].reverse().find(x => x.senderId === currentUserObj.uid);
+            const lastMineId = lastMine ? lastMine.id : null;
             thread.forEach(m => {
                 const isMine = m.senderId === currentUserObj.uid;
                 let tickHTML = '';
@@ -4828,6 +4833,7 @@
                             <span>${escapeHTML(m.timeText || '')}</span>
                             ${tickHTML}
                         </div>
+                        ${(isMine && m.id === lastMineId && m.pushResult) ? `<div style="font-size:10px;color:#888;max-width:230px;word-break:break-all;margin-top:2px;">push: ${escapeHTML(m.pushResult)}</div>` : ''}
                     </div>
                 `;
             });
@@ -4865,6 +4871,7 @@
                 createdAt: serverTimestamp()
             });
 
+            const savePush = (s) => updateDoc(doc(db, "messages", msgDocRef.id), { pushResult: String(s).slice(0, 160) }).catch(() => {});
             // Trigger background push notification to receiver even if their app is completely closed
             try {
                 if (PUSH_SCRIPT_URL && PUSH_SCRIPT_URL.startsWith("https://")) {
@@ -4889,6 +4896,7 @@
                             })
                             .then(res => res.text())
                             .then(txt => {
+                                savePush(txt);
                                 try {
                                     const parsed = JSON.parse(txt);
                                     const okByCodes = Array.isArray(parsed.codes) && parsed.codes.includes(200);
@@ -4898,11 +4906,17 @@
                                     }
                                 } catch (e) {}
                             })
-                            .catch(() => {});
+                            .catch((e) => savePush('fetch error: ' + ((e && e.message) || e)));
+                        } else {
+                            savePush('no push token for receiver');
                         }
+                    } else {
+                        savePush('receiver user doc not found');
                     }
+                } else {
+                    savePush('push url missing');
                 }
-            } catch (pushErr) {}
+            } catch (pushErr) { savePush('error: ' + ((pushErr && pushErr.message) || pushErr)); }
         };
 
         async function logActivityHistory(type, postId = null, snippet = "") {
