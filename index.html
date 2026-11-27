@@ -8449,8 +8449,8 @@
         let feedStartedFor = null;
         let feedPruneTimer = null;
         let postCategory = 'all';
-        try { postCategory = localStorage.getItem('swb_post_cat') || 'all'; } catch (e) {}
-        if (['all', 'friends', 'mine'].indexOf(postCategory) < 0) postCategory = 'all';
+        // Always start on "All Post" (app open / login / refresh) - never restore the old choice
+        try { localStorage.removeItem('swb_post_cat'); } catch (e) {}
 
         function feedDbName() { return 'swb-feed-' + (currentUserObj ? currentUserObj.uid : (auth.currentUser ? auth.currentUser.uid : 'x')); }
         function feedDb() {
@@ -8602,6 +8602,7 @@
             const uid = auth.currentUser && auth.currentUser.uid;
             if (!uid || feedStartedFor === uid) return;
             feedStartedFor = uid;
+            postCategory = 'all'; try { refreshCategoryUI(); } catch (e) {}   // fresh login = All Post
             localFeed.clear();
             const saved = await feedReadAll();
             saved.forEach(p => { if (p && p.id) { localFeed.set(p.id, p); feedInitialIds.add(p.id); } });
@@ -8624,7 +8625,6 @@
         window.setPostCategory = function (v) {
             if (['all', 'friends', 'mine'].indexOf(v) < 0) v = 'all';
             postCategory = v;
-            try { localStorage.setItem('swb_post_cat', v); } catch (e) {}
             renderPostsList(latestDocs);
         };
         // Load one older post (1 read); resolves false only if it no longer exists
