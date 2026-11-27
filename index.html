@@ -1426,9 +1426,10 @@
             background-color: #FFFFFF;
         }
 
-        .post-category-row { display:flex; align-items:center; justify-content:space-between; gap:10px; background:#0f1f3d; border:2px solid var(--ajrak-gold); border-radius:14px; padding:8px 12px; margin:0 0 12px; }
-        .post-category-label { color:var(--ajrak-gold); font-weight:800; font-size:16px; white-space:nowrap; }
-        .post-category-select { flex:1; min-width:0; max-width:210px; background:#8B1E24; color:#fff; border:2px solid var(--ajrak-gold); border-radius:12px; padding:8px 10px; font-size:15px; font-weight:700; }
+        /* Post Category bar: no dark background, stays fixed just under the header while scrolling */
+        .post-category-row { position:sticky; top:var(--swb-header-h, 96px); z-index:90; display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--ajrak-cream); border:0; border-radius:0; padding:6px 12px; margin:0 -12px 8px; }
+        .post-category-label { color:var(--ajrak-blue); font-weight:bold; font-size:12.5px; white-space:nowrap; }
+        .post-category-select { flex:1; min-width:0; max-width:210px; background:#8B1E24; color:#fff; border:1px solid var(--ajrak-gold); border-radius:20px; padding:4px 10px; font-size:12.5px; font-weight:bold; }
         .create-post textarea {
             resize: none;
             height: 80px;
@@ -1776,6 +1777,21 @@
 </head>
 <body>
 
+    <script>
+        // Keep the Post Category bar glued right under the sticky header (header height can change)
+        (function () {
+            function setH() {
+                var h = document.querySelector('header');
+                if (h) document.documentElement.style.setProperty('--swb-header-h', (h.getBoundingClientRect().height - 1) + 'px');
+            }
+            document.addEventListener('DOMContentLoaded', function () {
+                setH();
+                var h = document.querySelector('header');
+                if (h && window.ResizeObserver) new ResizeObserver(setH).observe(h);
+                window.addEventListener('resize', setH);
+            });
+        })();
+    </script>
     <header>
         <div class="header-top-row">
             <h1><span>❖</span> <span id="header-title">Sindhi World Book</span></h1>
