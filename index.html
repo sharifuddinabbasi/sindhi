@@ -2361,9 +2361,22 @@
                         }
                     } catch (e) {}
                     try { localStorage.setItem(tokenKey, JSON.stringify({ token: token, at: Date.now() })); } catch (e) {}
-                    // Join the "all posts" push group (one Apps Script call later reaches everybody)
-                    fetch(PUSH_SCRIPT_URL, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" },
-                        body: JSON.stringify({ action: "topic_subscribe", token: token, subscribe: true }) }).catch(() => {});
+                }
+                // Join the "all posts" push group once per phone token (retried on every app start until it works)
+                if (token) {
+                    const topicKey = 'swb_topic_' + uid;
+                    let joined = null;
+                    try { joined = localStorage.getItem(topicKey); } catch (e) {}
+                    if (joined !== token) {
+                        fetch(PUSH_SCRIPT_URL, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            body: JSON.stringify({ action: "topic_subscribe", token: token, subscribe: true }) })
+                        .then(r => r.text())
+                        .then(txt => {
+                            let j = null; try { j = JSON.parse(txt); } catch (e) {}
+                            if (j && j.status === "ok") { try { localStorage.setItem(topicKey, token); } catch (e) {} }
+                            else console.log("Push group join failed:", txt);
+                        }).catch(() => {});
+                    }
                 }
             } catch (err) {
                 console.log("FCM token error:", err);
