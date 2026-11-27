@@ -1,7 +1,14 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-const CACHE_NAME = "sindhi-world-book-v133";
+const CACHE_NAME = "sindhi-world-book-v134";
+const LIBS = "swb-libs"; // Firebase code + fonts: kept across versions so the app opens offline
+const LIB_URLS = [
+  "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+  "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
+  "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
+  "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js"
+];
 const ASSETS = [
   "./",
   "./index.html",
@@ -133,18 +140,31 @@ messaging.onBackgroundMessage(async (payload) => {
 });
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-  );
+  event.waitUntil(Promise.all([
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)),
+    caches.open(LIBS).then((c) => Promise.all(LIB_URLS.map((u) => c.add(u).catch(() => {}))))
+  ]));
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== "swb-pending" && k !== "swb-state" && k !== POST_MEDIA && !k.startsWith("swb-media-")).map((k) => caches.delete(k)))
-    )
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    const old = keys.filter((k) => k !== CACHE_NAME && k !== LIBS && k !== "swb-pending" && k !== "swb-state" && k !== POST_MEDIA && !k.startsWith("swb-media-"));
+    // Rescue Firebase/font files from old caches before deleting them
+    try {
+      const libs = await caches.open(LIBS);
+      for (const k of old) {
+        const c = await caches.open(k);
+        for (const req of await c.keys()) {
+          if (new URL(req.url).hostname.endsWith("gstatic.com") && !(await libs.match(req.url))) {
+            const r = await c.match(req); if (r) await libs.put(req.url, r);
+          }
+        }
+      }
+    } catch (e) {}
+    await Promise.all(old.map((k) => caches.delete(k)));
+  })());
   self.clients.claim();
 });
 
@@ -202,14 +222,21 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(photoFromPhone(event));
     return;
   }
+  const isLib = host.endsWith("gstatic.com") || host === "fonts.googleapis.com";
+  const targetCache = isLib ? LIBS : CACHE_NAME;
+  const fromCache = () => caches.match(event.request, { ignoreSearch: true });
+  // Network first, but on no/slow internet (4 s) use the copy saved on the phone
+  const network = fetch(event.request).then((res) => {
+    if (res && (res.ok || res.type === "opaque")) {
+      const copy = res.clone();
+      event.waitUntil(caches.open(targetCache).then((cache) => cache.put(event.request, copy)).catch(() => {}));
+    }
+    return res;
+  });
+  const timeout = new Promise((resolve) => setTimeout(() => resolve(null), 4000));
   event.respondWith(
-    fetch(event.request)
-      .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        return res;
-      })
-      .catch(() => caches.match(event.request, { ignoreSearch: true }))
+    Promise.race([network, timeout.then(() => fromCache().then((hit) => hit || network))])
+      .catch(() => fromCache().then((hit) => hit || Response.error()))
   );
 });
 

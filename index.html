@@ -1427,7 +1427,8 @@
         }
 
         /* Post Category bar: no dark background, stays fixed just under the header while scrolling */
-        .post-category-row { position:sticky; top:var(--swb-header-h, 96px); z-index:90; display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--ajrak-cream); border:0; border-radius:0; padding:6px 12px; margin:0 -12px 8px; }
+        .post-category-row { position:sticky; top:var(--swb-header-h, 96px); z-index:90; display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--ajrak-cream); border:0; border-radius:0; padding:4px 12px 6px; margin:0 -12px 8px; }
+        #feed-section.container { margin-top:0; }
         .post-category-label { color:var(--ajrak-blue); font-weight:bold; font-size:12.5px; white-space:nowrap; }
         .post-category-select { flex:1; min-width:0; max-width:210px; background:#8B1E24; color:#fff; border:1px solid var(--ajrak-gold); border-radius:20px; padding:4px 10px; font-size:12.5px; font-weight:bold; }
         .create-post textarea {
@@ -2183,6 +2184,7 @@
             orderBy, 
             limit,
             getDocsFromCache,
+            getDocFromCache,
             getCountFromServer,
             where,
             getDocs,
@@ -4832,6 +4834,16 @@
         // Signed-in user but the network failed: keep retrying instead of showing the login page
         async function getUserDocWithRetry(ref, uid) {
             let delay = 1000;
+            // OFFLINE: open the app from the phone's saved data, never wait for the internet
+            if (navigator.onLine === false) {
+                try {
+                    const cached = await getDocFromCache(ref);
+                    if (cached && cached.exists()) return cached;
+                } catch (e) {}
+                let evc = false;
+                try { evc = localStorage.getItem('swb_evc_' + uid) === '1'; } catch (e) {}
+                return { exists: () => true, data: () => ({ emailVerifiedCustom: evc }) };
+            }
             while (auth.currentUser && auth.currentUser.uid === uid) {
                 try {
                     return await getDoc(ref);
@@ -4860,6 +4872,7 @@
                 // Signed out while waiting: the next auth event updates the screen
                 if (!userSnap || !auth.currentUser || auth.currentUser.uid !== user.uid) return;
                 const isCustomVer = Boolean(userSnap.exists() && userSnap.data().emailVerifiedCustom === true);
+                try { if (isCustomVer) localStorage.setItem('swb_evc_' + user.uid, '1'); } catch (e) {}
                 if (!user.emailVerified && !isCustomVer) {
                     hideBootLoader();
                     document.getElementById('auth-section').classList.remove('hidden');
