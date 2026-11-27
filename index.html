@@ -1996,33 +1996,6 @@
         </div>
     </div>
 
-    <div id="reset-password-screen" class="card hidden">
-        <div class="ajrak-border-strip"></div>
-        <div class="card-body">
-            <h2 id="reset-screen-title">🔑 Reset Password</h2>
-            <p id="reset-screen-subtitle" style="font-size:13px; color:#555; margin-bottom:4px;">Sindhi World Book Account:</p>
-            <p id="reset-screen-email" class="subtitle" style="font-weight:bold;" dir="ltr"></p>
-            
-            <div class="password-field-wrapper">
-                <input type="password" id="email-reset-new-pass" placeholder="New Password (min 6 characters)" dir="ltr">
-                <button type="button" class="eye-toggle-btn" onclick="togglePassVisibility('email-reset-new-pass', this)">
-                    <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                </button>
-            </div>
-
-            <div class="password-field-wrapper">
-                <input type="password" id="email-reset-repeat-pass" placeholder="Repeat Password" dir="ltr">
-                <button type="button" class="eye-toggle-btn" onclick="togglePassVisibility('email-reset-repeat-pass', this)">
-                    <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                </button>
-            </div>
-
-            <button id="btn-confirm-email-reset" class="btn-primary" onclick="confirmCustomEmailPasswordReset()">Save New Password</button>
-            <div id="email-reset-status" class="status-msg hidden"></div>
-            <button id="btn-back-to-login" class="btn-sm neutral" style="margin-top:12px;" onclick="exitResetScreen()">← Back to Sindhi World Book</button>
-        </div>
-    </div>
-
     <div id="app-boot-loader" style="max-width:420px; margin:60px auto; text-align:center; padding:24px;">
         <div style="width:44px; height:44px; border:4px solid #DCD4C6; border-top-color:#8B1E24; border-radius:50%; margin:0 auto 14px; animation:spinBoot 0.8s linear infinite;"></div>
         <div style="color:#14284B; font-weight:bold; font-size:15px;">Sindhi World Book...</div>
@@ -2072,7 +2045,7 @@
                     </button>
                 </div>
                 <button id="btn-login-submit" class="btn-primary" onclick="loginUser()">Login</button>
-                
+                <button type="button" id="btn-forgot-password" class="btn-forgot-link" onclick="sendLoginForgotPassword()">🔑 Forgot Password?</button>
             </div>
 
             <div id="signup-form" class="hidden">
@@ -2150,6 +2123,7 @@
         <div id="announcement-banner-container" class="hidden"></div>
 
         <div id="posts-container"></div>
+        <button type="button" id="btn-older-posts" class="btn-primary hidden" onclick="loadOlderPosts()">Show older posts</button>
     </div>
 
     <script type="module">
@@ -2159,6 +2133,7 @@
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
             sendEmailVerification, 
+            sendPasswordResetEmail,
             updateProfile,
             updatePassword,
             EmailAuthProvider,
@@ -2169,11 +2144,18 @@
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { 
             getFirestore, 
+            initializeFirestore,
+            persistentLocalCache,
+            persistentMultipleTabManager,
+            CACHE_SIZE_UNLIMITED,
             collection, 
             addDoc, 
             onSnapshot, 
             query, 
             orderBy, 
+            limit,
+            getDocsFromCache,
+            getCountFromServer,
             where,
             getDocs,
             doc, 
@@ -2181,6 +2163,7 @@
             getDoc,
             updateDoc, 
             deleteDoc, 
+            deleteField,
             arrayUnion, 
             arrayRemove,
             serverTimestamp 
@@ -2215,7 +2198,23 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        // Chats, posts and profiles are kept in the phone's storage (IndexedDB)
+        let db;
+        try {
+            db = initializeFirestore(app, {
+                localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager(), cacheSizeBytes: CACHE_SIZE_UNLIMITED })
+            });
+        } catch (e) {
+            db = getFirestore(app);
+        }
+        // Remove the databases of an earlier encrypted version
+        if (window.indexedDB && indexedDB.databases) {
+            indexedDB.databases().then(list => list.forEach(d => {
+                if (d.name && (d.name === 'swb-keys' || d.name.startsWith('swb-user-'))) indexedDB.deleteDatabase(d.name);
+            })).catch(() => {});
+        }
+        // Ask the browser not to auto-delete saved data when the phone is low on space
+        if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
         let messaging = null;
         try {
             messaging = getMessaging(app);
@@ -2238,6 +2237,7 @@
         async function unregisterFcmPushToken(uid) {
             // Never let logout hang (e.g. when the phone is offline): give up waiting after 3 seconds
             const wait = (p) => Promise.race([Promise.resolve(p).catch(() => {}), new Promise(r => setTimeout(r, 3000))]);
+            if (uid) { try { localStorage.removeItem('swb_fcm_' + uid); } catch (e) {} }
             if (uid) await wait(updateDoc(doc(db, "users", uid), { fcmTokens: [], lastFcmToken: null }));
             if (messaging) await wait(deleteToken(messaging));
         }
@@ -2252,7 +2252,10 @@
                     vapidKey: FCM_VAPID_KEY,
                     serviceWorkerRegistration: swReg
                 });
-                if (token) {
+                const tokenKey = 'swb_fcm_' + uid;
+                let last = {};
+                try { last = JSON.parse(localStorage.getItem(tokenKey)) || {}; } catch (e) {}
+                if (token && (last.token !== token || Date.now() - last.at > 12 * 60 * 60 * 1000)) {
                     await updateDoc(doc(db, "users", uid), {
                         fcmTokens: [token],
                         lastFcmToken: token
@@ -2264,6 +2267,7 @@
                             if (sd.id !== uid) await updateDoc(doc(db, "users", sd.id), { fcmTokens: [], lastFcmToken: null }).catch(() => {});
                         }
                     } catch (e) {}
+                    try { localStorage.setItem(tokenKey, JSON.stringify({ token: token, at: Date.now() })); } catch (e) {}
                 }
             } catch (err) {
                 console.log("FCM token error:", err);
@@ -2273,8 +2277,6 @@
         const urlParams = new URLSearchParams(window.location.search);
         const customResetToken = urlParams.get('resetToken');
         let pendingSharedPostId = urlParams.get('post') || null;
-        let isResetPasswordFlow = Boolean(customResetToken);
-        let resetTokenData = null;
 
         // ---- Share Target: content shared from other apps (YouTube etc.) ----
         let pendingShareText = null;
@@ -2442,7 +2444,7 @@
                 resetMailDesc: "Click the button below to receive a password reset link on your registered email:",
                 sendResetMailBtn: "Send Reset Link to Email",
                 sendingResetMail: "Sending email...",
-                resetMailSentSuccess: "Password reset link has been sent to your email! Open your Inbox or Spam folder and click 'Set New Password'.",
+                resetMailSentSuccess: "Password reset link has been sent to your email! Open your Inbox or Spam folder and open the link to set a new password.",
                 resetScreenTitle: "🔑 Reset Your Password",
                 resetScreenSub: "Sindhi World Book Account:",
                 newPassPlaceholder: "New Password (min 6 characters)",
@@ -2737,7 +2739,7 @@
                 resetMailDesc: "پنهنجي اي ميل تي پاسورڊ ري سيٽ لنڪ حاصل ڪرڻ لاءِ هيٺين بٽڻ تي ڪلڪ ڪريو:",
                 sendResetMailBtn: "اي ميل تي ري سيٽ لنڪ موڪليو",
                 sendingResetMail: "اي ميل موڪلي پئي وڃي...",
-                resetMailSentSuccess: "توهان جي اي ميل تي پاسورڊ ري سيٽ لنڪ موڪليو ويو آهي! پنهنجو Inbox يا Spam چيڪ ڪري 'Set New Password' تي ڪلڪ ڪريو.",
+                resetMailSentSuccess: "توهان جي اي ميل تي پاسورڊ ري سيٽ لنڪ موڪليو ويو آهي! پنهنجو Inbox يا Spam چيڪ ڪري اي ميل واري لنڪ تي ڪلڪ ڪريو.",
                 resetScreenTitle: "🔑 نئون پاسورڊ رکو",
                 resetScreenSub: "سنڌي ورلڊ بڪ اڪائونٽ:",
                 newPassPlaceholder: "نئون پاسورڊ (New Password)",
@@ -2980,12 +2982,14 @@
         let myFriendsList = [];
         let incomingRequests = [];
         let allUsersList = [];
+        let usersFromServer = false;
         let myNotifications = [];
         let myHistoryList = [];
         let allMyMessages = [];
         let activeChatFriendUid = null;
         let previousUnreadCount = 0;
         let latestDocs = [];
+        let myPostTotal = { uid: null, at: 0, n: null };
         let unsubscribePosts = null;
         let unsubscribeUsers = null;
         let unsubscribeMyProfile = null;
@@ -3677,7 +3681,7 @@
             announcementsHistoryList = loadLocalAnnouncementsList();
             activeAnnouncementsList = [...announcementsHistoryList].sort((a, b) => (b.activeCreatedAtMs || b.createdAtMs || 0) - (a.activeCreatedAtMs || a.createdAtMs || 0));
             syncAnnouncementFromPosts(latestDocs);
-            const q = query(collection(db, "announcements"), orderBy("createdAtMs", "asc"));
+            const q = query(collection(db, "announcements"), orderBy("createdAtMs", "desc"), limit(20));
             unsubscribeAnnouncements = onSnapshot(q, (snapshot) => {
                 const docsArr = [];
                 snapshot.forEach((docSnap) => {
@@ -3969,38 +3973,6 @@
             return true;
         }
 
-        async function sendCustomResetLinkForUser(userRecord) {
-            const tokenDoc = await addDoc(collection(db, "password_resets"), {
-                uid: userRecord.uid,
-                email: userRecord.email.toLowerCase(),
-                name: userRecord.name || "User",
-                currentKey: userRecord.passSync || null,
-                used: false,
-                expiresAt: Date.now() + (15 * 60 * 1000)
-            });
-
-            const baseUrl = window.location.origin + window.location.pathname;
-            const customResetUrl = `${baseUrl}?resetToken=${tokenDoc.id}`;
-
-            const response = await fetch(DRIVE_URLS[0], {
-                method: "POST",
-                redirect: "follow",
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({
-                    action: "send_reset_email",
-                    email: userRecord.email,
-                    name: userRecord.name,
-                    resetUrl: customResetUrl
-                })
-            });
-
-            const resText = await response.text();
-            const resJson = JSON.parse(resText);
-            if (resJson.status !== "sent") {
-                throw new Error(resJson.message || "Email send failed");
-            }
-        }
-
         window.sendLoginForgotPassword = async function() {
             const t = translations[currentLang];
             if (!navigator.onLine) {
@@ -4019,129 +3991,19 @@
             btn.innerText = t.sendingResetMail;
 
             try {
-                const q = query(collection(db, "users"), where("email", "==", emailInput));
-                const snap = await getDocs(q);
-
-                if (snap.empty) {
-                    showMessage(t.forgotAccountNotFound, true);
-                    return;
-                }
-
-                const userData = snap.docs[0].data();
-                await sendCustomResetLinkForUser(userData);
+                await sendPasswordResetEmail(auth, emailInput);
                 showMessage(t.resetMailSentSuccess, false);
             } catch (err) {
                 if (isNetworkError(err)) {
                     showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                } else if ((err?.code || '').includes('user-not-found')) {
+                    showMessage(t.forgotAccountNotFound, true);
                 } else {
                     showMessage(err.message, true);
                 }
             } finally {
                 btn.disabled = false;
                 btn.innerText = t.forgotPassBtn;
-            }
-        };
-
-        async function initCustomResetScreen() {
-            const t = translations[currentLang];
-            document.getElementById('auth-section').classList.add('hidden');
-            document.getElementById('feed-section').classList.add('hidden');
-            document.getElementById('reset-password-screen').classList.remove('hidden');
-            document.getElementById('reset-screen-title').innerText = t.resetScreenTitle;
-            document.getElementById('reset-screen-subtitle').innerText = t.resetScreenSub;
-
-            try {
-                const tokenRef = doc(db, "password_resets", customResetToken);
-                const tokenSnap = await getDoc(tokenRef);
-
-                if (!tokenSnap.exists()) {
-                    throw new Error(t.invalidResetLink);
-                }
-
-                const data = tokenSnap.data();
-                if (data.used || Date.now() > data.expiresAt) {
-                    throw new Error(t.invalidResetLink);
-                }
-
-                resetTokenData = data;
-                document.getElementById('reset-screen-email').innerText = `${data.name || ''} (${data.email})`;
-            } catch (err) {
-                const statusEl = document.getElementById('email-reset-status');
-                statusEl.innerText = t.invalidResetLink;
-                statusEl.className = "status-msg status-error";
-                statusEl.classList.remove('hidden');
-                document.getElementById('btn-confirm-email-reset').disabled = true;
-            }
-        }
-
-        window.confirmCustomEmailPasswordReset = async function() {
-            const t = translations[currentLang];
-            if (!navigator.onLine) {
-                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
-                return;
-            }
-            const newPass = document.getElementById('email-reset-new-pass').value;
-            const repeatPass = document.getElementById('email-reset-repeat-pass').value;
-            const statusEl = document.getElementById('email-reset-status');
-            const btn = document.getElementById('btn-confirm-email-reset');
-
-            statusEl.classList.add('hidden');
-
-            if (newPass.length < 6) {
-                statusEl.innerText = t.passShortError;
-                statusEl.className = "status-msg status-error";
-                statusEl.classList.remove('hidden');
-                return;
-            }
-            if (newPass !== repeatPass) {
-                statusEl.innerText = t.passMismatchError;
-                statusEl.className = "status-msg status-error";
-                statusEl.classList.remove('hidden');
-                return;
-            }
-
-            btn.disabled = true;
-            try {
-                if (!resetTokenData || !resetTokenData.currentKey) {
-                    throw new Error(t.invalidResetLink);
-                }
-
-                const oldPass = atob(resetTokenData.currentKey);
-                const cred = await signInWithEmailAndPassword(auth, resetTokenData.email, oldPass);
-                await updatePassword(cred.user, newPass);
-
-                await updateDoc(doc(db, "password_resets", customResetToken), {
-                    used: true
-                });
-                await updateDoc(doc(db, "users", resetTokenData.uid), {
-                    passSync: btoa(newPass)
-                });
-
-                statusEl.innerText = t.resetPassDoneSuccess;
-                statusEl.className = "status-msg status-success";
-                statusEl.classList.remove('hidden');
-                document.getElementById('email-reset-new-pass').value = '';
-                document.getElementById('email-reset-repeat-pass').value = '';
-            } catch (err) {
-                if (isNetworkError(err)) {
-                    showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
-                } else {
-                    statusEl.innerText = err.message;
-                    statusEl.className = "status-msg status-error";
-                    statusEl.classList.remove('hidden');
-                }
-                btn.disabled = false;
-            }
-        };
-
-        window.exitResetScreen = function() {
-            window.history.replaceState({}, document.title, window.location.pathname);
-            isResetPasswordFlow = false;
-            document.getElementById('reset-password-screen').classList.add('hidden');
-            if (auth.currentUser && auth.currentUser.emailVerified) {
-                location.reload();
-            } else {
-                document.getElementById('auth-section').classList.remove('hidden');
             }
         };
 
@@ -4342,10 +4204,11 @@
             throw new Error(lastError);
         }
 
-        window.goToPost = function(postId) {
+        window.goToPost = async function(postId) {
             const t = translations[currentLang];
             closePopup();
             if (!postId) return;
+            if (currentUserObj && !document.getElementById(`post-card-${postId}`)) await ensurePostLoaded(postId);
 
             const postElement = document.getElementById(`post-card-${postId}`);
             if (postElement) {
@@ -4504,11 +4367,6 @@
             document.getElementById('signup-password').placeholder = t.signupPass;
             document.getElementById('btn-signup-submit').innerText = t.btnSignup;
 
-            document.getElementById('reset-screen-title').innerText = t.resetScreenTitle;
-            document.getElementById('reset-screen-subtitle').innerText = t.resetScreenSub;
-            document.getElementById('email-reset-new-pass').placeholder = t.newPassPlaceholder;
-            document.getElementById('email-reset-repeat-pass').placeholder = t.repeatPassPlaceholder;
-            document.getElementById('btn-confirm-email-reset').innerText = t.saveNewPassBtn;
 
             document.getElementById('menu-profile-label').innerText = t.menuProfile;
             document.getElementById('menu-friends-label').innerText = t.menuFriends;
@@ -4714,7 +4572,6 @@
                     uid: userCredential.user.uid,
                     name: name,
                     email: email.toLowerCase(),
-                    passSync: btoa(password),
                     photoUrl: null,
                     photoFileId: null,
                     photoDriveIndex: null,
@@ -4790,9 +4647,6 @@
                         showCustomAlert(t.accountBlockedTitle, t.accountBlockedDesc, t.alertOkBtn, "error");
                         return;
                     }
-                    await updateDoc(doc(db, "users", userCredential.user.uid), {
-                        passSync: btoa(password)
-                    }).catch(() => {});
                 }
             } catch (error) {
                 if (isNetworkError(error)) {
@@ -4804,12 +4658,15 @@
         };
 
         window.logoutUser = async function() {
+            msgListenGen++;
+            historyOwner = null;
+            myHistoryList = [];
+            resetLoadedPosts();
             if (unsubscribePosts) unsubscribePosts();
             if (unsubscribeUsers) unsubscribeUsers();
             if (unsubscribeMyProfile) unsubscribeMyProfile();
             if (unsubscribeNotifs) unsubscribeNotifs();
             if (unsubscribeHistory) unsubscribeHistory();
-            if (presenceHeartbeatTimer) { clearInterval(presenceHeartbeatTimer); presenceHeartbeatTimer = null; }
             if (unsubscribeMessages) unsubscribeMessages();
             closePopup();
             const logoutUid = auth.currentUser ? auth.currentUser.uid : null;
@@ -4849,12 +4706,6 @@
                 return;
             }
 
-            if (isResetPasswordFlow) {
-                hideBootLoader();
-                await initCustomResetScreen();
-                return;
-            }
-
             if (user) {
                 const userDocRef = doc(db, "users", user.uid);
                 const userSnap = await getUserDocWithRetry(userDocRef, user.uid);
@@ -4882,7 +4733,7 @@
                     document.addEventListener("pointerdown", () => registerFcmPushToken(user.uid), { once: true });
                 }
                 const displayName = user.displayName || user.email.split('@')[0];
-                currentUserObj = { uid: user.uid, name: displayName, email: user.email, photoUrl: null, passSync: null };
+                currentUserObj = { uid: user.uid, name: displayName, email: user.email, photoUrl: null };
 
                 const adminMenuEl = document.getElementById('menu-admin-item');
                 if (adminMenuEl) {
@@ -4927,17 +4778,15 @@
                 syncAdminFeedState(latestDocs);
                 hideBootLoader();
                 document.getElementById('auth-section').classList.add('hidden');
-                document.getElementById('reset-password-screen').classList.add('hidden');
                 document.getElementById('feed-section').classList.remove('hidden');
                 document.getElementById('user-nav').classList.remove('hidden');
                 document.getElementById('fb-icon-bar').classList.remove('hidden');
                 document.getElementById('current-user-display').innerText = currentUserObj.name;
 
-                startPresenceHeartbeat();
                 listenToMyProfile();
+                removeOldResetRecords();
                 listenToAllUsers();
                 listenToNotifications();
-                listenToHistory();
                 listenToMessages();
                 listenToPosts();
                 listenToAnnouncements();
@@ -4948,6 +4797,10 @@
             } else {
                 hideBootLoader();
                 currentUserObj = null;
+                msgListenGen++;
+                historyOwner = null;
+                myHistoryList = [];
+                resetLoadedPosts();
                 setSwAuthState(false);
                 clearAllSystemNotifications();
                 document.getElementById('feed-section').classList.add('hidden');
@@ -4961,6 +4814,8 @@
                     const prevSec = document.getElementById('shared-post-preview-section');
                     if (prevSec) prevSec.classList.add('hidden');
                     document.getElementById('auth-section').classList.remove('hidden');
+                    // A reset link from the old system: ask for a new one
+                    if (customResetToken) showMessage(translations[currentLang].invalidResetLink, true);
                 }
             }
             } catch (authErr) {
@@ -5035,47 +4890,79 @@
             }
         }
 
-        // Backup refresh for ticks: while a chat is open, re-check my own sent messages that are not yet read
-        let tickPollBusy = false;
-        setInterval(async () => {
-            if (tickPollBusy || document.hidden || !currentUserObj || !activeChatFriendUid || !navigator.onLine) return;
-            const popupMsgEl = document.getElementById('popup-messages');
-            if (!popupMsgEl || popupMsgEl.classList.contains('hidden')) return;
-            const pending = allMyMessages.filter(m =>
-                m.senderId === currentUserObj.uid && m.receiverId === activeChatFriendUid && !m.read
-            ).slice(-10);
-            if (!pending.length) return;
-            tickPollBusy = true;
-            try {
-                let changed = false;
-                for (const m of pending) {
-                    const snap = await getDoc(doc(db, "messages", m.id));
-                    if (!snap.exists()) continue;
-                    const d = snap.data();
-                    if (!!d.read !== !!m.read || !!d.delivered !== !!m.delivered) {
-                        m.read = d.read; m.delivered = d.delivered; m.readAt = d.readAt; m.deliveredAt = d.deliveredAt; changed = true;
-                    }
-                }
-                if (changed) renderActiveChatMessages();
-            } catch (e) {} finally { tickPollBusy = false; }
-        }, 4000);
+        const MSG_DAY = 24 * 60 * 60 * 1000;
+        const MSG_RECENT_MS = 3 * MSG_DAY;      // overlap re-checked with Firebase
+        const MSG_UNREAD_MS = 14 * MSG_DAY;     // unread messages stay live this long
+        const MSG_FULL_SYNC_MS = 7 * MSG_DAY;   // once a week everything is checked again
+        let msgListenGen = 0;
+        let msgCutoff = 0;
+        let olderMessages = [];
+        let liveMessages = [];
+        let msgIndexMissing = false;
 
-        function listenToMessages() {
+        function rebuildMessages() {
+            const byId = new Map();
+            olderMessages.forEach(m => byId.set(m.id, m));
+            liveMessages.forEach(m => byId.set(m.id, m));
+            allMyMessages = [...byId.values()]
+                .sort((a, b) => (a.clientTime || 0) - (b.clientTime || 0))
+                .filter(m => !(Array.isArray(m.deletedFor) && m.deletedFor.includes(currentUserObj.uid)));
+        }
+        const docsToList = (snap) => { const list = []; snap.forEach(d => list.push({ id: d.id, ...d.data() })); return list; };
+
+        // Show a change made to an old message (it is outside the live window)
+        async function refreshOlderMessages() {
+            if (!msgCutoff || !currentUserObj) return;
+            const uid = currentUserObj.uid;
+            try {
+                const snap = await getDocsFromCache(query(collection(db, "messages"), where("participants", "array-contains", uid)));
+                if (!currentUserObj || currentUserObj.uid !== uid) return;
+                olderMessages = docsToList(snap).filter(m => (m.clientTime || 0) < msgCutoff);
+                rebuildMessages();
+                if (activeChatFriendUid && !document.getElementById('popup-messages').classList.contains('hidden')) renderActiveChatMessages();
+            } catch (e) {}
+        }
+
+        async function listenToMessages() {
             if (!currentUserObj || !currentUserObj.uid) return;
             if (unsubscribeMessages) {
                 try { unsubscribeMessages(); } catch (e) {}
+                unsubscribeMessages = null;
             }
-            const q = query(
-                collection(db, "messages"),
-                where("participants", "array-contains", currentUserObj.uid)
-            );
-            unsubscribeMessages = onSnapshot(q, (snapshot) => {
-                allMyMessages = [];
-                snapshot.forEach((docSnap) => {
-                    allMyMessages.push({ id: docSnap.id, ...docSnap.data() });
+            const gen = ++msgListenGen;
+            const uid = currentUserObj.uid;
+            const mine = where("participants", "array-contains", uid);
+            const syncKey = 'swb_msgsync_' + uid;
+            let sync = {};
+            try { sync = JSON.parse(localStorage.getItem(syncKey)) || {}; } catch (e) {}
+            let saved = [];
+            try { saved = docsToList(await getDocsFromCache(query(collection(db, "messages"), mine))); } catch (e) {}
+            if (gen !== msgListenGen || !currentUserObj || currentUserObj.uid !== uid) return;
+
+            const now = Date.now();
+            msgCutoff = 0;
+            if (!msgIndexMissing && saved.length && sync.full && now - sync.full < MSG_FULL_SYNC_MS) {
+                msgCutoff = sync.last - MSG_RECENT_MS;
+                saved.forEach(m => {
+                    const t = m.clientTime || 0;
+                    if (!m.read && t > now - MSG_UNREAD_MS && t < msgCutoff) msgCutoff = t;
                 });
-                allMyMessages.sort((a, b) => (a.clientTime || 0) - (b.clientTime || 0));
-                allMyMessages = allMyMessages.filter(m => !(Array.isArray(m.deletedFor) && m.deletedFor.includes(currentUserObj.uid)));
+            }
+            olderMessages = msgCutoff ? saved.filter(m => (m.clientTime || 0) < msgCutoff) : [];
+            const q = msgCutoff
+                ? query(collection(db, "messages"), mine, where("clientTime", ">=", msgCutoff))
+                : query(collection(db, "messages"), mine);
+
+            unsubscribeMessages = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+                if (gen !== msgListenGen || !currentUserObj) return;
+                liveMessages = docsToList(snapshot);
+                rebuildMessages();
+                if (!snapshot.metadata.fromCache) {
+                    sync.last = Date.now();
+                    if (!msgCutoff) sync.full = sync.last;
+                    try { localStorage.setItem(syncKey, JSON.stringify(sync)); } catch (e) {}
+                    waPruneMedia(uid, allMyMessages);
+                }
 
                 snapshot.docChanges().forEach((change) => {
                     if (change.type === "added" || change.type === "modified") {
@@ -5131,6 +5018,13 @@
                         renderChatFriendsList();
                     }
                 }
+            }, (err) => {
+                console.log("Message listener error:", err);
+                // The Firestore index has not been created yet: load everything as before
+                if (msgCutoff && err && err.code === 'failed-precondition') {
+                    msgIndexMissing = true;
+                    listenToMessages();
+                }
             });
         }
 
@@ -5140,6 +5034,7 @@
             const unreadFromFriend = allMyMessages.filter(
                 m => m.senderId === friendUid && m.receiverId === currentUserObj.uid && !m.read
             );
+            if (unreadFromFriend.length) setTimeout(refreshOlderMessages, 100);
             for (const msg of unreadFromFriend) {
                 await updateDoc(doc(db, "messages", msg.id), {
                     delivered: true,
@@ -5279,6 +5174,7 @@
                 (m.senderId === currentUserObj.uid && m.receiverId === friendUid)
             );
             try {
+                setTimeout(refreshOlderMessages, 100);
                 await Promise.all(msgs.map(m => updateDoc(doc(db, "messages", m.id), { deletedFor: arrayUnion(currentUserObj.uid) })));
                 // update the list right away without waiting for the server round trip
                 allMyMessages = allMyMessages.filter(m => !msgs.some(x => x.id === m.id));
@@ -5395,9 +5291,10 @@
             container.innerHTML = html;
             if (!selectedMsgId) container.scrollTop = container.scrollHeight;
             container.querySelectorAll('img.wa-att-img').forEach(img => {
-                if (!img.complete) img.addEventListener('load', () => { if (!selectedMsgId) container.scrollTop = container.scrollHeight; });
+                if (!img.complete || !img.getAttribute('src')) img.addEventListener('load', () => { if (!selectedMsgId) container.scrollTop = container.scrollHeight; });
             });
             if (typeof paintVoice === 'function') paintVoice();
+            waHydrateMedia(container, thread);
             if (typeof waUpdateSendMic === 'function') waUpdateSendMic();
         }
 
@@ -5569,6 +5466,7 @@
                 label: wl('waDelForMe'),
                 onClick: async () => {
                     clearMsgSelection();
+                    setTimeout(refreshOlderMessages, 100);
                     try { await updateDoc(ref, { deletedFor: arrayUnion(currentUserObj.uid) }); }
                     catch (e) { waToast(wl('waDelMsgFail')); }
                 }
@@ -5583,6 +5481,7 @@
                             if (m.attachment && m.attachment.fileId && DRIVE_URLS[0]) {
                                 fetch(DRIVE_URLS[0], { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'delete', fileId: m.attachment.fileId }) }).catch(() => {});
                             }
+                            setTimeout(refreshOlderMessages, 100);
                             await updateDoc(ref, { deletedForAll: true, text: '🚫 This message was deleted', attachment: null, replyTo: null, forwarded: false, reactions: {} });
                         } catch (e) { waToast(wl('waDelMsgFail')); }
                     }
@@ -5694,6 +5593,7 @@
             const value = mine === emoji ? '' : emoji;
             clearMsgSelection();
             try {
+                setTimeout(refreshOlderMessages, 100);
                 await updateDoc(doc(db, "messages", m.id), { ['reactions.' + currentUserObj.uid]: value });
             } catch (e) { waToast(wl('waReactFail')); }
         };
@@ -5780,13 +5680,15 @@
             if (m.deletedForAll || !m.attachment) return '';
             const a = m.attachment;
             if (a.type === 'image') {
-                return `<img class="wa-att-img" src="${escapeHTML(a.url || '')}" alt="Photo">`;
+                if (!a.fileId) return `<img class="wa-att-img" src="${escapeHTML(a.url || '')}" alt="Photo">`;
+                const saved = waMediaUrls.get(currentUserObj.uid + '|' + a.fileId);
+                return `<img class="wa-att-img" ${saved ? `src="${saved}" ` : ''}data-fid="${escapeHTML(a.fileId)}" data-url="${escapeHTML(a.url || '')}" alt="Photo">`;
             }
             if (a.type === 'audio') {
                 return `<div class="wa-voice" data-mid="${escapeHTML(m.id)}" data-dur="${Number(a.dur) || 0}"><button type="button" class="wa-voice-btn">▶</button><div class="wa-voice-bar"><i></i></div><span class="wa-voice-time">${waFmtDur(a.dur)}</span></div>`;
             }
             if (a.type === 'file') {
-                return `<a class="wa-file" href="${escapeHTML(a.url || '#')}" target="_blank" rel="noopener"><span class="wa-file-ic">📄</span><span class="wa-file-meta"><b>${escapeHTML(a.name || 'Document')}</b><small>${escapeHTML(waFmtSize(a.size))}${a.size ? ' · ' : ''}${escapeHTML(wl('waTapOpen'))}</small></span></a>`;
+                return `<a class="wa-file" data-fid="${escapeHTML(a.fileId || '')}" data-mime="${escapeHTML(a.mime || '')}" data-name="${escapeHTML(a.name || 'file')}" href="${escapeHTML(a.url || '#')}" target="_blank" rel="noopener"><span class="wa-file-ic">📄</span><span class="wa-file-meta"><b>${escapeHTML(a.name || 'Document')}</b><small>${escapeHTML(waFmtSize(a.size))}${a.size ? ' · ' : ''}${escapeHTML(wl('waTapOpen'))}</small></span></a>`;
             }
             if (a.type === 'location') {
                 const la = Number(a.lat), ln = Number(a.lng);
@@ -5863,6 +5765,9 @@
                 name = file.name || ('file_' + Date.now());
             }
             const up = await uploadToAvailableDrive(dataUrl, name, mime);
+            if (kind === 'image') {
+                try { await waSaveMedia(currentUserObj.uid, up.fileId, await (await fetch(dataUrl)).blob()); } catch (e) {}
+            }
             const att = {
                 type: kind,
                 url: kind === 'image' ? up.url : waDriveDownloadUrl(up.fileId),
@@ -5965,9 +5870,11 @@
                 try {
                     const base = r.mime.split(';')[0];
                                         const ext = base.includes('mp4') ? 'm4a' : (base.includes('ogg') ? 'ogg' : 'webm');
-                    const dataUrl = await waReadAsDataURL(new Blob(r.chunks, { type: base }));
+                    const voiceBlob = new Blob(r.chunks, { type: base });
+                    const dataUrl = await waReadAsDataURL(voiceBlob);
                     // File goes to Google Drive; the message only keeps the small fileId
                     const up = await uploadToAvailableDrive(dataUrl, 'voice_' + Date.now() + '.' + ext, base);
+                    await waSaveMedia(currentUserObj.uid, up.fileId, voiceBlob);
                     await waSendAttachment(r.toUid, { type: 'audio', fileId: up.fileId, mime: base, dur: dur }, wl('waLblVoice'));
                 } catch (e) { waToast(wl('waVoiceSendFail')); }
             };
@@ -5988,26 +5895,110 @@
             if (r.mr.state !== 'inactive') { try { r.mr.stop(); } catch (e) {} }
         };
 
-        // ---- voice playback ----
-        const waVoiceCache = {};
-        let waVoiceLoading = false;
-        async function waLoadVoice(fileId) {
-            if (waVoiceCache[fileId]) return waVoiceCache[fileId];
-            const res = await fetch(DRIVE_URLS[0], {
-                method: 'POST',
-                redirect: 'follow',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: 'get_file', fileId: fileId })
-            });
-            const j = JSON.parse(await res.text());
-            if (j.status !== 'success') throw new Error(j.message || 'load failed');
-            const bin = atob(j.base64);
-            const u8 = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-            const url = URL.createObjectURL(new Blob([u8], { type: j.mimeType || 'audio/webm' }));
-            waVoiceCache[fileId] = url;
-            return url;
+        // ---- chat photos + voice saved on the phone (a separate folder for every ID) ----
+        const waMediaUrls = new Map();
+        const waMediaJobs = new Map();
+        const waMediaFolder = (uid) => 'swb-media-' + uid;
+        const waMediaKey = (fileId) => new URL('__media__/' + encodeURIComponent(fileId), location.href).href;
+
+        async function waSaveMedia(uid, fileId, blob) {
+            if (!window.caches || !uid || !fileId) return;
+            try {
+                const c = await caches.open(waMediaFolder(uid));
+                await c.put(waMediaKey(fileId), new Response(blob, { headers: { 'Content-Type': blob.type || 'application/octet-stream' } }));
+            } catch (e) {}
         }
+
+        // From the phone if saved; otherwise download once from Drive and save
+        function waLoadMedia(fileId) {
+            const uid = currentUserObj && currentUserObj.uid;
+            if (!uid) return Promise.reject(new Error('signed out'));
+            const key = uid + '|' + fileId;
+            if (waMediaUrls.has(key)) return Promise.resolve(waMediaUrls.get(key));
+            if (waMediaJobs.has(key)) return waMediaJobs.get(key);
+            const job = (async () => {
+                let blob = null;
+                try {
+                    const hit = window.caches ? await (await caches.open(waMediaFolder(uid))).match(waMediaKey(fileId)) : null;
+                    if (hit) blob = await hit.blob();
+                } catch (e) {}
+                if (!blob) {
+                    const res = await fetch(DRIVE_URLS[0], {
+                        method: 'POST',
+                        redirect: 'follow',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: 'get_file', fileId: fileId })
+                    });
+                    const j = JSON.parse(await res.text());
+                    if (j.status !== 'success') throw new Error(j.message || 'load failed');
+                    const bin = atob(j.base64);
+                    const u8 = new Uint8Array(bin.length);
+                    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+                    blob = new Blob([u8], { type: j.mimeType || 'application/octet-stream' });
+                    await waSaveMedia(uid, fileId, blob);
+                }
+                const url = URL.createObjectURL(blob);
+                waMediaUrls.set(key, url);
+                return url;
+            })().finally(() => waMediaJobs.delete(key));
+            waMediaJobs.set(key, job);
+            return job;
+        }
+
+        // Fill chat photos and save the open chat's voice messages, one at a time
+        let waMediaQueue = Promise.resolve();
+        function waHydrateMedia(container, thread) {
+            container.querySelectorAll('img.wa-att-img[data-fid]').forEach(img => {
+                if (img.getAttribute('src')) return;
+                waMediaQueue = waMediaQueue.then(async () => {
+                    if (!img.isConnected) return;
+                    try { img.src = await waLoadMedia(img.dataset.fid); }
+                    catch (e) { if (img.dataset.url) img.src = img.dataset.url; }
+                });
+            });
+            thread.forEach(m => {
+                const a = m.attachment;
+                if (m.deletedForAll || !a || (a.type !== 'audio' && a.type !== 'file') || !a.fileId) return;
+                waMediaQueue = waMediaQueue.then(() => waLoadMedia(a.fileId)).catch(() => {});
+            });
+        }
+
+        // Remove saved files whose message was deleted
+        async function waPruneMedia(uid, messages) {
+            if (!window.caches) return;
+            try {
+                const keep = new Set(messages.map(m => m.attachment && m.attachment.fileId).filter(Boolean).map(waMediaKey));
+                const c = await caches.open(waMediaFolder(uid));
+                for (const req of await c.keys()) if (!keep.has(req.url)) await c.delete(req);
+            } catch (e) {}
+        }
+
+        // Save the photos of the newest visible posts on the phone
+        const postPhotoSeen = new Set();
+        let postPhotoQueue = Promise.resolve();
+        function savePostPhotosOnPhone() {
+            if (!window.caches || !currentUserObj || (navigator.connection && navigator.connection.saveData)) return;
+            if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+            latestDocs.filter(p => p.image && /^https:/.test(p.image) &&
+                    (isAdminUser() || p.authorId === currentUserObj.uid || (p.privacy || 'public') === 'public' || myFriendsList.includes(p.authorId)))
+                .slice(0, 150)
+                .forEach(p => {
+                    if (postPhotoSeen.has(p.image)) return;
+                    postPhotoSeen.add(p.image);
+                    postPhotoQueue = postPhotoQueue.then(async () => {
+                        if (await caches.match(p.image, { cacheName: 'swb-post-media' })) return;
+                        await new Promise(done => {
+                            const im = new Image();
+                            im.onload = im.onerror = done;
+                            setTimeout(done, 15000);
+                            im.src = p.image;
+                        });
+                    }).catch(() => {});
+                });
+        }
+
+        // ---- voice playback ----
+        let waVoiceLoading = false;
         let waVoice = { mid: null, audio: null };
         function paintVoice() {
             document.querySelectorAll('.wa-voice').forEach(el => {
@@ -6043,6 +6034,25 @@
                     document.body.appendChild(v);
                     return;
                 }
+                const file = e.target.closest('.wa-file');
+                if (file && file.dataset.fid && waMediaUrls.has(currentUserObj.uid + '|' + file.dataset.fid)) {
+                    e.preventDefault();
+                    const url = waMediaUrls.get(currentUserObj.uid + '|' + file.dataset.fid);
+                    if (file.dataset.mime.startsWith('video/')) {
+                        const v = document.createElement('div');
+                        v.className = 'wa-viewer';
+                        v.innerHTML = '<video controls autoplay playsinline style="max-width:100%;max-height:100%;"></video><button type="button">✕</button>';
+                        v.querySelector('video').src = url;
+                        v.querySelector('button').onclick = () => v.remove();
+                        document.body.appendChild(v);
+                    } else {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = file.dataset.name;
+                        a.click();
+                    }
+                    return;
+                }
                 const btn = e.target.closest('.wa-voice-btn');
                 if (!btn) return;
                 const el = btn.closest('.wa-voice');
@@ -6058,7 +6068,7 @@
                     if (waVoiceLoading) return;
                     waVoiceLoading = true;
                     btn.textContent = '…';
-                    try { src = await waLoadVoice(att.fileId); }
+                    try { src = await waLoadMedia(att.fileId); }
                     catch (err) { waToast(wl('waVoiceLoadFail')); }
                     waVoiceLoading = false;
                     if (!src) { paintVoice(); return; }
@@ -6127,13 +6137,12 @@
                 createdAt: serverTimestamp()
             });
 
-            const savePush = (s) => updateDoc(doc(db, "messages", msgDocRef.id), { pushResult: String(s).slice(0, 160) }).catch(() => {});
+            const savePush = (s) => s !== 'ok' && updateDoc(doc(db, "messages", msgDocRef.id), { pushResult: String(s).slice(0, 160) }).catch(() => {});
             // Trigger background push notification to receiver even if their app is completely closed
             try {
                 if (PUSH_SCRIPT_URL && PUSH_SCRIPT_URL.startsWith("https://")) {
-                    const receiverSnap = await getDoc(doc(db, "users", toUid));
-                    if (receiverSnap.exists()) {
-                        const rData = receiverSnap.data();
+                    const rData = allUsersList.find(u => u.uid === toUid);   // already live in memory
+                    if (rData) {
                         const rawTokens = rData.lastFcmToken
                             ? [rData.lastFcmToken]
                             : (Array.isArray(rData.fcmTokens) ? rData.fcmTokens.slice(-1) : []);
@@ -6204,7 +6213,11 @@
             } catch (e) {}
         }
 
+        let historyOwner = null;
         function listenToHistory() {
+            if (!currentUserObj || historyOwner === currentUserObj.uid) return;
+            historyOwner = currentUserObj.uid;
+            myHistoryList = [];
             const q = query(collection(db, "history"), where("uid", "==", currentUserObj.uid));
             unsubscribeHistory = onSnapshot(q, (snapshot) => {
                 myHistoryList = [];
@@ -6212,6 +6225,11 @@
                     myHistoryList.push({ id: docSnap.id, ...docSnap.data() });
                 });
                 myHistoryList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                const setting = document.getElementById('popup-setting');
+                if (setting && !setting.classList.contains('hidden') &&
+                    document.getElementById('modal-title').innerText === translations[currentLang].modalHistoryTitle) {
+                    openSettingSubView('history');
+                }
             });
         }
 
@@ -6236,23 +6254,29 @@
 
         async function notifyPostParticipants(postObj, type, snippet, replyText = "", postStillExists = true) {
             if (!postObj) return;
-            const recipients = new Set();
+            // Only the post owner is notified (saves many writes, reads and storage)
+            if (!postObj.authorId || postObj.authorId === currentUserObj.uid) return;
+            const targetPostId = postStillExists ? postObj.id : null;
+            await createNotification(postObj.authorId, type, targetPostId, snippet, replyText, true);
+        }
 
-            if (postObj.authorId) {
-                recipients.add(postObj.authorId);
-            }
-            (postObj.likes || []).forEach(uid => recipients.add(uid));
-            (postObj.unlikes || []).forEach(uid => recipients.add(uid));
-            (postObj.comments || []).forEach(c => {
-                if (c.authorId) recipients.add(c.authorId);
-            });
-
-            recipients.delete(currentUserObj.uid);
-
-            for (const targetUid of recipients) {
-                const isOwnPost = (targetUid === postObj.authorId);
-                const targetPostId = postStillExists ? postObj.id : null;
-                await createNotification(targetUid, type, targetPostId, snippet, replyText, isOwnPost);
+        // Older versions saved passwords in the database: delete them (once per session for each record)
+        const passwordCleanupDone = new Set();
+        function removeStoredPassword(uid, data) {
+            if (!data || data.passSync === undefined || passwordCleanupDone.has(uid)) return;
+            passwordCleanupDone.add(uid);
+            updateDoc(doc(db, "users", uid), { passSync: deleteField() })
+                .catch((err) => console.log("Stored password cleanup failed:", err));
+        }
+        let oldResetRecordsCleaned = false;
+        async function removeOldResetRecords() {
+            if (oldResetRecordsCleaned || !isAdminUser()) return;
+            oldResetRecordsCleaned = true;
+            try {
+                const snap = await getDocs(collection(db, "password_resets"));
+                for (const d of snap.docs) await deleteDoc(doc(db, "password_resets", d.id));
+            } catch (err) {
+                console.log("Old reset records cleanup failed:", err);
             }
         }
 
@@ -6277,7 +6301,7 @@
                     }
                     currentUserObj.photoFileId = data.photoFileId || null;
                     currentUserObj.photoDriveIndex = data.photoDriveIndex ?? null;
-                    currentUserObj.passSync = data.passSync || null;
+                    removeStoredPassword(docSnap.id, data);
 
                     myProfilePrivacy = data.profilePrivacy || 'public';
                     myFriendsPrivacy = data.friendsPrivacy || 'public';
@@ -6311,11 +6335,14 @@
         }
 
         function listenToAllUsers() {
+            usersFromServer = false;
             unsubscribeUsers = onSnapshot(collection(db, "users"), (snapshot) => {
+                usersFromServer = !snapshot.metadata.fromCache;
                 allUsersList = [];
                 const syncedAnns = [];
                 snapshot.forEach((docSnap) => {
                     const uData = docSnap.data() || {};
+                    if (isAdminUser()) removeStoredPassword(docSnap.id, uData);
                     if (uData.liveAnnouncement && typeof uData.liveAnnouncement === 'object') {
                         syncedAnns.push({
                             ...uData.liveAnnouncement,
@@ -6498,7 +6525,16 @@
             if (!currentUserObj) return;
 
             const avatarInner = getAvatarHTML(currentUserObj.photoUrl, currentUserObj.name);
-            const myPostsCount = latestDocs.filter(p => p.authorId === currentUserObj.uid).length;
+            const countUid = currentUserObj.uid;
+            if (myPostTotal.uid !== countUid || Date.now() - myPostTotal.at > 10 * 60 * 1000) {
+                myPostTotal = { uid: countUid, at: Date.now(), n: null };
+                getCountFromServer(query(collection(db, "posts"), where("authorId", "==", countUid))).then((r) => {
+                    if (myPostTotal.uid !== countUid) return;
+                    myPostTotal.n = r.data().count;
+                    if (!document.getElementById('popup-profile').classList.contains('hidden')) renderProfilePopup();
+                }).catch(() => {});
+            }
+            const myPostsCount = myPostTotal.n ?? latestDocs.filter(p => p.authorId === countUid).length;
             const isPublic = myProfilePrivacy === 'public';
             const hasPhoto = Boolean(currentUserObj.photoUrl || currentUserObj.photoFileId);
 
@@ -6818,7 +6854,7 @@
             const activeFriendsList = myFriendsList.filter(fUid =>
                 allUsersList.some(u => u.uid === fUid && u.deleted !== true)
             );
-            if (activeFriendsList.length !== myFriendsList.length && currentUserObj?.uid) {
+            if (usersFromServer && activeFriendsList.length !== myFriendsList.length && currentUserObj?.uid) {
                 myFriendsList = activeFriendsList;
                 document.getElementById('dropdown-friends-count').innerText = myFriendsList.length;
                 updateDoc(doc(db, "users", currentUserObj.uid), { friends: activeFriendsList }).catch(() => {});
@@ -6952,6 +6988,7 @@
             const container = document.getElementById('popup-setting-content');
 
             if (view === 'history') {
+                listenToHistory();
                 document.getElementById('modal-title').innerText = t.modalHistoryTitle;
                 let html = `<div style="margin-bottom:10px;"><button class="btn-sm neutral" onclick="renderSettingMenu()">${t.backBtn}</button></div>`;
 
@@ -7198,6 +7235,7 @@
                 const uidToDelete = authUser.uid;
 
                 await purgeAccountData(uidToDelete, authUser.email, currentUserObj || {});
+                if (window.caches) await caches.delete('swb-media-' + uidToDelete).catch(() => {});
 
                 // Delete Firebase Auth account
                 await deleteUser(authUser);
@@ -7207,7 +7245,6 @@
                 if (unsubscribeMyProfile) unsubscribeMyProfile();
                 if (unsubscribeNotifs) unsubscribeNotifs();
                 if (unsubscribeHistory) unsubscribeHistory();
-                if (presenceHeartbeatTimer) { clearInterval(presenceHeartbeatTimer); presenceHeartbeatTimer = null; }
                 if (unsubscribeMessages) unsubscribeMessages();
 
                 closePopup();
@@ -7250,7 +7287,7 @@
             btn.innerText = t.sendingResetMail;
 
             try {
-                await sendCustomResetLinkForUser(currentUserObj);
+                await sendPasswordResetEmail(auth, currentUserObj.email);
                 msgBox.innerText = t.resetMailSentSuccess;
                 msgBox.className = "status-msg status-success";
                 msgBox.classList.remove('hidden');
@@ -7304,10 +7341,6 @@
                 await reauthenticateWithCredential(user, credential);
                 await updatePassword(user, newPass);
 
-                await updateDoc(doc(db, "users", currentUserObj.uid), {
-                    passSync: btoa(newPass)
-                }).catch(() => {});
-
                 document.getElementById('setting-current-pass').value = '';
                 document.getElementById('setting-new-pass').value = '';
                 document.getElementById('setting-confirm-pass').value = '';
@@ -7345,33 +7378,7 @@
                 const isBlocked = u.blocked === true;
                 const avatarInner = getAvatarHTML(u.photoUrl, u.name);
                 const onlineRingCls = getOnlineRingClass(u);
-                let statusBadge = '';
-                let presenceSubLine = '';
-                if (isBlocked) {
-                    statusBadge = `<span class="blocked-status-pill">🚫 ${t.blockedTag}</span>`;
-                } else {
-                    const lastSeen = typeof u.lastSeenMs === 'number' ? u.lastSeenMs : (typeof u.activeSinceMs === 'number' ? u.activeSinceMs : 0);
-                    const activeSince = typeof u.activeSinceMs === 'number' ? u.activeSinceMs : lastSeen;
-                    const diffMs = lastSeen ? (Date.now() - lastSeen) : (5 * 60 * 1000 + 1);
-                    const isOffline = !lastSeen || (diffMs > 5 * 60 * 1000);
-
-                    if (isOffline) {
-                        const offStamp = lastSeen ? formatDateTime12h(lastSeen) : '';
-                        const unverifiedHint = !lastSeen
-                            ? (currentLang === 'sd' ? ' (تصديق / لاگ ان ناهي)' : ' (Not verified / No login yet)')
-                            : '';
-                        const offLineText = currentLang === 'sd'
-                            ? `آف لائن${offStamp ? ` ${offStamp}` : unverifiedHint}`
-                            : `Offline${offStamp ? ` ${offStamp}` : unverifiedHint}`;
-                        presenceSubLine = `<div style="font-size:11.5px; color:#8B1E24; font-weight:700; margin-top:2px;" dir="ltr">${escapeHTML(offLineText)}</div>`;
-                    } else {
-                        const actStamp = activeSince ? formatDateTime12h(activeSince) : '';
-                        const actLineText = currentLang === 'sd'
-                            ? `فعال${actStamp ? ` ${actStamp}` : ''}`
-                            : `Active${actStamp ? ` ${actStamp}` : ''}`;
-                        presenceSubLine = `<div style="font-size:11.5px; color:#1B5E20; font-weight:700; margin-top:2px;" dir="ltr">${escapeHTML(actLineText)}</div>`;
-                    }
-                }
+                const statusBadge = isBlocked ? `<span class="blocked-status-pill">🚫 ${t.blockedTag}</span>` : '';
 
                 const uPriv = (u.profilePrivacy || 'public') === 'private' ? 'private' : 'public';
                 const uPrivLabel = uPriv === 'private' ? t.privateLabel : t.publicLabel;
@@ -7393,7 +7400,6 @@
                             <div style="min-width:0; flex:1;">
                                 <div class="popup-user-name" style="text-decoration:underline;">${escapeHTML(u.name || 'User')} ${statusBadge}</div>
                                 <div style="font-size:11.5px; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" dir="ltr">${escapeHTML(u.email || '')}</div>
-                                ${presenceSubLine}
                             </div>
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; width:100%; padding-top:6px; border-top:1px dashed #DCD4C6;">
@@ -8174,19 +8180,85 @@
             await deleteDoc(doc(db, "posts", postId));
         };
 
+        const POSTS_PAGE = 50;
+        let postsLimit = POSTS_PAGE;
+        let windowPosts = [];
+        const pinnedPosts = new Map();   // older posts opened from a link or notification
+        const pinnedUnsubs = new Map();
+        const postTime = (p) => p.createdAt?.seconds || Math.floor((p.createdAtMs || Date.now()) / 1000);
+
+        function combinePosts() {
+            const ids = new Set(windowPosts.map(p => p.id));
+            const extra = [...pinnedPosts.values()].filter(p => !ids.has(p.id));
+            latestDocs = extra.length ? [...windowPosts, ...extra].sort((a, b) => postTime(b) - postTime(a)) : windowPosts.slice();
+        }
+        // Load one older post (1 read); resolves false only if it no longer exists
+        function ensurePostLoaded(postId) {
+            if (latestDocs.some(p => p.id === postId)) return Promise.resolve(true);
+            return new Promise((resolve) => {
+                if (pinnedUnsubs.has(postId)) pinnedUnsubs.get(postId)();
+                pinnedUnsubs.set(postId, onSnapshot(doc(db, "posts", postId), (snap) => {
+                    if (snap.exists()) pinnedPosts.set(postId, { id: snap.id, ...snap.data() });
+                    else if (snap.metadata.fromCache) return;
+                    else pinnedPosts.delete(postId);
+                    combinePosts();
+                    renderPostsList(latestDocs);
+                    resolve(snap.exists());
+                }, () => resolve(false)));
+            });
+        }
+        window.loadOlderPosts = function() {
+            postsLimit += POSTS_PAGE;
+            if (unsubscribePosts) unsubscribePosts();
+            listenToPosts();
+        };
+        function resetLoadedPosts() {
+            postsLimit = POSTS_PAGE;
+            windowPosts = [];
+            pinnedUnsubs.forEach(u => u());
+            pinnedUnsubs.clear();
+            pinnedPosts.clear();
+            const btn = document.getElementById('btn-older-posts');
+            if (btn) btn.classList.add('hidden');
+        }
+
         function listenToPosts() {
-            const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+            const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(postsLimit));
             unsubscribePosts = onSnapshot(q, (snapshot) => {
-                latestDocs = [];
+                windowPosts = [];
                 snapshot.forEach((docSnap) => {
-                    latestDocs.push({ id: docSnap.id, ...docSnap.data() });
+                    windowPosts.push({ id: docSnap.id, ...docSnap.data() });
                 });
+                combinePosts();
+                const olderBtn = document.getElementById('btn-older-posts');
+                if (olderBtn) {
+                    olderBtn.classList.toggle('hidden', windowPosts.length < postsLimit);
+                    olderBtn.innerText = currentLang === 'sd' ? 'پراڻيون پوسٽون ڏيکاريو' : 'Show older posts';
+                }
                 syncAnnouncementFromPosts(latestDocs);
                 renderPostsList(latestDocs);
+                savePostPhotosOnPhone();
                 renderNotificationsPopup();
                 if (!document.getElementById('popup-profile').classList.contains('hidden')) {
                     renderProfilePopup();
                 }
+                if (pendingSharedPostId && !latestDocs.some(p => p.id === pendingSharedPostId)) {
+                    const missingId = pendingSharedPostId;
+                    ensurePostLoaded(missingId).then((found) => {
+                        // When found, the listener below handles it on its next run
+                        if (found) return openPendingSharedPost();
+                        if (pendingSharedPostId === missingId) {
+                            pendingSharedPostId = null;
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            showCustomAlert(translations[currentLang].noticeTitle, translations[currentLang].postDeletedAlert, translations[currentLang].alertOkBtn, "info");
+                        }
+                    });
+                } else {
+                    openPendingSharedPost();
+                }
+            });
+        }
+        function openPendingSharedPost() {
                 if (pendingSharedPostId) {
                     const targetId = pendingSharedPostId;
                     pendingSharedPostId = null;
@@ -8208,7 +8280,6 @@
                         }
                     }
                 }
-            });
         }
 
         const FULL_MONTH_NAMES = [
@@ -8279,18 +8350,9 @@
             return true;
         }
 
-        function isUserCurrentlyOnline(userObj) {
-            if (!userObj || !userObj.uid || userObj.blocked === true) return false;
-            if (currentUserObj && userObj.uid === currentUserObj.uid) return false;
-            const lastSeen = typeof userObj.lastSeenMs === 'number'
-                ? userObj.lastSeenMs
-                : (typeof userObj.activeSinceMs === 'number' ? userObj.activeSinceMs : 0);
-            if (!lastSeen) return false;
-            return (Date.now() - lastSeen) <= (5 * 60 * 1000);
-        }
-
-        function getOnlineRingClass(userObj) {
-            return isUserCurrentlyOnline(userObj) ? 'online-golden-ring' : '';
+        // Online status has been removed (it used a large share of Firebase reads/writes)
+        function getOnlineRingClass() {
+            return '';
         }
 
         function formatDateTime12h(ms) {
@@ -8318,51 +8380,6 @@
                 return '';
             }
         }
-
-        let presenceHeartbeatTimer = null;
-
-        async function updateMyPresence(isNewSession = false) {
-            if (!currentUserObj || !currentUserObj.uid || !navigator.onLine) return;
-            const nowMs = Date.now();
-            try {
-                const userRef = doc(db, "users", currentUserObj.uid);
-                const snap = await getDoc(userRef);
-                const prevData = snap.exists() ? snap.data() : {};
-                const prevLastSeen = typeof prevData.lastSeenMs === 'number' ? prevData.lastSeenMs : 0;
-                const wasOfflineOver5Min = prevLastSeen > 0 && ((nowMs - prevLastSeen) > 5 * 60 * 1000);
-
-                let activeSince = typeof prevData.activeSinceMs === 'number' ? prevData.activeSinceMs : nowMs;
-                if (isNewSession || wasOfflineOver5Min || !prevData.activeSinceMs) {
-                    activeSince = nowMs;
-                }
-
-                await updateDoc(userRef, {
-                    activeSinceMs: activeSince,
-                    lastSeenMs: nowMs
-                }).catch(() => {});
-            } catch (e) {}
-        }
-
-        function startPresenceHeartbeat() {
-            if (presenceHeartbeatTimer) {
-                clearInterval(presenceHeartbeatTimer);
-            }
-            updateMyPresence(true);
-            presenceHeartbeatTimer = setInterval(() => {
-                if (document.visibilityState === "visible") {
-                    updateMyPresence(false);
-                }
-                if (!document.getElementById('popup-admin-users')?.classList.contains('hidden')) {
-                    renderAdminUsersPopup();
-                }
-            }, 30000);
-        }
-
-        document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible" && currentUserObj) {
-                updateMyPresence(false);
-            }
-        });
 
         let adminDetailsTargetUid = null;
         let adminChatPairUserA = null;

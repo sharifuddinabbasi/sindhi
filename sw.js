@@ -1,7 +1,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-const CACHE_NAME = "sindhi-world-book-v122";
+const CACHE_NAME = "sindhi-world-book-v126";
 const ASSETS = [
   "./",
   "./index.html",
@@ -66,11 +66,49 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== "swb-pending" && k !== "swb-state").map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== "swb-pending" && k !== "swb-state" && k !== POST_MEDIA && !k.startsWith("swb-media-")).map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
+
+// Post and profile photos: kept on the phone and shown from there
+const POST_MEDIA = "swb-post-media";
+const POST_MEDIA_LIMIT = 400;
+const refreshed = new Set();
+
+async function downloadPhoto(request, cache) {
+  let res;
+  try {
+    // A readable copy uses far less storage than an "opaque" one
+    res = await fetch(request.url, { mode: "cors", credentials: "omit" });
+    if (!res.ok) throw new Error("bad status");
+  } catch (e) {
+    res = await fetch(request);
+  }
+  if (res.ok || res.type === "opaque") {
+    try {
+      await cache.put(request.url, res.clone());
+      const keys = await cache.keys();
+      for (let i = 0; i < keys.length - POST_MEDIA_LIMIT; i++) await cache.delete(keys[i]);
+    } catch (e) {}
+  }
+  return res;
+}
+
+async function photoFromPhone(event) {
+  const cache = await caches.open(POST_MEDIA);
+  const hit = await cache.match(event.request.url);
+  if (hit && !(hit.type === "opaque" && event.request.mode === "cors")) {
+    // An opaque copy cannot be verified: refresh it once in the background
+    if (hit.type === "opaque" && !refreshed.has(event.request.url)) {
+      refreshed.add(event.request.url);
+      event.waitUntil(downloadPhoto(event.request, cache).catch(() => {}));
+    }
+    return hit;
+  }
+  return downloadPhoto(event.request, cache);
+}
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
@@ -81,6 +119,13 @@ self.addEventListener("fetch", (event) => {
     host.endsWith("firebaseio.com") ||
     host.endsWith("cloudfunctions.net")
   ) return;
+  if (
+    event.request.destination === "image" &&
+    (host === "drive.google.com" || host.endsWith("googleusercontent.com"))
+  ) {
+    event.respondWith(photoFromPhone(event));
+    return;
+  }
   event.respondWith(
     fetch(event.request)
       .then((res) => {
