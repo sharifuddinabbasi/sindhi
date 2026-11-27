@@ -2561,7 +2561,7 @@
                 postPrivacySwitchedPublic: "Post is now Public (Visible to everyone & via share link)",
                 postPrivacySwitchedPrivate: "Post is now Private (Visible only to your Friends)",
                 friendOnlyInteractTitle: "👥 Friends Only",
-                friendOnlyInteractMsg: "You are not a friend of {username}. Add {username} as a friend first to like, unlike, or reply on this post.",
+                friendOnlyInteractMsg: "You are not a friend or a friend of a friend of {username}. Add {username} as a friend first to like, unlike, or reply on this post.",
                 friendOnlyCommentHint: "Add {username} as a friend to like or reply on this post.",
                 privatePostBlockedTitle: "🔒 Private Post",
                 privatePostBlockedMsg: "This post is Private.\nYou are not a friend of {username}.\nTherefore, you cannot view this post.\nTo view this post, please add {username} to your Friends list.\nThank you...",
@@ -2856,7 +2856,7 @@
                 postPrivacySwitchedPublic: "پوسٽ هاڻي پبلڪ آهي (هر ڪو ۽ شيئر لنڪ ذريعي ڏسي سگهي ٿو)",
                 postPrivacySwitchedPrivate: "پوسٽ هاڻي پرائيويٽ آهي (صرف توهان جا دوست ڏسي سگهن ٿا)",
                 friendOnlyInteractTitle: "👥 صرف دوستن لاءِ",
-                friendOnlyInteractMsg: "توهان {username} جا دوست ناهيو. هن پوسٽ تي لائڪ، ان لائڪ يا جواب ڏيڻ لاءِ پهرين {username} کي دوست بڻايو.",
+                friendOnlyInteractMsg: "توهان {username} جا دوست يا دوست جا دوست ناهيو. هن پوسٽ تي لائڪ، ان لائڪ يا جواب ڏيڻ لاءِ پهرين {username} کي دوست بڻايو.",
                 friendOnlyCommentHint: "هن پوسٽ تي لائڪ يا جواب ڏيڻ لاءِ پهرين {username} کي دوست بڻايو.",
                 privatePostBlockedTitle: "🔒 پرائيويٽ پوسٽ",
                 privatePostBlockedMsg: "هيءَ پوسٽ پرائيويٽ (Private) آهي.\nتوهان {username} جا دوست ناهيو.\nان ڪري توهان هيءَ پوسٽ نٿا ڏسي سگهو.\nپوسٽ ڏسڻ لاءِ {username} کي پنهنجي دوستن (Friends) جي لسٽ ۾ شامل ڪريو.\nمهرباني...",
@@ -8115,14 +8115,6 @@
             updatedComments[commentIndex] = targetComment;
 
             await updateDoc(doc(db, "posts", postId), { comments: updatedComments });
-
-            if (!alreadyLiked) {
-                await logActivityHistory('reply_like', postId, targetComment.text.substring(0, 45));
-                if (targetComment.authorId && targetComment.authorId !== currentUserObj.uid) {
-                    const snippet = postObj.text ? postObj.text.substring(0, 45) : t.photoPostTag;
-                    await createNotification(targetComment.authorId, 'reply_like', postId, snippet, targetComment.text, false);
-                }
-            }
         };
 
         window.handleCommentUnlike = async function(postId, commentIndex) {
@@ -8148,14 +8140,6 @@
             updatedComments[commentIndex] = targetComment;
 
             await updateDoc(doc(db, "posts", postId), { comments: updatedComments });
-
-            if (!alreadyUnliked) {
-                await logActivityHistory('reply_unlike', postId, targetComment.text.substring(0, 45));
-                if (targetComment.authorId && targetComment.authorId !== currentUserObj.uid) {
-                    const snippet = postObj.text ? postObj.text.substring(0, 45) : t.photoPostTag;
-                    await createNotification(targetComment.authorId, 'reply_unlike', postId, snippet, targetComment.text, false);
-                }
-            }
         };
 
         window.deletePost = async function(postId) {
@@ -9310,7 +9294,15 @@
             if (!postObj || !currentUserObj) return false;
             if (isAdminUser()) return true;
             if (postObj.authorId === currentUserObj.uid) return true;
-            return myFriendsList.includes(postObj.authorId);
+            if (myFriendsList.includes(postObj.authorId)) return true;
+            return (postObj.privacy || 'public') === 'public' && isFriendOfFriend(postObj.authorId);
+        }
+
+        // True when the author and I share at least one friend
+        function isFriendOfFriend(authorUid) {
+            const author = allUsersList.find(u => u.uid === authorUid);
+            if (!author || !Array.isArray(author.friends)) return false;
+            return author.friends.some(fid => myFriendsList.includes(fid) && allUsersList.some(u => u.uid === fid));
         }
 
         function renderPostsList(postsArray) {
@@ -9541,12 +9533,6 @@
                     likes: arrayUnion(currentUserObj.uid),
                     unlikes: arrayRemove(currentUserObj.uid)
                 });
-                const targetPost = latestDocs.find(p => p.id === postId);
-                if (targetPost) {
-                    const snippet = targetPost.text ? targetPost.text.substring(0, 45) : t.photoPostTag;
-                    await logActivityHistory('like', postId, snippet);
-                    await notifyPostParticipants(targetPost, 'like', snippet, "", true);
-                }
             }
         };
 
@@ -9566,12 +9552,6 @@
                     unlikes: arrayUnion(currentUserObj.uid),
                     likes: arrayRemove(currentUserObj.uid)
                 });
-                const targetPost = latestDocs.find(p => p.id === postId);
-                if (targetPost) {
-                    const snippet = targetPost.text ? targetPost.text.substring(0, 45) : t.photoPostTag;
-                    await logActivityHistory('unlike', postId, snippet);
-                    await notifyPostParticipants(targetPost, 'unlike', snippet, "", true);
-                }
             }
         };
 
