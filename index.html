@@ -2031,7 +2031,7 @@
             box.id = 'boot-slow-notice';
             box.style.marginTop = '14px';
             var modMsg = window.__swbModuleLoaded ? 'انٽرنيٽ سست آهي، انتظار ڪريو...<br>Slow internet, please wait...' : 'ايپ جون فائلون فون ۾ محفوظ نه ٿيون آهن. هڪ ڀيرو انٽرنيٽ سان کوليو.<br>App files are not saved on this phone yet. Open the app once with internet.';
-            box.innerHTML = '<div style="color:#14284B; font-size:14px; margin-bottom:10px;">' + modMsg + '<div style="font-size:10px;opacity:.5">v136</div></div>' +
+            box.innerHTML = '<div style="color:#14284B; font-size:14px; margin-bottom:10px;">' + modMsg + '<div style="font-size:10px;opacity:.5">v137</div></div>' +
                 '<button type="button" class="btn-primary" onclick="location.reload()">ٻيهر ڪوشش / Reload</button>';
             bl.appendChild(box);
         }
@@ -4967,6 +4967,14 @@
                 hideBootLoader();
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('feed-section').classList.remove('hidden');
+                // App opened without internet: tell the user once (OK closes it)
+                if (navigator.onLine === false && !window.__swbOfflineShown) {
+                    window.__swbOfflineShown = true;
+                    setTimeout(() => {
+                        const tOff = translations[currentLang];
+                        showCustomAlert(tOff.noInternetTitle, tOff.noInternetDesc, tOff.alertOkBtn, "network");
+                    }, 600);
+                }
                 document.getElementById('user-nav').classList.remove('hidden');
                 document.getElementById('fb-icon-bar').classList.remove('hidden');
                 document.getElementById('current-user-display').innerText = currentUserObj.name;
@@ -10399,13 +10407,14 @@ ${shareUrl}`,
         function doExit() {
             exiting = true;           // stop trapping the back button
             hideExit();
-            try { history.go(-1); } catch (e) {}   // step back onto the base entry
-            try { window.close(); } catch (e) {}   // closes an installed PWA
-            setTimeout(function () {
-                if (document.visibilityState === 'visible') {
-                    try { history.back(); } catch (e) {}
-                }
-            }, 150);
+            try { window.close(); } catch (e) {}
+            // Walk back through every saved history entry until the app leaves the screen
+            var steps = 0, max = Math.max(history.length, 3) + 3;
+            var iv = setInterval(function () {
+                if (document.visibilityState !== 'visible' || steps >= max) { clearInterval(iv); return; }
+                steps++;
+                try { history.back(); } catch (e) { clearInterval(iv); }
+            }, 120);
         }
 
         // Chrome skips history entries that were pushed before the user ever tapped the page,
