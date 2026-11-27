@@ -2031,7 +2031,7 @@
             box.id = 'boot-slow-notice';
             box.style.marginTop = '14px';
             var modMsg = window.__swbModuleLoaded ? 'انٽرنيٽ سست آهي، انتظار ڪريو...<br>Slow internet, please wait...' : 'ايپ جون فائلون فون ۾ محفوظ نه ٿيون آهن. هڪ ڀيرو انٽرنيٽ سان کوليو.<br>App files are not saved on this phone yet. Open the app once with internet.';
-            box.innerHTML = '<div style="color:#14284B; font-size:14px; margin-bottom:10px;">' + modMsg + '</div>' +
+            box.innerHTML = '<div style="color:#14284B; font-size:14px; margin-bottom:10px;">' + modMsg + '<div style="font-size:10px;opacity:.5">v136</div></div>' +
                 '<button type="button" class="btn-primary" onclick="location.reload()">ٻيهر ڪوشش / Reload</button>';
             bl.appendChild(box);
         }
@@ -2158,6 +2158,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
+            initializeAuth,
+            indexedDBLocalPersistence,
+            browserLocalPersistence,
             getAuth, 
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
@@ -2246,7 +2249,13 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
+        // No popup/redirect resolver: it tries to reach Google servers at start and blocks login restore when offline.
+        // The app only uses email/password and custom tokens, so it is not needed.
+        function makeAuth(a) {
+            try { return initializeAuth(a, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] }); }
+            catch (e) { return getAuth(a); }
+        }
+        const auth = makeAuth(app);
         // Chats, posts and profiles are kept in the phone's storage (IndexedDB)
         let db;
         try {
@@ -2266,7 +2275,7 @@
             appId: "1:84447271076:web:d4e6090534b61187c9ee31"
         };
         const chatApp = initializeApp(chatFirebaseConfig, "chat");
-        const chatAuth = getAuth(chatApp);
+        const chatAuth = makeAuth(chatApp);
         let chatDb;
         try {
             chatDb = initializeFirestore(chatApp, {
