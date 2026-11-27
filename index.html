@@ -2030,7 +2030,8 @@
             var box = document.createElement('div');
             box.id = 'boot-slow-notice';
             box.style.marginTop = '14px';
-            box.innerHTML = '<div style="color:#14284B; font-size:14px; margin-bottom:10px;">انٽرنيٽ سست آهي، انتظار ڪريو...<br>Slow internet, please wait...</div>' +
+            var modMsg = window.__swbModuleLoaded ? 'انٽرنيٽ سست آهي، انتظار ڪريو...<br>Slow internet, please wait...' : 'ايپ جون فائلون فون ۾ محفوظ نه ٿيون آهن. هڪ ڀيرو انٽرنيٽ سان کوليو.<br>App files are not saved on this phone yet. Open the app once with internet.';
+            box.innerHTML = '<div style="color:#14284B; font-size:14px; margin-bottom:10px;">' + modMsg + '</div>' +
                 '<button type="button" class="btn-primary" onclick="location.reload()">ٻيهر ڪوشش / Reload</button>';
             bl.appendChild(box);
         }
@@ -2205,6 +2206,7 @@
             onMessage 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
+        window.__swbModuleLoaded = true;
         const DRIVE_URLS = [
             "https://script.google.com/macros/s/AKfycbyQZISldGyttphX2f31WoaxT1Yp0d-os7--AV3IRYFzTe_Z5tEtqYUB5nHaTK941Y1v/exec"
         ];
@@ -4834,21 +4836,37 @@
         // Signed-in user but the network failed: keep retrying instead of showing the login page
         async function getUserDocWithRetry(ref, uid) {
             let delay = 1000;
-            // OFFLINE: open the app from the phone's saved data, never wait for the internet
-            if (navigator.onLine === false) {
-                try {
-                    const cached = await getDocFromCache(ref);
-                    if (cached && cached.exists()) return cached;
-                } catch (e) {}
+            const known = () => { try { return localStorage.getItem('swb_known_' + uid) === '1'; } catch (e) { return false; } };
+            const offlineSnap = () => {
                 let evc = false;
                 try { evc = localStorage.getItem('swb_evc_' + uid) === '1'; } catch (e) {}
                 return { exists: () => true, data: () => ({ emailVerifiedCustom: evc }) };
-            }
+            };
+            // 1) The phone's saved copy first: the app opens at once, with or without internet
+            try {
+                const cached = await getDocFromCache(ref);
+                if (cached && cached.exists()) {
+                    // Quietly check in the background that the account is not blocked
+                    if (navigator.onLine !== false) {
+                        getDoc(ref).then((snap) => {
+                            const me = (auth.currentUser && auth.currentUser.email || "").toLowerCase().trim();
+                            if (snap.exists() && snap.data().blocked === true && me !== ADMIN_EMAIL && auth.currentUser && auth.currentUser.uid === uid) signOut(auth);
+                        }).catch(() => {});
+                    }
+                    return cached;
+                }
+            } catch (e) {}
+            // 2) No saved copy yet: a known user with no internet still opens the app
+            if (navigator.onLine === false && known()) return offlineSnap();
             while (auth.currentUser && auth.currentUser.uid === uid) {
                 try {
-                    return await getDoc(ref);
+                    return await Promise.race([
+                        getDoc(ref),
+                        new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 6000))
+                    ]);
                 } catch (e) {
                     if (e && e.code === 'permission-denied') throw e;
+                    if (known()) return offlineSnap();
                     document.getElementById('auth-section').classList.add('hidden');
                     showBootSlowNotice();
                     await new Promise(r => setTimeout(r, delay));
@@ -4872,7 +4890,7 @@
                 // Signed out while waiting: the next auth event updates the screen
                 if (!userSnap || !auth.currentUser || auth.currentUser.uid !== user.uid) return;
                 const isCustomVer = Boolean(userSnap.exists() && userSnap.data().emailVerifiedCustom === true);
-                try { if (isCustomVer) localStorage.setItem('swb_evc_' + user.uid, '1'); } catch (e) {}
+                try { localStorage.setItem('swb_known_' + user.uid, '1'); if (isCustomVer) localStorage.setItem('swb_evc_' + user.uid, '1'); } catch (e) {}
                 if (!user.emailVerified && !isCustomVer) {
                     hideBootLoader();
                     document.getElementById('auth-section').classList.remove('hidden');
