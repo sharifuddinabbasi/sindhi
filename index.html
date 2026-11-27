@@ -1429,7 +1429,7 @@
         /* Post Category bar: no dark background, stays fixed just under the header while scrolling */
         .post-category-row { position:sticky; top:var(--swb-header-h, 96px); z-index:90; display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--ajrak-cream); border:0; border-radius:0; padding:4px 12px 6px; margin:0 -12px 8px; }
         #feed-section.container { margin-top:0; }
-        .post-category-label { color:var(--ajrak-blue); font-weight:bold; font-size:12.5px; white-space:nowrap; }
+        .post-category-label { color:var(--ajrak-gold); font-weight:bold; font-size:12.5px; white-space:nowrap; }
         .post-category-select { flex:1; min-width:0; max-width:210px; background:#8B1E24; color:#fff; border:1px solid var(--ajrak-gold); border-radius:20px; padding:4px 10px; font-size:12.5px; font-weight:bold; }
         .create-post textarea {
             resize: none;
@@ -10407,14 +10407,29 @@ ${shareUrl}`,
         function doExit() {
             exiting = true;           // stop trapping the back button
             hideExit();
-            try { window.close(); } catch (e) {}
-            // Walk back through every saved history entry until the app leaves the screen
-            var steps = 0, max = Math.max(history.length, 3) + 3;
-            var iv = setInterval(function () {
-                if (document.visibilityState !== 'visible' || steps >= max) { clearInterval(iv); return; }
-                steps++;
-                try { history.back(); } catch (e) { clearInterval(iv); }
-            }, 120);
+            var left = function () { return document.visibilityState !== 'visible'; };
+            // 1) Jump straight to the first history entry (removes our trap + any popup entries)
+            try { var n = history.length - 1; if (n > 0) history.go(-n); } catch (e) {}
+            // 2) Then ask the browser to close the app window (works in installed PWA when allowed)
+            setTimeout(function () {
+                if (left()) return;
+                try { window.close(); } catch (e) {}
+            }, 250);
+            // 3) Still visible: one more try, then tell the user (browser blocks scripts from quitting)
+            setTimeout(function () {
+                if (left()) return;
+                try { window.close(); } catch (e) {}
+                try { history.back(); } catch (e) {}
+            }, 600);
+            setTimeout(function () {
+                if (left()) return;
+                var sd = (localStorage.getItem('sb_lang') || 'en') === 'sd';
+                var t = document.createElement('div');
+                t.style.cssText = 'position:fixed;left:50%;bottom:40px;transform:translateX(-50%);z-index:200001;background:#14284B;color:#fff;border:1.5px solid #D4AF37;border-radius:22px;padding:10px 18px;font-weight:bold;font-size:14px;text-align:center;max-width:85%;';
+                t.textContent = sd ? 'ايپ بند ڪرڻ لاءِ هڪ دفعو وري Back دٻايو' : 'Press Back once more to close the app';
+                document.body.appendChild(t);
+                setTimeout(function () { t.remove(); }, 3000);
+            }, 1000);
         }
 
         // Chrome skips history entries that were pushed before the user ever tapped the page,
