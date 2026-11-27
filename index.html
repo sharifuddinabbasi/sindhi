@@ -1426,6 +1426,9 @@
             background-color: #FFFFFF;
         }
 
+        .post-category-row { display:flex; align-items:center; justify-content:space-between; gap:10px; background:#0f1f3d; border:2px solid var(--ajrak-gold); border-radius:14px; padding:8px 12px; margin:0 0 12px; }
+        .post-category-label { color:var(--ajrak-gold); font-weight:800; font-size:16px; white-space:nowrap; }
+        .post-category-select { flex:1; min-width:0; max-width:210px; background:#8B1E24; color:#fff; border:2px solid var(--ajrak-gold); border-radius:12px; padding:8px 10px; font-size:15px; font-weight:700; }
         .create-post textarea {
             resize: none;
             height: 80px;
@@ -2105,6 +2108,14 @@
             </div>
         </div>
 
+        <div class="post-category-row">
+            <span class="post-category-label" id="post-category-label">Post Category</span>
+            <select id="post-category-select" class="post-category-select" onchange="setPostCategory(this.value)">
+                <option value="all">All Post</option>
+                <option value="friends">Friends Post</option>
+                <option value="mine">My Post</option>
+            </select>
+        </div>
         <div class="card create-post">
             <div class="ajrak-border-strip"></div>
             <div class="card-body">
@@ -2362,7 +2373,7 @@
                     } catch (e) {}
                     try { localStorage.setItem(tokenKey, JSON.stringify({ token: token, at: Date.now() })); } catch (e) {}
                 }
-                // Join the "all posts" push group once per phone token (retried on every app start until it works)
+                // Join the "all posts" group once per phone token (retried on each app start until it works)
                 if (token) {
                     const topicKey = 'swb_topic_' + uid;
                     let joined = null;
@@ -2454,6 +2465,12 @@
         }
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.addEventListener('message', (ev) => {
+                if (ev.data && ev.data.type === 'NEW_POST' && ev.data.post && ev.data.post.id && currentUserObj) {
+                    try {
+                        const np = postToStore(ev.data.post);
+                        if (!localFeed.has(np.id)) { localFeed.set(np.id, np); feedPersist([np], []); feedSchedulePrune(); combinePosts(); renderPostsList(latestDocs); }
+                    } catch (e) {}
+                }
                 if (ev.data && ev.data.type === 'OPEN_POST' && ev.data.postId) {
                     pendingSharedPostId = ev.data.postId;
                     try { Promise.resolve(ensurePostLoaded(ev.data.postId)).then(() => openPendingSharedPost()); } catch (e) {}
@@ -6364,7 +6381,7 @@
 
         // Tell other phones about a new post (everybody) or a new comment (only the owner's token).
         // Only a link and a short text travel in the push; the phone downloads the photo itself.
-        function sendPostPush(kind, postId, imageUrl, text, tokens) {
+        function sendPostPush(kind, postId, imageUrl, text, tokens, meta) {
             try {
                 if (!PUSH_SCRIPT_URL || !currentUserObj) return;
                 fetch(PUSH_SCRIPT_URL, {
@@ -6372,8 +6389,10 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({
                         action: "send_post_push", kind: kind, postId: postId,
-                        imageUrl: imageUrl || "", text: String(text || "").slice(0, 200),
-                        senderName: currentUserObj.name || "Sindhi World Book", tokens: tokens || undefined
+                        imageUrl: imageUrl || "", text: String(text || "").slice(0, 800),
+                        senderName: currentUserObj.name || "Sindhi World Book", tokens: tokens || undefined,
+                        privacy: (meta && meta.privacy) || "public", imageFileId: (meta && meta.imageFileId) || "",
+                        createdAtMs: (meta && meta.createdAtMs) || Date.now(), timeText: (meta && meta.timeText) || ""
                     })
                 }).catch(() => {});
             } catch (e) {}
@@ -8158,7 +8177,20 @@
 
                 const snippet = text ? text.substring(0, 45) : t.photoPostTag;
                 await logActivityHistory('post', docRef.id, snippet);
-                if ((newPostPrivacy || 'public') === 'public') sendPostPush('post', docRef.id, imageUrl, text || t.photoPostTag, null);
+                // Silent background copy of the post to other phones (no notification is shown).
+                // Public: every phone. Private: only my friends' phones.
+                try {
+                    const isPub = (newPostPrivacy || 'public') === 'public';
+                    const meta = { privacy: isPub ? 'public' : 'private', imageFileId: imageFileId || "", createdAtMs: Date.now(), timeText: timeString };
+                    if (isPub) {
+                        sendPostPush('post', docRef.id, imageUrl, text || "", null, meta);
+                    } else {
+                        const friendTokens = (myFriendsList || [])
+                            .map(fid => { const fu = allUsersList.find(x => x.uid === fid); return fu && fu.lastFcmToken; })
+                            .filter(Boolean);
+                        if (friendTokens.length) sendPostPush('post', docRef.id, imageUrl, text || "", friendTokens, meta);
+                    }
+                } catch (e) {}
 
                 document.getElementById('post-text').value = '';
                 document.getElementById('post-image').value = '';
@@ -8338,8 +8370,199 @@
         function combinePosts() {
             const ids = new Set(windowPosts.map(p => p.id));
             const extra = [...pinnedPosts.values()].filter(p => !ids.has(p.id));
-            latestDocs = extra.length ? [...windowPosts, ...extra].sort((a, b) => postTime(b) - postTime(a)) : windowPosts.slice();
+            const extraIds = new Set(extra.map(p => p.id));
+            const local = [...localFeed.values()].filter(p => !ids.has(p.id) && !extraIds.has(p.id));
+            const more = extra.concat(local);
+            latestDocs = more.length ? [...windowPosts, ...more].sort((a, b) => postTime(b) - postTime(a)) : windowPosts.slice();
         }
+
+        // ===== Phone post database (IndexedDB "swb-feed-<uid>") + Post Category =====
+        const FEED_CAP = 300;                       // newest posts kept per category
+        const localFeed = new Map();                // posts saved on this phone
+        const feedInitialIds = new Set();           // posts that were already here when the app opened
+        const feedSeed = String(Math.random());
+        let feedInitialDone = false;
+        let feedStartedFor = null;
+        let feedPruneTimer = null;
+        let postCategory = 'all';
+        try { postCategory = localStorage.getItem('swb_post_cat') || 'all'; } catch (e) {}
+        if (['all', 'friends', 'mine'].indexOf(postCategory) < 0) postCategory = 'all';
+
+        function feedDbName() { return 'swb-feed-' + (currentUserObj ? currentUserObj.uid : (auth.currentUser ? auth.currentUser.uid : 'x')); }
+        function feedDb() {
+            return new Promise((resolve, reject) => {
+                const r = indexedDB.open(feedDbName(), 1);
+                r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('posts')) r.result.createObjectStore('posts', { keyPath: 'id' }); };
+                r.onsuccess = () => resolve(r.result);
+                r.onerror = () => reject(r.error);
+            });
+        }
+        async function feedPersist(putList, deleteIds) {
+            try {
+                if (!window.indexedDB) return;
+                const db0 = await feedDb();
+                await new Promise((resolve) => {
+                    const tx = db0.transaction('posts', 'readwrite');
+                    const st = tx.objectStore('posts');
+                    (putList || []).forEach(p => { try { st.put(p); } catch (e) {} });
+                    (deleteIds || []).forEach(id => { try { st.delete(id); } catch (e) {} });
+                    tx.oncomplete = tx.onerror = tx.onabort = () => { db0.close(); resolve(); };
+                });
+            } catch (e) {}
+        }
+        async function feedReadAll() {
+            try {
+                if (!window.indexedDB) return [];
+                const db0 = await feedDb();
+                return await new Promise((resolve) => {
+                    const req = db0.transaction('posts', 'readonly').objectStore('posts').getAll();
+                    req.onsuccess = () => { db0.close(); resolve(req.result || []); };
+                    req.onerror = () => { db0.close(); resolve([]); };
+                });
+            } catch (e) { return []; }
+        }
+        function postToStore(p) {
+            let plain;
+            try { plain = JSON.parse(JSON.stringify(p)); } catch (e) { plain = Object.assign({}, p); }
+            const secs = postTime(p);
+            plain.createdAt = { seconds: secs, nanoseconds: 0 };
+            plain.createdAtMs = secs * 1000;
+            return plain;
+        }
+        function feedRecent(arr) { return arr.slice().sort((a, b) => postTime(b) - postTime(a)).slice(0, FEED_CAP); }
+        function feedSets(list) {
+            const me = currentUserObj.uid;
+            const friends = new Set(myFriendsList || []);
+            return {
+                mine: feedRecent(list.filter(p => p.authorId === me)),
+                friends: feedRecent(list.filter(p => friends.has(p.authorId))),
+                pub: feedRecent(list.filter(p => p.authorId !== me && (p.privacy || 'public') === 'public'))
+            };
+        }
+        function feedHash(str) { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return h; }
+        // What the feed shows for the chosen category
+        function applyPostCategory(list) {
+            if (!currentUserObj) return list;
+            const sets = feedSets(list);
+            if (postCategory === 'mine') return sets.mine;
+            if (postCategory === 'friends') return feedRecent(sets.friends.concat(sets.mine));
+            const all = [...new Map(sets.mine.concat(sets.friends, sets.pub).map(p => [p.id, p])).values()];
+            const fresh = all.filter(p => feedInitialDone && !feedInitialIds.has(p.id)).sort((a, b) => postTime(b) - postTime(a));
+            const rest = all.filter(p => !(feedInitialDone && !feedInitialIds.has(p.id)))
+                .sort((a, b) => feedHash(a.id + feedSeed) - feedHash(b.id + feedSeed));
+            return fresh.concat(rest);
+        }
+        // Keep only the newest 300 per category on the phone; older ones are deleted
+        function feedPrune() {
+            if (!currentUserObj || localFeed.size === 0) return;
+            const sets = feedSets([...localFeed.values()]);
+            const keep = new Set(sets.mine.concat(sets.friends, sets.pub).map(p => p.id));
+            const drop = [];
+            localFeed.forEach((p, id) => { if (!keep.has(id)) drop.push(id); });
+            if (!drop.length) return;
+            drop.forEach(id => localFeed.delete(id));
+            feedPersist([], drop);
+            combinePosts();
+        }
+        function feedSchedulePrune() {
+            clearTimeout(feedPruneTimer);
+            feedPruneTimer = setTimeout(feedPrune, 4000);
+        }
+        function feedAfterSnapshot(snapshot) {
+            try {
+                const fresh = windowPosts.filter(p => p && p.isAnnouncement !== true).map(postToStore);
+                const gone = [];
+                if (!snapshot.metadata.fromCache) {
+                    const winIds = new Set(windowPosts.map(p => p.id));
+                    const oldest = windowPosts.length >= postsLimit ? Math.min(...windowPosts.map(postTime)) : 0;
+                    localFeed.forEach((p, id) => { if (!winIds.has(id) && !pinnedPosts.has(id) && postTime(p) >= oldest) gone.push(id); });
+                }
+                fresh.forEach(p => localFeed.set(p.id, p));
+                gone.forEach(id => localFeed.delete(id));
+                feedPersist(fresh, gone);
+                if (!feedInitialDone) { localFeed.forEach((p, id) => feedInitialIds.add(id)); feedInitialDone = true; }
+                feedSchedulePrune();
+            } catch (e) {}
+        }
+        // A post that is only on the phone (older than the live window) may be out of date: refresh it once before an action
+        async function freshenPost(postId) {
+            if (!postId || !localFeed.has(postId) || windowPosts.some(p => p.id === postId) || pinnedPosts.has(postId)) return;
+            try {
+                const s = await getDoc(doc(db, "posts", postId));
+                if (s.exists()) {
+                    const p = postToStore({ id: s.id, ...s.data() });
+                    localFeed.set(p.id, p);
+                    feedPersist([p], []);
+                } else {
+                    localFeed.delete(postId);
+                    feedPersist([], [postId]);
+                }
+                combinePosts();
+            } catch (e) {}
+        }
+        function wrapFreshActions() {
+            ['handleLike', 'handleUnlike', 'addComment', 'saveCommentEdit', 'deleteComment', 'handleCommentLike',
+             'handleCommentUnlike', 'toggleExistingPostPrivacy', 'deletePost', 'sharePost', 'openReshareModal'].forEach((name) => {
+                const orig = window[name];
+                if (typeof orig !== 'function' || orig.__fresh) return;
+                const wrapped = async function (...args) {
+                    if (args[0] && typeof args[0].preventDefault === 'function') args[0].preventDefault();
+                    const id = args.find(x => typeof x === 'string' && localFeed.has(x));
+                    if (id) await freshenPost(id);
+                    return orig.apply(this, args);
+                };
+                wrapped.__fresh = true;
+                window[name] = wrapped;
+            });
+        }
+        // One-time fill of an empty phone database
+        async function feedBackfill(uid) {
+            const flag = 'swb_feed_bf_' + uid;
+            try { if (localStorage.getItem(flag) === '1' || localFeed.size >= 100) return; } catch (e) {}
+            try {
+                const newest = await getDocs(query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(FEED_CAP)));
+                const mine = await getDocs(query(collection(db, "posts"), where("authorId", "==", uid)));
+                const add = [];
+                newest.forEach(d => add.push({ id: d.id, ...d.data() }));
+                mine.forEach(d => add.push({ id: d.id, ...d.data() }));
+                const list = add.filter(p => p.isAnnouncement !== true).map(postToStore);
+                list.forEach(p => { if (!localFeed.has(p.id)) localFeed.set(p.id, p); });
+                feedPersist(list, []);
+                try { localStorage.setItem(flag, '1'); } catch (e) {}
+                feedSchedulePrune();
+                combinePosts();
+                renderPostsList(latestDocs);
+            } catch (e) { console.log('Feed backfill:', e); }
+        }
+        async function feedStart() {
+            const uid = auth.currentUser && auth.currentUser.uid;
+            if (!uid || feedStartedFor === uid) return;
+            feedStartedFor = uid;
+            localFeed.clear();
+            const saved = await feedReadAll();
+            saved.forEach(p => { if (p && p.id) { localFeed.set(p.id, p); feedInitialIds.add(p.id); } });
+            wrapFreshActions();
+            combinePosts();
+            if (localFeed.size) renderPostsList(latestDocs);   // show the phone's posts right away
+            feedBackfill(uid);
+        }
+        function refreshCategoryUI() {
+            const sd = currentLang === 'sd';
+            const lab = document.getElementById('post-category-label');
+            const sel = document.getElementById('post-category-select');
+            if (lab) lab.textContent = sd ? 'پوسٽ ڪيٽيگري' : 'Post Category';
+            if (sel) {
+                const names = sd ? ['سڀ پوسٽون', 'دوستن جون پوسٽون', 'منهنجون پوسٽون'] : ['All Post', 'Friends Post', 'My Post'];
+                [...sel.options].forEach((o, i) => { o.textContent = names[i]; });
+                sel.value = postCategory;
+            }
+        }
+        window.setPostCategory = function (v) {
+            if (['all', 'friends', 'mine'].indexOf(v) < 0) v = 'all';
+            postCategory = v;
+            try { localStorage.setItem('swb_post_cat', v); } catch (e) {}
+            renderPostsList(latestDocs);
+        };
         // Load one older post (1 read); resolves false only if it no longer exists
         function ensurePostLoaded(postId) {
             if (latestDocs.some(p => p.id === postId)) return Promise.resolve(true);
@@ -8366,17 +8589,20 @@
             pinnedUnsubs.forEach(u => u());
             pinnedUnsubs.clear();
             pinnedPosts.clear();
+            localFeed.clear(); feedInitialIds.clear(); feedInitialDone = false; feedStartedFor = null;
             const btn = document.getElementById('btn-older-posts');
             if (btn) btn.classList.add('hidden');
         }
 
         function listenToPosts() {
+            feedStart();
             const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(postsLimit));
             unsubscribePosts = onSnapshot(q, (snapshot) => {
                 windowPosts = [];
                 snapshot.forEach((docSnap) => {
                     windowPosts.push({ id: docSnap.id, ...docSnap.data() });
                 });
+                feedAfterSnapshot(snapshot);
                 combinePosts();
                 const olderBtn = document.getElementById('btn-older-posts');
                 if (olderBtn) {
@@ -9479,7 +9705,8 @@
                 return;
             }
 
-            const visiblePosts = postsArray.filter(post => {
+            refreshCategoryUI();
+            const visiblePostsAll = postsArray.filter(post => {
                 if (post && post.isAnnouncement === true) return false;
                 if (post && post.isFullPostAnnouncement === true) {
                     if (isAdminUser()) return true;
@@ -9491,6 +9718,7 @@
                 if (postPriv === 'public') return true;
                 return myFriendsList.includes(post.authorId);
             });
+            const visiblePosts = applyPostCategory(visiblePostsAll);
 
             if (visiblePosts.length === 0) {
                 container.innerHTML = `<div class="card"><div class="card-body" style="text-align:center; color:#666;">${t.emptyFeed}</div></div>`;
@@ -9869,12 +10097,7 @@ ${shareUrl}`,
             if (targetPost) {
                 const snippet = targetPost.text ? targetPost.text.substring(0, 45) : t.photoPostTag;
                 await notifyPostParticipants(targetPost, 'comment', snippet, commentText, true);
-                try {
-                    const owner = allUsersList.find(u => u.uid === targetPost.authorId);
-                    if (owner && owner.uid !== currentUserObj.uid && owner.lastFcmToken) {
-                        sendPostPush('comment', targetPost.id, null, commentText, [owner.lastFcmToken]);
-                    }
-                } catch (e) {}
+
             }
         };
 

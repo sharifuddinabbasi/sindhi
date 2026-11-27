@@ -1,7 +1,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-const CACHE_NAME = "sindhi-world-book-v131";
+const CACHE_NAME = "sindhi-world-book-v132";
 const ASSETS = [
   "./",
   "./index.html",
@@ -29,29 +29,78 @@ async function isSignedOut() {
   } catch (e) { return false; }
 }
 
-// New post / new comment: show one notification and save the photo on the phone right away
-async function showPostPush(data) {
+// ---- Silent post copy: save the new post in the phone database (IndexedDB), no visible notification ----
+const FEED_HARD_LIMIT = 900;
+
+function openFeedDb(uid) {
+  return new Promise((resolve, reject) => {
+    const r = indexedDB.open("swb-feed-" + uid, 1);
+    r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains("posts")) r.result.createObjectStore("posts", { keyPath: "id" }); };
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+
+async function storePostOnPhone(uid, post) {
+  const db = await openFeedDb(uid);
+  await new Promise((resolve) => {
+    const tx = db.transaction("posts", "readwrite");
+    const st = tx.objectStore("posts");
+    st.put(post);
+    const all = st.getAll();
+    all.onsuccess = () => {
+      const list = all.result || [];
+      if (list.length > FEED_HARD_LIMIT) {
+        list.sort((a, b) => (a.createdAtMs || 0) - (b.createdAtMs || 0));
+        for (let i = 0; i < list.length - FEED_HARD_LIMIT; i++) st.delete(list[i].id);
+      }
+    };
+    tx.oncomplete = tx.onerror = tx.onabort = () => { db.close(); resolve(); };
+  });
+}
+
+async function savePostFromPush(data) {
+  let myUid = "";
   try {
-    const uidRes = await caches.match(new URL("__swb_uid__", self.registration.scope).href, { cacheName: "swb-state" });
-    const myUid = uidRes ? await uidRes.text() : "";
-    if (myUid && data.authorId === myUid) return; // my own post/comment
+    const r = await caches.match(new URL("__swb_uid__", self.registration.scope).href, { cacheName: "swb-state" });
+    myUid = r ? await r.text() : "";
   } catch (e) {}
-  if (data.imageUrl && data.imageUrl.indexOf("https://lh3.googleusercontent.com/d/") === 0) {
+  if (myUid && data.postId && data.authorId !== myUid) {
+    const secs = Math.floor((Number(data.createdAtMs) || Date.now()) / 1000);
+    const post = {
+      id: data.postId,
+      authorId: data.authorId || "",
+      authorName: data.authorName || data.senderName || "",
+      text: data.text || "",
+      image: data.imageUrl || null,
+      imageFileId: data.imageFileId || null,
+      driveIndex: 0,
+      privacy: data.privacy === "private" ? "private" : "public",
+      timeText: data.timeText || "",
+      likes: [], unlikes: [], comments: [], edited: false,
+      createdAt: { seconds: secs, nanoseconds: 0 },
+      createdAtMs: secs * 1000
+    };
+    try { await storePostOnPhone(myUid, post); } catch (e) {}
+    // Save the photo on the phone too
+    if (post.image && post.image.indexOf("https://lh3.googleusercontent.com/d/") === 0) {
+      try {
+        const cache = await caches.open(POST_MEDIA);
+        if (!(await cache.match(post.image))) await downloadPhoto(new Request(post.image, { mode: "cors", credentials: "omit" }), cache);
+      } catch (e) {}
+    }
+    // If the app is open, show the new post at once
     try {
-      const cache = await caches.open(POST_MEDIA);
-      if (!(await cache.match(data.imageUrl))) await downloadPhoto(new Request(data.imageUrl, { mode: "cors", credentials: "omit" }), cache);
+      const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
+      list.forEach((c) => c.postMessage({ type: "NEW_POST", post: post }));
     } catch (e) {}
   }
-  const isComment = data.type === "comment";
-  const title = (data.senderName || "Sindhi World Book") + (isComment ? " commented on your post" : " shared a new post");
-  return self.registration.showNotification(title, {
-    body: data.messageText || "",
-    icon: "./icon.png",
-    badge: "./icon2.png",
-    tag: "swb-post-" + (data.postId || ""),
-    renotify: true,
-    data: { postId: data.postId || "", url: "./index.html" }
-  });
+  // Browsers require a visible notification for every push: show a silent one and remove it immediately
+  try {
+    await self.registration.showNotification("Sindhi World Book", { silent: true, tag: "swb-sync", icon: "./icon.png", badge: "./icon2.png" });
+    const shown = await self.registration.getNotifications({ tag: "swb-sync" });
+    shown.forEach((n) => n.close());
+  } catch (e) {}
 }
 
 messaging.onBackgroundMessage(async (payload) => {
@@ -61,7 +110,8 @@ messaging.onBackgroundMessage(async (payload) => {
     return;
   }
   const data = payload.data || {};
-  if (data.type === "post" || data.type === "comment") return showPostPush(data);
+  if (data.type === "post") return savePostFromPush(data);
+  if (data.type === "comment") return;
   const notif = payload.notification || {};
   const title = data.senderName || notif.title || "Sindhi World Book";
   const body = data.messageText || notif.body || "New message received";
@@ -197,22 +247,7 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   const msgId = (event.notification.data && event.notification.data.msgId) || "";
-  const tappedPostId = (event.notification.data && event.notification.data.postId) || "";
   event.notification.close();
-  if (tappedPostId) {
-    event.waitUntil(
-      clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-        for (const client of list) {
-          if ("focus" in client) {
-            client.postMessage({ type: "OPEN_POST", postId: tappedPostId });
-            return client.focus();
-          }
-        }
-        if (clients.openWindow) return clients.openWindow("./index.html?post=" + encodeURIComponent(tappedPostId));
-      })
-    );
-    return;
-  }
   // Remember which message was tapped, so the app can open that chat even if the URL/message is lost
   const savePending = caches
     .open("swb-pending")
