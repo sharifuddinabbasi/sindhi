@@ -2180,6 +2180,23 @@
             "https://script.google.com/macros/s/AKfycbyQZISldGyttphX2f31WoaxT1Yp0d-os7--AV3IRYFzTe_Z5tEtqYUB5nHaTK941Y1v/exec"
         ];
         const PUSH_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQZISldGyttphX2f31WoaxT1Yp0d-os7--AV3IRYFzTe_Z5tEtqYUB5nHaTK941Y1v/exec";
+        // Every call to the Apps Script now carries the user's login (idToken), which the script checks.
+        (function () {
+            const nativeFetch = window.fetch.bind(window);
+            window.fetch = async function (input, init) {
+                try {
+                    const url = typeof input === "string" ? input : (input && input.url) || "";
+                    if (url.indexOf("https://script.google.com/macros/") === 0 && init && typeof init.body === "string") {
+                        const payload = JSON.parse(init.body);
+                        if (payload && typeof payload === "object" && !payload.idToken && auth.currentUser) {
+                            payload.idToken = await auth.currentUser.getIdToken();
+                            init = Object.assign({}, init, { body: JSON.stringify(payload) });
+                        }
+                    }
+                } catch (e) { /* send the request as it was */ }
+                return nativeFetch(input, init);
+            };
+        })();
         const FCM_VAPID_KEY = "BIzEz16losQI06LKI5ZVl4l3eWpvj3JrX6yuweJ8ce6sfnlb1y7wSDlk0WhrfGeIyj8HqMuKOuRdSl_vxJpeIgM";
         const ADMIN_EMAIL = "sindhiworldbook@gmail.com";
         function isAdminUser() {
@@ -6188,7 +6205,12 @@
             if (!text) return;
             try { await ensureChatAuth(); }
             catch (err) {
-                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                console.log("Chat login failed:", err);
+                if (navigator.onLine && err && err.message && !/Failed to fetch|NetworkError|network/i.test(err.message)) {
+                    showCustomAlert("Chat", "Chat login failed: " + escapeHTML(String(err.message)), "OK", "error");
+                } else {
+                    showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                }
                 return;
             }
 
