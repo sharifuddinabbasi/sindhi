@@ -2320,7 +2320,10 @@
         function setSwAuthState(isIn) {
             try {
                 if (!window.caches) return;
-                caches.open('swb-state').then(c => c.put(new URL('__swb_auth__', location.href).href, new Response(isIn ? 'in' : 'out'))).catch(() => {});
+                caches.open('swb-state').then(c => {
+                    c.put(new URL('__swb_auth__', location.href).href, new Response(isIn ? 'in' : 'out'));
+                    c.put(new URL('__swb_uid__', location.href).href, new Response(isIn && auth.currentUser ? auth.currentUser.uid : ''));
+                }).catch(() => {});
             } catch (e) {}
         }
         // On logout: stop push for this phone (remove token from the user's profile + delete the token on the device)
@@ -2358,6 +2361,9 @@
                         }
                     } catch (e) {}
                     try { localStorage.setItem(tokenKey, JSON.stringify({ token: token, at: Date.now() })); } catch (e) {}
+                    // Join the "all posts" push group (one Apps Script call later reaches everybody)
+                    fetch(PUSH_SCRIPT_URL, { method: "POST", redirect: "follow", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: "topic_subscribe", token: token, subscribe: true }) }).catch(() => {});
                 }
             } catch (err) {
                 console.log("FCM token error:", err);
@@ -2435,6 +2441,10 @@
         }
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.addEventListener('message', (ev) => {
+                if (ev.data && ev.data.type === 'OPEN_POST' && ev.data.postId) {
+                    pendingSharedPostId = ev.data.postId;
+                    try { Promise.resolve(ensurePostLoaded(ev.data.postId)).then(() => openPendingSharedPost()); } catch (e) {}
+                }
                 if (ev.data && ev.data.type === 'OPEN_CHAT') {
                     pendingOpenMsgId = ev.data.msgId || 'none';
                     handlePendingOpenMsg();
@@ -6339,6 +6349,23 @@
             });
         }
 
+        // Tell other phones about a new post (everybody) or a new comment (only the owner's token).
+        // Only a link and a short text travel in the push; the phone downloads the photo itself.
+        function sendPostPush(kind, postId, imageUrl, text, tokens) {
+            try {
+                if (!PUSH_SCRIPT_URL || !currentUserObj) return;
+                fetch(PUSH_SCRIPT_URL, {
+                    method: "POST", redirect: "follow",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({
+                        action: "send_post_push", kind: kind, postId: postId,
+                        imageUrl: imageUrl || "", text: String(text || "").slice(0, 200),
+                        senderName: currentUserObj.name || "Sindhi World Book", tokens: tokens || undefined
+                    })
+                }).catch(() => {});
+            } catch (e) {}
+        }
+
         async function createNotification(toUid, type, postId = null, postSnippet = "", replyText = "", isOwnPost = true) {
             if (!toUid || toUid === currentUserObj.uid) return;
             const now = new Date();
@@ -8118,6 +8145,7 @@
 
                 const snippet = text ? text.substring(0, 45) : t.photoPostTag;
                 await logActivityHistory('post', docRef.id, snippet);
+                if ((newPostPrivacy || 'public') === 'public') sendPostPush('post', docRef.id, imageUrl, text || t.photoPostTag, null);
 
                 document.getElementById('post-text').value = '';
                 document.getElementById('post-image').value = '';
@@ -9828,6 +9856,12 @@ ${shareUrl}`,
             if (targetPost) {
                 const snippet = targetPost.text ? targetPost.text.substring(0, 45) : t.photoPostTag;
                 await notifyPostParticipants(targetPost, 'comment', snippet, commentText, true);
+                try {
+                    const owner = allUsersList.find(u => u.uid === targetPost.authorId);
+                    if (owner && owner.uid !== currentUserObj.uid && owner.lastFcmToken) {
+                        sendPostPush('comment', targetPost.id, null, commentText, [owner.lastFcmToken]);
+                    }
+                } catch (e) {}
             }
         };
 

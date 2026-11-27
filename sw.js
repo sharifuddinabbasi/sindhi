@@ -1,7 +1,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-const CACHE_NAME = "sindhi-world-book-v130";
+const CACHE_NAME = "sindhi-world-book-v131";
 const ASSETS = [
   "./",
   "./index.html",
@@ -29,6 +29,31 @@ async function isSignedOut() {
   } catch (e) { return false; }
 }
 
+// New post / new comment: show one notification and save the photo on the phone right away
+async function showPostPush(data) {
+  try {
+    const uidRes = await caches.match(new URL("__swb_uid__", self.registration.scope).href, { cacheName: "swb-state" });
+    const myUid = uidRes ? await uidRes.text() : "";
+    if (myUid && data.authorId === myUid) return; // my own post/comment
+  } catch (e) {}
+  if (data.imageUrl && data.imageUrl.indexOf("https://lh3.googleusercontent.com/d/") === 0) {
+    try {
+      const cache = await caches.open(POST_MEDIA);
+      if (!(await cache.match(data.imageUrl))) await downloadPhoto(new Request(data.imageUrl, { mode: "cors", credentials: "omit" }), cache);
+    } catch (e) {}
+  }
+  const isComment = data.type === "comment";
+  const title = (data.senderName || "Sindhi World Book") + (isComment ? " commented on your post" : " shared a new post");
+  return self.registration.showNotification(title, {
+    body: data.messageText || "",
+    icon: "./icon.png",
+    badge: "./icon2.png",
+    tag: "swb-post-" + (data.postId || ""),
+    renotify: true,
+    data: { postId: data.postId || "", url: "./index.html" }
+  });
+}
+
 messaging.onBackgroundMessage(async (payload) => {
   // Nobody is signed in on this phone: show nothing, no badge
   if (await isSignedOut()) {
@@ -36,6 +61,7 @@ messaging.onBackgroundMessage(async (payload) => {
     return;
   }
   const data = payload.data || {};
+  if (data.type === "post" || data.type === "comment") return showPostPush(data);
   const notif = payload.notification || {};
   const title = data.senderName || notif.title || "Sindhi World Book";
   const body = data.messageText || notif.body || "New message received";
@@ -171,7 +197,22 @@ self.addEventListener("message", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   const msgId = (event.notification.data && event.notification.data.msgId) || "";
+  const tappedPostId = (event.notification.data && event.notification.data.postId) || "";
   event.notification.close();
+  if (tappedPostId) {
+    event.waitUntil(
+      clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+        for (const client of list) {
+          if ("focus" in client) {
+            client.postMessage({ type: "OPEN_POST", postId: tappedPostId });
+            return client.focus();
+          }
+        }
+        if (clients.openWindow) return clients.openWindow("./index.html?post=" + encodeURIComponent(tappedPostId));
+      })
+    );
+    return;
+  }
   // Remember which message was tapped, so the app can open that chat even if the URL/message is lost
   const savePending = caches
     .open("swb-pending")
