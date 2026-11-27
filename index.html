@@ -2132,6 +2132,7 @@
             getAuth, 
             createUserWithEmailAndPassword, 
             signInWithEmailAndPassword, 
+            signInWithCustomToken,
             sendEmailVerification, 
             sendPasswordResetEmail,
             updateProfile,
@@ -2207,6 +2208,78 @@
         } catch (e) {
             db = getFirestore(app);
         }
+        // Chat messages live in a second Firebase project (its own free quota)
+        const chatFirebaseConfig = {
+            apiKey: "AIzaSyC975mExqsV9xzx0vMzDn4YD9czuF3K7rk",
+            authDomain: "sindhi-message.firebaseapp.com",
+            projectId: "sindhi-message",
+            storageBucket: "sindhi-message.firebasestorage.app",
+            messagingSenderId: "84447271076",
+            appId: "1:84447271076:web:d4e6090534b61187c9ee31"
+        };
+        const chatApp = initializeApp(chatFirebaseConfig, "chat");
+        const chatAuth = getAuth(chatApp);
+        let chatDb;
+        try {
+            chatDb = initializeFirestore(chatApp, {
+                localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager(), cacheSizeBytes: CACHE_SIZE_UNLIMITED })
+            });
+        } catch (e) {
+            chatDb = getFirestore(chatApp);
+        }
+        const chatAuthRestored = new Promise((resolve) => {
+            const stop = onAuthStateChanged(chatAuth, () => { resolve(); setTimeout(() => { if (typeof stop === 'function') stop(); }, 0); });
+        });
+        let chatAuthJob = null;
+        // Sign in to the chat project with the same user: Apps Script checks the main login and issues a pass
+        function ensureChatAuth() {
+            const user = auth.currentUser;
+            if (!user) return Promise.reject(new Error('signed out'));
+            if (chatAuthJob && chatAuthJob.uid === user.uid) return chatAuthJob.promise;
+            const job = { uid: user.uid };
+            job.promise = (async () => {
+                await chatAuthRestored;
+                if (chatAuth.currentUser && chatAuth.currentUser.uid === user.uid) return;
+                if (chatAuth.currentUser) await signOut(chatAuth);
+                const idToken = await user.getIdToken();
+                const res = await fetch(PUSH_SCRIPT_URL, {
+                    method: "POST",
+                    redirect: "follow",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "chat_token", idToken: idToken })
+                });
+                const j = JSON.parse(await res.text());
+                if (j.status !== "success" || !j.token) throw new Error(j.message || "chat login failed");
+                if (!auth.currentUser || auth.currentUser.uid !== user.uid) throw new Error('signed out');
+                await signInWithCustomToken(chatAuth, j.token);
+            })().finally(() => { if (chatAuthJob === job) chatAuthJob = null; });
+            chatAuthJob = job;
+            return job.promise;
+        }
+        let chatRetryTimer = null;
+        let chatErrorShown = false;
+        function startChat(delay = 3000) {
+            clearTimeout(chatRetryTimer);
+            const uid = auth.currentUser && auth.currentUser.uid;
+            if (!uid) return;
+            ensureChatAuth().then(() => {
+                if (currentUserObj && currentUserObj.uid === uid) listenToMessages();
+            }).catch((err) => {
+                if (!auth.currentUser || auth.currentUser.uid !== uid) return;
+                console.log("Chat login failed:", err);
+                if (isAdminUser() && !chatErrorShown && navigator.onLine) {
+                    chatErrorShown = true;
+                    showCustomAlert("Chat setup", "Chat login failed: " + escapeHTML(String(err.message || err)), "OK", "error");
+                }
+                chatRetryTimer = setTimeout(() => startChat(Math.min(delay * 2, 5 * 60 * 1000)), delay);
+            });
+        }
+        function stopChat() {
+            clearTimeout(chatRetryTimer);
+            chatAuthJob = null;
+            signOut(chatAuth)?.catch?.(() => {});
+        }
+
         // Remove the databases of an earlier encrypted version
         if (window.indexedDB && indexedDB.databases) {
             indexedDB.databases().then(list => list.forEach(d => {
@@ -2221,7 +2294,7 @@
             onMessage(messaging, (payload) => {
                 const msgId = payload?.data?.msgId;
                 if (msgId && currentUserObj) {
-                    updateDoc(doc(db, "messages", msgId), { delivered: true, deliveredAt: Date.now() }).catch(() => {});
+                    updateDoc(doc(chatDb, "messages", msgId), { delivered: true, deliveredAt: Date.now() }).catch(() => {});
                 }
             });
         } catch (e) {}
@@ -2327,7 +2400,8 @@
             let senderId = null;
             if (id !== 'none') {
                 try {
-                    const snap = await getDoc(doc(db, "messages", id));
+                    await ensureChatAuth();
+                    const snap = await getDoc(doc(chatDb, "messages", id));
                     if (snap.exists()) {
                         const d = snap.data();
                         if (d.receiverId === currentUserObj.uid) senderId = d.senderId;
@@ -4673,6 +4747,7 @@
             await unregisterFcmPushToken(logoutUid);   // must happen while still signed in
             setSwAuthState(false);
             clearAllSystemNotifications();
+            stopChat();
             await signOut(auth);
         };
 
@@ -4787,7 +4862,7 @@
                 removeOldResetRecords();
                 listenToAllUsers();
                 listenToNotifications();
-                listenToMessages();
+                startChat();
                 listenToPosts();
                 listenToAnnouncements();
                 ensureDefaultWelcomeAnnouncementForUser();
@@ -4798,6 +4873,9 @@
                 hideBootLoader();
                 currentUserObj = null;
                 msgListenGen++;
+                if (unsubscribeMessages) { unsubscribeMessages(); unsubscribeMessages = null; }
+                allMyMessages = [];
+                stopChat();
                 historyOwner = null;
                 myHistoryList = [];
                 resetLoadedPosts();
@@ -4915,7 +4993,7 @@
             if (!msgCutoff || !currentUserObj) return;
             const uid = currentUserObj.uid;
             try {
-                const snap = await getDocsFromCache(query(collection(db, "messages"), where("participants", "array-contains", uid)));
+                const snap = await getDocsFromCache(query(collection(chatDb, "messages"), where("participants", "array-contains", uid)));
                 if (!currentUserObj || currentUserObj.uid !== uid) return;
                 olderMessages = docsToList(snap).filter(m => (m.clientTime || 0) < msgCutoff);
                 rebuildMessages();
@@ -4932,11 +5010,11 @@
             const gen = ++msgListenGen;
             const uid = currentUserObj.uid;
             const mine = where("participants", "array-contains", uid);
-            const syncKey = 'swb_msgsync_' + uid;
+            const syncKey = 'swb_chatsync_' + uid;
             let sync = {};
             try { sync = JSON.parse(localStorage.getItem(syncKey)) || {}; } catch (e) {}
             let saved = [];
-            try { saved = docsToList(await getDocsFromCache(query(collection(db, "messages"), mine))); } catch (e) {}
+            try { saved = docsToList(await getDocsFromCache(query(collection(chatDb, "messages"), mine))); } catch (e) {}
             if (gen !== msgListenGen || !currentUserObj || currentUserObj.uid !== uid) return;
 
             const now = Date.now();
@@ -4950,8 +5028,8 @@
             }
             olderMessages = msgCutoff ? saved.filter(m => (m.clientTime || 0) < msgCutoff) : [];
             const q = msgCutoff
-                ? query(collection(db, "messages"), mine, where("clientTime", ">=", msgCutoff))
-                : query(collection(db, "messages"), mine);
+                ? query(collection(chatDb, "messages"), mine, where("clientTime", ">=", msgCutoff))
+                : query(collection(chatDb, "messages"), mine);
 
             unsubscribeMessages = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
                 if (gen !== msgListenGen || !currentUserObj) return;
@@ -4968,7 +5046,7 @@
                     if (change.type === "added" || change.type === "modified") {
                         const m = change.doc.data();
                         if (m.receiverId === currentUserObj.uid && m.delivered !== true) {
-                            updateDoc(doc(db, "messages", change.doc.id), { delivered: true, deliveredAt: m.deliveredAt || Date.now() })
+                            updateDoc(doc(chatDb, "messages", change.doc.id), { delivered: true, deliveredAt: m.deliveredAt || Date.now() })
                                 .catch((err) => console.error("Delivered update failed:", err));
                         }
                         // Backfill missing times (e.g. an older app version set delivered/read without a time)
@@ -4977,7 +5055,7 @@
                             if (m.delivered === true && !m.deliveredAt) fix.deliveredAt = Date.now();
                             if (m.read === true && !m.readAt) { fix.readAt = Date.now(); if (!m.deliveredAt) fix.deliveredAt = fix.deliveredAt || Date.now(); }
                             if (Object.keys(fix).length) {
-                                updateDoc(doc(db, "messages", change.doc.id), fix).catch(() => {});
+                                updateDoc(doc(chatDb, "messages", change.doc.id), fix).catch(() => {});
                             }
                         }
                     }
@@ -5036,7 +5114,7 @@
             );
             if (unreadFromFriend.length) setTimeout(refreshOlderMessages, 100);
             for (const msg of unreadFromFriend) {
-                await updateDoc(doc(db, "messages", msg.id), {
+                await updateDoc(doc(chatDb, "messages", msg.id), {
                     delivered: true,
                     deliveredAt: msg.deliveredAt || Date.now(),
                     read: true,
@@ -5175,7 +5253,7 @@
             );
             try {
                 setTimeout(refreshOlderMessages, 100);
-                await Promise.all(msgs.map(m => updateDoc(doc(db, "messages", m.id), { deletedFor: arrayUnion(currentUserObj.uid) })));
+                await Promise.all(msgs.map(m => updateDoc(doc(chatDb, "messages", m.id), { deletedFor: arrayUnion(currentUserObj.uid) })));
                 // update the list right away without waiting for the server round trip
                 allMyMessages = allMyMessages.filter(m => !msgs.some(x => x.id === m.id));
                 renderChatFriendsList();
@@ -5461,7 +5539,7 @@
         window.msgActionDelete = function () {
             const m = getSelectedMsg();
             if (!m) return;
-            const ref = doc(db, "messages", m.id);
+            const ref = doc(chatDb, "messages", m.id);
             const buttons = [{
                 label: wl('waDelForMe'),
                 onClick: async () => {
@@ -5594,7 +5672,7 @@
             clearMsgSelection();
             try {
                 setTimeout(refreshOlderMessages, 100);
-                await updateDoc(doc(db, "messages", m.id), { ['reactions.' + currentUserObj.uid]: value });
+                await updateDoc(doc(chatDb, "messages", m.id), { ['reactions.' + currentUserObj.uid]: value });
             } catch (e) { waToast(wl('waReactFail')); }
         };
 
@@ -6108,6 +6186,11 @@
             const input = document.getElementById('wa-chat-input');
             const text = input.value.trim();
             if (!text) return;
+            try { await ensureChatAuth(); }
+            catch (err) {
+                showCustomAlert(t.noInternetTitle, t.noInternetDesc, t.alertOkBtn, "network");
+                return;
+            }
 
             input.value = '';
             waUpdateSendMic();
@@ -6120,11 +6203,12 @@
         };
 
         async function sendMessageCore(toUid, text, extra = {}) {
+            await ensureChatAuth();
             if (!allUsersList.some(u => u.uid === toUid)) { if (typeof waToast === 'function') waToast('This account was deleted'); return; }
             const now = new Date();
             const timeText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-            const msgDocRef = await addDoc(collection(db, "messages"), {
+            const msgDocRef = await addDoc(collection(chatDb, "messages"), {
                 senderId: currentUserObj.uid,
                 receiverId: toUid,
                 participants: [currentUserObj.uid, toUid],
@@ -6137,7 +6221,7 @@
                 createdAt: serverTimestamp()
             });
 
-            const savePush = (s) => s !== 'ok' && updateDoc(doc(db, "messages", msgDocRef.id), { pushResult: String(s).slice(0, 160) }).catch(() => {});
+            const savePush = (s) => s !== 'ok' && updateDoc(doc(chatDb, "messages", msgDocRef.id), { pushResult: String(s).slice(0, 160) }).catch(() => {});
             // Trigger background push notification to receiver even if their app is completely closed
             try {
                 if (PUSH_SCRIPT_URL && PUSH_SCRIPT_URL.startsWith("https://")) {
@@ -6179,7 +6263,7 @@
                                     const okByCodes = Array.isArray(parsed.codes) && parsed.codes.includes(200);
                                     const okByResults = Array.isArray(parsed.results) && parsed.results.some(r => r && r.code === 200);
                                     if (parsed.status === "sent" && (okByCodes || okByResults)) {
-                                        updateDoc(doc(db, "messages", msgDocRef.id), { delivered: true, deliveredAt: Date.now() }).catch(() => {});
+                                        updateDoc(doc(chatDb, "messages", msgDocRef.id), { delivered: true, deliveredAt: Date.now() }).catch(() => {});
                                     }
                                 } catch (e) {}
                             })
@@ -7094,9 +7178,10 @@
 
             // 1) Chats stay with the other person. Only remember the name so the chat still shows who it was.
             try {
-                const msgSnap = await getDocs(query(collection(db, "messages"), where("participants", "array-contains", uid)));
+                await ensureChatAuth();
+                const msgSnap = await getDocs(query(collection(chatDb, "messages"), where("participants", "array-contains", uid)));
                 for (const m of msgSnap.docs) {
-                    await updateDoc(doc(db, "messages", m.id), { ["deletedUserNames." + uid]: userData.name || 'User' }).catch(() => {});
+                    await updateDoc(doc(chatDb, "messages", m.id), { ["deletedUserNames." + uid]: userData.name || 'User' }).catch(() => {});
                 }
             } catch (e) {}
 
@@ -8714,7 +8799,7 @@
             }
 
             const q = query(
-                collection(db, "messages"),
+                collection(chatDb, "messages"),
                 where("participants", "array-contains", userAUid)
             );
 
@@ -8804,7 +8889,7 @@
                 showCustomAlert(t.noticeTitle, t.alertEmptyEdit, t.alertOkBtn, "error");
                 return;
             }
-            await updateDoc(doc(db, "messages", msgId), {
+            await updateDoc(doc(chatDb, "messages", msgId), {
                 text: newText,
                 edited: true
             }).catch(() => {});
@@ -8815,7 +8900,7 @@
             const t = translations[currentLang];
             const confirmed = await showCustomConfirm(t.deleteReplyConfirmTitle, t.confirmDeleteComment, t.yesDeleteBtn, true);
             if (!confirmed) return;
-            await deleteDoc(doc(db, "messages", msgId)).catch(() => {});
+            await deleteDoc(doc(chatDb, "messages", msgId)).catch(() => {});
         };
 
 
@@ -8840,10 +8925,10 @@
                     if (delFor.includes(uidB)) {
                         // the other user already deleted it too -> nobody needs it anymore: remove completely
                         if (m.attachment && m.attachment.fileId) driveDeleteFile(m.attachment.fileId, m.attachment.driveIndex);
-                        await deleteDoc(doc(db, "messages", m.id));
+                        await deleteDoc(doc(chatDb, "messages", m.id));
                     } else {
                         // hide only for the user whose details are open; the other user keeps the chat
-                        await updateDoc(doc(db, "messages", m.id), { deletedFor: arrayUnion(uidA) });
+                        await updateDoc(doc(chatDb, "messages", m.id), { deletedFor: arrayUnion(uidA) });
                     }
                 }
                 waToast(wl('waChatDeleted'));
