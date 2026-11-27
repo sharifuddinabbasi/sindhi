@@ -9564,6 +9564,18 @@
             });
         };
 
+        // Admin: posts shown under the user list, same category rule as the normal feed
+        function adminPostsHTML(postsArray) {
+            const t = translations[currentLang];
+            refreshCategoryUI();
+            const base = (postsArray || []).filter(post => post && post.isAnnouncement !== true);
+            const list = applyPostCategory(base);
+            if (list.length === 0) {
+                return `<div class="card"><div class="card-body" style="text-align:center; color:#666;">${t.emptyFeed}</div></div>`;
+            }
+            return list.map(buildPostCardHTML).join('');
+        }
+
         window.renderAdminFilteredUsers = function(postsArray = latestDocs) {
             if (!isAdminUser()) return;
             const postsCont = document.getElementById('posts-container');
@@ -9645,7 +9657,7 @@
                             ${currentLang === 'sd' ? 'چونڊيل وقت ۾ ڪنهن به صارف پوسٽ يا تبصرو ناهي ڪيو.' : 'No users posted or commented in the selected time.'}
                         </div>
                     </div>
-                `;
+                ` + adminPostsHTML(postsArray);
                 return;
             }
 
@@ -9676,7 +9688,7 @@
                 `;
             });
 
-            postsCont.innerHTML = searchBarHTML + cardsHTML;
+            postsCont.innerHTML = searchBarHTML + cardsHTML + adminPostsHTML(postsArray);
         };
 
         function syncAdminFeedState(postsArray = latestDocs) {
@@ -9789,7 +9801,12 @@
                 return;
             }
 
-            visiblePosts.forEach((post) => {
+            container.innerHTML = visiblePosts.map(buildPostCardHTML).join('');
+        }
+
+        // One post card (same look and rules for the normal feed and for the admin screen)
+        function buildPostCardHTML(post) {
+            const t = translations[currentLang];
                 const postId = post.id;
                 const likes = post.likes || [];
                 const unlikes = post.unlikes || [];
@@ -9866,7 +9883,7 @@
                     `;
                 });
 
-                container.innerHTML += `
+                return `
                     <div id="post-card-${postId}" class="card">
                         <div class="ajrak-border-strip"></div>
                         <div class="card-body">
@@ -9971,7 +9988,6 @@
                         </div>
                     </div>
                 `;
-            });
         }
 
         window.handleLike = async function(postId, isLiked) {
