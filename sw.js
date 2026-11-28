@@ -14,7 +14,8 @@ const ASSETS = [
   "./index.html",
   "./manifest.json",
   "./icon.png",
-  "./icon2.png"
+  "./icon2.png",
+  "./indopak-quran.woff2"
 ];
 
 firebase.initializeApp({
