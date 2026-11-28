@@ -14,7 +14,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;600;700&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
         :root {
@@ -1549,6 +1549,21 @@
         .yt-info { padding:8px 12px 10px; direction:ltr; text-align:left; }
         .yt-title { font-size:14px; font-weight:700; color:var(--text-dark); line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
         .yt-site { font-size:12px; color:#777; margin-top:2px; }
+
+        /* Arabic with full aeraab (ayat / hadith / dua): big mushaf style */
+        @font-face { font-family: 'IndoPakQuran'; src: url('./indopak-quran.woff2') format('woff2'), url('./indopak-quran.ttf') format('truetype'); font-display: swap; }
+        .post-content .ar-quran {
+            display: block;
+            direction: rtl;
+            text-align: center;
+            white-space: normal;
+            font-family: 'IndoPakQuran', 'Scheherazade New', 'Noto Naskh Arabic', serif;
+            font-size: 27px;
+            line-height: 2.2;
+            font-weight: 700;
+            color: #1A1A1A;
+            margin: 2px 0 4px;
+        }
 
         .post-content {
             font-size: 15px;
@@ -4207,6 +4222,28 @@
                 const href = /^www\./i.test(url) ? 'https://' + url : url;
                 return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>${tail}`;
             });
+        }
+        // ---- Arabic lines with full aeraab are shown big (Indo-Pak mushaf style) ----
+        function isQuranLine(line) {
+            const letters = (line.match(/[\u0621-\u064A\u0671]/g) || []).length;
+            if (letters < 3) return false;
+            const marks = (line.match(/[\u064B-\u0652\u0670]/g) || []).length;
+            return marks >= 6 && marks / letters >= 0.45 && !/[A-Za-z]/.test(line);
+        }
+        function postTextHTML(str) {
+            const lines = String(str || '').split('\n');
+            let out = '', prevWasBlock = true;
+            lines.forEach((ln) => {
+                if (isQuranLine(ln)) {
+                    out += `<div class="ar-quran" dir="rtl" lang="ar">${escapeHTML(ln.trim())}</div>`;
+                    prevWasBlock = true;
+                } else {
+                    if (!prevWasBlock) out += '\n';
+                    out += linkifyHTML(ln);
+                    prevWasBlock = false;
+                }
+            });
+            return out;
         }
         function getYouTubeId(text) {
             const m = (text || '').match(/(?:https?:\/\/)?(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?(?:[^\s]*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
@@ -9536,7 +9573,7 @@
                                     <button type="button" class="control-btn delete" title="${tAct.deleteTitle}" onclick="adminDeletePostWithNotice('${postId}', '${targetUid}')">${ICON_DUSTBIN_SVG}</button>
                                 </div>
                             </div>
-                            ${post.text ? `<div class="post-content">${linkifyHTML(post.text)}</div>${youtubePreviewHTML(post.text)}` : ''}
+                            ${post.text ? `<div class="post-content">${postTextHTML(post.text)}</div>${youtubePreviewHTML(post.text)}` : ''}
                             ${post.image ? `<img src="${escapeHTML(post.image)}" class="post-image" alt="Post Image" loading="lazy">` : ''}
                             <div class="post-stats">
                                 <span>❤️ ${likes.length} Likes</span>
@@ -9934,7 +9971,7 @@
                                 ` : ''}
                             </div>
                             
-                            <div id="post-text-display-${postId}" class="post-content ${!post.text ? 'hidden' : ''}">${linkifyHTML(post.text || '')}</div>${youtubePreviewHTML(post.text)}
+                            <div id="post-text-display-${postId}" class="post-content ${!post.text ? 'hidden' : ''}">${postTextHTML(post.text || '')}</div>${youtubePreviewHTML(post.text)}
                             
                             ${canManagePost ? `
                                 <div id="edit-box-${postId}" class="edit-box hidden">
@@ -10236,7 +10273,7 @@ ${shareUrl}`,
                     } catch (uErr) {}
                 }
                 const avatarInner = getAvatarHTML(authorPhotoUrl, authorName);
-                const textHTML = pData.text ? `<div class="post-content">${linkifyHTML(pData.text)}</div>${youtubePreviewHTML(pData.text)}` : '';
+                const textHTML = pData.text ? `<div class="post-content">${postTextHTML(pData.text)}</div>${youtubePreviewHTML(pData.text)}` : '';
                 const imgHTML = pData.image ? `<img src="${escapeHTML(pData.image)}" class="post-image" alt="Shared Post Image" loading="lazy" draggable="false" oncontextmenu="return false;">` : '';
                 const likesCount = Array.isArray(pData.likes) ? pData.likes.length : 0;
                 const unlikesCount = Array.isArray(pData.unlikes) ? pData.unlikes.length : 0;
