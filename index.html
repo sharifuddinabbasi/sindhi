@@ -1564,6 +1564,8 @@
             color: #111111;
             margin: 2px 0 4px;
         }
+        .post-content .pl-gap { height: 1.6em; }
+        .post-content .pl-rtl { text-align: right; }
 
         .post-content {
             font-size: 15px;
@@ -4230,17 +4232,24 @@
             const marks = (line.match(/[\u064B-\u0652\u0670]/g) || []).length;
             return marks >= 6 && marks / letters >= 0.45 && !/[A-Za-z]/.test(line);
         }
+        function isRtlLine(line) {
+            const ar = (line.match(/[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/g) || []).length;
+            const la = (line.match(/[A-Za-z]/g) || []).length;
+            return ar > la;
+        }
+        // Every line is its own block: Arabic (aeraab) = big mushaf style, Sindhi/Urdu = right aligned, English = normal
         function postTextHTML(str) {
-            const lines = String(str || '').split('\n');
-            let out = '', prevWasBlock = true;
+            const lines = String(str || '').replace(/\r/g, '').split('\n');
+            while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+            let out = '';
             lines.forEach((ln) => {
+                if (!ln.trim()) { out += '<div class="pl-gap"></div>'; return; }
                 if (isQuranLine(ln)) {
                     out += `<div class="ar-quran" dir="rtl" lang="ar">${escapeHTML(ln.trim())}</div>`;
-                    prevWasBlock = true;
+                } else if (isRtlLine(ln)) {
+                    out += `<div class="pl-rtl" dir="rtl">${linkifyHTML(ln)}</div>`;
                 } else {
-                    if (!prevWasBlock) out += '\n';
-                    out += linkifyHTML(ln);
-                    prevWasBlock = false;
+                    out += `<div class="pl">${linkifyHTML(ln)}</div>`;
                 }
             });
             return out;
