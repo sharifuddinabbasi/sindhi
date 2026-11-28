@@ -2630,6 +2630,7 @@
                 invalidResetLink: "This password reset link has expired or is invalid. Please request a new one.",
                 resetPassDoneSuccess: "Your password has been updated successfully! You can now log in with your new password.",
                 profileFriendsCount: "Friends",
+            adminAddFriendsBtn: "Add Friends", adminAddFriendsTitle: "🔍 Find Friends", adminSearchFriendPh: "Search by name or email...",
                 profilePostsCount: "My Posts",
                 publicLabel: "🌐 Public",
                 privateLabel: "🔒 Private",
@@ -2925,6 +2926,7 @@
                 invalidResetLink: "هي لنڪ ختم ٿي چڪي آهي يا غلط آهي. مهرباني ڪري نئين لنڪ موڪليو.",
                 resetPassDoneSuccess: "توهان جو پاسورڊ ڪاميابيءَ سان تبديل ٿي ويو آهي! هاڻي نئين پاسورڊ سان لاگ ان ڪريو.",
                 profileFriendsCount: "دوست",
+            adminAddFriendsBtn: "دوست شامل ڪريو", adminAddFriendsTitle: "🔍 دوست ڳوليو", adminSearchFriendPh: "نالو يا اي ميل سان ڳوليو...",
                 profilePostsCount: "منهنجون پوسٽون",
                 publicLabel: "🌐 پبلڪ (Public)",
                 privateLabel: "🔒 پرائيويٽ (Private)",
@@ -8881,6 +8883,7 @@
             if (!isAdminUser() || !targetUid) return;
             const t = translations[currentLang];
             adminDetailsTargetUid = targetUid;
+            adminAddFriendMode = false; adminAddFriendQuery = '';
             adminChatPairUserA = null;
             adminChatPairUserB = null;
             if (unsubscribeAdminPairMsgs) {
@@ -9067,6 +9070,7 @@
             const container = document.getElementById('popup-admin-user-details-content');
             if (!container || !isAdminUser() || !adminDetailsTargetUid) return;
 
+            if (adminAddFriendMode) { renderAdminAddFriendsView(); return; }
             const targetUser = findAnyUserByUid(adminDetailsTargetUid);
             if (!targetUser) {
                 container.innerHTML = `<p style="text-align:center; color:#666; font-size:13px;">${t.noAdminUsersFound}</p>`;
@@ -9145,8 +9149,9 @@
                     </div>
                 </div>
 
-                <div style="font-size:13px; font-weight:800; color:var(--ajrak-blue); margin-bottom:8px;">
-                    ${t.profileFriendsCount} (${friendUids.length})
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:13px; font-weight:800; color:var(--ajrak-blue); margin-bottom:8px;">
+                    <span>${t.profileFriendsCount} (${friendUids.length})</span>
+                    <button type="button" class="btn-sm primary" onclick="adminOpenAddFriends()">＋ ${t.adminAddFriendsBtn}</button>
                 </div>
                 <div>${friendsListHTML}</div>
             `;
@@ -9158,6 +9163,98 @@
                     (next) => { adminCropZoom = next.zoom; adminCropPanX = next.panX; adminCropPanY = next.panY; }
                 );
             }
+        };
+
+        let adminAddFriendMode = false;
+        let adminAddFriendQuery = '';
+
+        window.adminOpenAddFriends = function() {
+            if (!isAdminUser() || !adminDetailsTargetUid) return;
+            const t = translations[currentLang];
+            adminAddFriendMode = true; adminAddFriendQuery = '';
+            document.getElementById('modal-title').innerText = t.adminAddFriendsTitle;
+            document.getElementById('modal-header-extra').innerHTML = `<button type="button" class="btn-sm neutral" onclick="adminCloseAddFriends()">${t.backBtn}</button>`;
+            renderAdminUserDetailsView();
+        };
+
+        window.adminCloseAddFriends = function() {
+            const t = translations[currentLang];
+            adminAddFriendMode = false; adminAddFriendQuery = '';
+            document.getElementById('modal-header-extra').innerHTML = '';
+            document.getElementById('modal-title').innerText = t.adminUserDetailsTitle;
+            renderAdminUserDetailsView();
+        };
+
+        window.renderAdminAddFriendsView = function() {
+            const t = translations[currentLang];
+            const container = document.getElementById('popup-admin-user-details-content');
+            if (!container) return;
+            container.innerHTML = `
+                <input type="text" id="admin-add-friend-search" placeholder="${escapeHTML(t.adminSearchFriendPh)}" value="${escapeHTML(adminAddFriendQuery)}" oninput="adminAddFriendSearchChanged(this.value)" autocomplete="off" style="margin-bottom:10px;">
+                <div id="admin-add-friend-results"></div>
+            `;
+            renderAdminAddFriendResults();
+            const inp = document.getElementById('admin-add-friend-search');
+            if (inp && !adminAddFriendQuery) inp.focus();
+        };
+
+        window.adminAddFriendSearchChanged = function(v) {
+            adminAddFriendQuery = v || '';
+            renderAdminAddFriendResults();
+        };
+
+        window.renderAdminAddFriendResults = function() {
+            const t = translations[currentLang];
+            const box = document.getElementById('admin-add-friend-results');
+            if (!box) return;
+            const term = adminAddFriendQuery.trim().toLowerCase();
+            if (!term) { box.innerHTML = `<p style="text-align:center; color:#666; font-size:13px; padding:12px;">${t.typeToSearch}</p>`; return; }
+            const target = findAnyUserByUid(adminDetailsTargetUid);
+            const targetFriends = (target && Array.isArray(target.friends)) ? target.friends : [];
+            const list = allUsersList.filter(u => {
+                if (!u || u.deleted === true || u.blocked === true || !u.email) return false;
+                if (u.uid === adminDetailsTargetUid) return false;
+                const em = (u.email || '').toLowerCase().trim();
+                if (!em || em === ADMIN_EMAIL) return false;
+                const name = (u.name || '').toLowerCase().trim();
+                const nameHit = name.startsWith(term) || name.split(/\s+/).some(w => w.startsWith(term));
+                const mailHit = em === term || (term.includes('@') && em.startsWith(term)) || (em.split('@')[0] || '').startsWith(term);
+                return nameHit || mailHit;
+            });
+            if (!list.length) { box.innerHTML = `<p style="text-align:center; color:#666; font-size:13px; padding:12px;">${t.noUsers}</p>`; return; }
+            box.innerHTML = list.map(u => {
+                const isFr = targetFriends.includes(u.uid);
+                const btn = isFr
+                    ? `<button type="button" class="btn-sm danger" onclick="adminUnfriendPair('${adminDetailsTargetUid}', '${u.uid}')">${t.unfriendBtn}</button>`
+                    : `<button type="button" class="btn-sm primary" onclick="adminAddFriendPair('${adminDetailsTargetUid}', '${u.uid}')">${t.addFriend}</button>`;
+                return `<div class="popup-list-item">
+                    <div class="popup-user-info">
+                        <div class="mini-avatar ${getOnlineRingClass(u)}">${getAvatarHTML(u.photoUrl, u.name)}</div>
+                        <div style="min-width:0;">
+                            <div class="popup-user-name">${escapeHTML(u.name || 'User')}</div>
+                            <div style="font-size:11px; color:#666; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" dir="ltr">${escapeHTML(u.email || '')}</div>
+                        </div>
+                    </div>
+                    <div class="popup-actions">${btn}</div>
+                </div>`;
+            }).join('');
+        };
+
+        // Admin makes two users friends directly (no request needed)
+        window.adminAddFriendPair = async function(userAUid, userBUid) {
+            if (!isAdminUser() || !userAUid || !userBUid || userAUid === userBUid) return;
+            try {
+                await updateDoc(doc(db, "users", userAUid), { friends: arrayUnion(userBUid), friendRequests: arrayRemove(userBUid) });
+                await updateDoc(doc(db, "users", userBUid), { friends: arrayUnion(userAUid), friendRequests: arrayRemove(userAUid) });
+            } catch (e) { console.log('adminAddFriendPair failed:', e); return; }
+            [[userAUid, userBUid], [userBUid, userAUid]].forEach(([me, other]) => {
+                const u = findAnyUserByUid(me);
+                if (!u) return;
+                u.friends = Array.isArray(u.friends) ? u.friends : [];
+                if (!u.friends.includes(other)) u.friends.push(other);
+                if (Array.isArray(u.friendRequests)) u.friendRequests = u.friendRequests.filter(id => id !== other);
+            });
+            renderAdminAddFriendResults();
         };
 
         window.adminUnfriendPair = async function(userAUid, userBUid) {
