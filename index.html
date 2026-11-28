@@ -9950,6 +9950,7 @@
                                                 if (canManagePost) {
                                                     return `<button type="button" class="post-privacy-badge ${pPriv} clickable" onclick="toggleExistingPostPrivacy('${postId}')" title="Change Privacy">${pLabel}</button>`;
                                                 }
+                                                if (isAuthorAdmin) return '';   // nobody adds the Admin as a friend
                                                 const isAlreadyFriend = myFriendsList.includes(post.authorId);
                                                 if (isAlreadyFriend) {
                                                     return '';
@@ -10025,11 +10026,11 @@
                                         <input type="text" id="comment-input-${postId}" placeholder="${t.commentPlaceholder}">
                                         <button type="submit">${t.sendBtn}</button>
                                     </form>
-                                ` : `
+                                ` : (((allUsersList.find(u => u.uid === post.authorId) || {}).email || '').toLowerCase().trim() === ADMIN_EMAIL ? '' : `
                                     <div style="margin-top:8px; padding:7px 10px; border-radius:8px; background:var(--ajrak-cream); border:1px dashed #C8BEB0; color:var(--ajrak-blue); font-size:12px; font-weight:600; text-align:center;">
                                         ${t.friendOnlyCommentHint.replace(/\{username\}/g, escapeHTML(displayAuthorName))}
                                     </div>
-                                `}
+                                `)}
                             </div>
                         </div>
                     </div>
