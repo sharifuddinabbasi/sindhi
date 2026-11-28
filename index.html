@@ -9950,7 +9950,8 @@
                                                 if (canManagePost) {
                                                     return `<button type="button" class="post-privacy-badge ${pPriv} clickable" onclick="toggleExistingPostPrivacy('${postId}')" title="Change Privacy">${pLabel}</button>`;
                                                 }
-                                                if (isAuthorAdmin) return '';   // nobody adds the Admin as a friend
+                                                const _au = allUsersList.find(u => u.uid === post.authorId);
+                                                if (_au && (_au.email || '').toLowerCase().trim() === ADMIN_EMAIL) return '';   // nobody adds the Admin as a friend
                                                 const isAlreadyFriend = myFriendsList.includes(post.authorId);
                                                 if (isAlreadyFriend) {
                                                     return '';

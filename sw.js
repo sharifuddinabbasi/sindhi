@@ -1,7 +1,7 @@
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js");
 
-const CACHE_NAME = "sindhi-world-book-v140";
+const CACHE_NAME = "sindhi-world-book-v141";
 const LIBS = "swb-libs"; // Firebase code + fonts: kept across versions so the app opens offline
 const LIB_URLS = [
   "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
